@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { createServerClient } from "@supabase/ssr";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,30 +8,34 @@ const supabase = createClient(
 )
 
 // Verificar se o usuário é admin
-async function isAdmin() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) return false
-
+async function isAdmin(request) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
   // Permitir admin por e-mail direto
   const adminEmails = [
     'admin@tratodebarbados.com',
     'admin@barbearia.com'
   ];
-  if (adminEmails.includes(session.user.email)) return true;
-
-  // Buscar role no Supabase
-  const { data: userRole } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', session.user.id)
-    .single()
-
-  // Permitir admin, barbershop_owner
-  if (userRole?.role === 'admin' || userRole?.role === 'barbershop_owner') return true;
-
-  // Permitir roles para uso futuro
-  if (userRole?.role === 'recepcao' || userRole?.role === 'barbeiro') return false;
-
+  if (adminEmails.includes(user.email)) return true;
+  // Buscar role no user_metadata
+  const role = user.user_metadata?.role || user.raw_user_meta_data?.role;
+  if (role === 'admin' || role === 'barbershop_owner') return true;
   return false;
 }
 
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
   try {
     // Permitir sem autenticação em desenvolvimento
     const isDev = process.env.NODE_ENV !== 'production';
-    if (!isDev && !await isAdmin()) {
+    if (!isDev && !await isAdmin(request)) {
       return NextResponse.json(
         { success: false, error: 'Não autorizado' },
         { status: 403 }
@@ -70,14 +73,30 @@ export async function POST(request: NextRequest) {
     // Em dev, usar um valor mock
     let userId = 'dev-user';
     if (!isDev) {
-      const session = await getServerSession(authOptions)
-      if (!session?.user) {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                request.cookies.set(name, value, options)
+              );
+            },
+          },
+        }
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         return NextResponse.json(
           { success: false, error: 'Não autenticado' },
           { status: 401 }
         )
       }
-      userId = session.user.id;
+      userId = user.id;
     }
 
     console.log('[API] Salvando meta:', { year, month, goalAmount, description, userId });
@@ -116,7 +135,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Verificar permissões
-    if (!await isAdmin()) {
+    if (!await isAdmin(request)) {
       return NextResponse.json(
         { success: false, error: 'Não autorizado' },
         { status: 403 }
