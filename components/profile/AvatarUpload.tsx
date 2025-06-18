@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Avatar, Button } from "@heroui/react";
 
 interface AvatarUploadProps {
@@ -8,11 +8,19 @@ interface AvatarUploadProps {
 }
 
 const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl }) => {
-  const [preview, setPreview] = useState<string | undefined>(currentUrl);
+  const [preview, setPreview] = useState<string | undefined>(currentUrl || '/img/default-avatar.png');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    setPreview(currentUrl || '/img/default-avatar.png');
+  }, [currentUrl]);
+
   const handleFile = (file: File | null) => {
-    if (!file) return;
+    if (!file) {
+      setPreview('/img/default-avatar.png');
+      onChange(null);
+      return;
+    }
     if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
       alert('Formato inválido. Use PNG, JPG ou JPEG.');
       return;
@@ -21,14 +29,16 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl
       alert('Tamanho máximo: 2MB');
       return;
     }
-    setPreview(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
     onChange(file);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFile(files[0]);
     }
   };
 
@@ -42,7 +52,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl
       aria-label="Upload de avatar"
     >
       <Avatar
-        src={preview}
+        src={preview || '/img/default-avatar.png'}
         name="Avatar"
         size="lg"
         className="ring-2 ring-primary border-2 border-white shadow-md"
@@ -53,8 +63,9 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl
         accept="image/png,image/jpeg,image/jpg"
         className="hidden"
         onChange={e => {
-          if (e.target.files && e.target.files[0]) {
-            handleFile(e.target.files[0]);
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            handleFile(files[0]);
           }
         }}
       />

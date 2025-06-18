@@ -10,8 +10,14 @@ interface ProfileDropdownProps {
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, signOut }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Verificar se user existe
+  if (!user) {
+    return null;
+  }
+  
   const fullName = user?.user_metadata?.full_name || user?.email || "Usuário";
-  const avatarUrl = user?.user_metadata?.avatar_url || undefined;
+  const avatarUrl = user?.user_metadata?.avatar_url || '/img/default-avatar.png';
 
   return (
     <>

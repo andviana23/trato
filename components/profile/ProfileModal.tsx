@@ -39,6 +39,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
 
+  // Verificar se user existe
+  if (!user) {
+    return null;
+  }
+
   const {
     control,
     handleSubmit,
@@ -69,13 +74,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
         }
       };
       // Se avatar foi alterado, fazer upload e atualizar URL
-      if (avatarFile) {
+      if (avatarFile && user?.id) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}.${fileExt}`;
         const { data: uploadData, error: uploadError } = await supabase.storage.from('avatars').upload(fileName, avatarFile, { upsert: true });
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-          updates.data.avatar_url = urlData.publicUrl;
+          updates.data.avatar_url = urlData?.publicUrl || '/img/default-avatar.png';
+        } else {
+          console.error('Erro no upload do avatar:', uploadError);
         }
       }
       const { error } = await supabase.auth.updateUser(updates);
@@ -107,7 +114,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
                     setAvatarFile(file);
                     field.onChange(file);
                   }}
-                  currentUrl={user?.user_metadata?.avatar_url}
+                  currentUrl={user?.user_metadata?.avatar_url || '/img/default-avatar.png'}
                 />
               )}
             />

@@ -17,7 +17,16 @@ export const useBarberQueue = () => {
         .order('daily_services', { ascending: true })
         .order('queue_position', { ascending: true });
       if (error) throw error;
-      setQueue(data || []);
+      const processedData = (data || []).map((item: any) => ({
+        ...item,
+        barber: item.barber ? {
+          ...item.barber,
+          avatar_url: item.barber?.avatar_url || '/img/default-avatar.png',
+          nome: item.barber?.nome || 'Barbeiro não encontrado',
+          telefone: item.barber?.telefone || 'Telefone não informado',
+        } : null,
+      }));
+      setQueue(processedData);
     } catch (error) {
       toast.error('Erro ao carregar fila');
       console.error(error);
@@ -33,11 +42,15 @@ export const useBarberQueue = () => {
         .select('daily_services, total_services')
         .eq('id', queueId)
         .single();
+      if (!current) {
+        toast.error('Barbeiro não encontrado na fila');
+        return;
+      }
       const { error: updateError } = await supabase
         .from('barber_queue')
         .update({
-          total_services: (current?.total_services || 0) + 1,
-          daily_services: (current?.daily_services || 0) + 1,
+          total_services: (current.total_services || 0) + 1,
+          daily_services: (current.daily_services || 0) + 1,
           last_service_date: new Date().toISOString().split('T')[0]
         })
         .eq('id', queueId);
@@ -127,6 +140,7 @@ export const useBarberQueue = () => {
         .select('id')
         .order('queue_position', { ascending: true });
       if (error) throw error;
+      if (!fila || fila.length === 0) return;
       for (let i = 0; i < fila.length; i++) {
         await supabase
           .from('barber_queue')
@@ -137,6 +151,7 @@ export const useBarberQueue = () => {
         .from('barber_queue')
         .select('id, barber:profissionais(nome)')
         .order('barber.nome', { ascending: true });
+      if (!filaAtualizada || filaAtualizada.length === 0) return;
       for (let i = 0; i < filaAtualizada.length; i++) {
         await supabase
           .from('barber_queue')

@@ -113,14 +113,14 @@ export default function ListaDaVez() {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <Avatar
-                  src={currentBarber.barber.avatar_url}
-                  name={currentBarber.barber.nome}
+                  src={currentBarber.barber?.avatar_url || '/img/default-avatar.png'}
+                  name={currentBarber.barber?.nome || 'Barbeiro'}
                   size="lg"
                   className="ring-4 ring-primary-200"
                 />
                 <div>
                   <h3 className="text-2xl font-bold text-foreground">
-                    {currentBarber.barber.nome}
+                    {currentBarber.barber?.nome || 'Barbeiro não encontrado'}
                   </h3>
                   <p className="text-default-600">
                     {currentBarber.daily_services} atendimentos hoje • {currentBarber.total_services} total
@@ -235,14 +235,14 @@ export default function ListaDaVez() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar
-                            src={item.barber.avatar_url}
-                            name={item.barber.nome}
+                            src={item.barber?.avatar_url || '/img/default-avatar.png'}
+                            name={item.barber?.nome || 'Barbeiro'}
                             size="sm"
                           />
                           <div>
-                            <p className="font-medium text-foreground">{item.barber.nome}</p>
+                            <p className="font-medium text-foreground">{item.barber?.nome || 'Barbeiro não encontrado'}</p>
                             <p className="text-small text-default-500">
-                              {item.barber.telefone}
+                              {item.barber?.telefone || 'Telefone não informado'}
                             </p>
                           </div>
                         </div>

@@ -372,10 +372,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const usePermissions = () => {
   const { profile } = useAuth();
   
-  const isOwner = profile?.role === 'barbershop_owner';
-  const isProfessional = profile?.role === 'professional';
-  const isClient = profile?.role === 'client';
-  const isAdmin = profile?.role === 'admin';
+  // Verificar se profile existe
+  if (!profile) {
+    return {
+      isOwner: false,
+      isProfessional: false,
+      isClient: false,
+      isAdmin: false,
+      canManageBarbershop: false,
+      canManageProfessionals: false,
+      canManageClients: false,
+      canViewQueue: false,
+      canManageSubscriptions: false,
+    };
+  }
+  
+  const isOwner = profile.role === 'barbershop_owner';
+  const isProfessional = profile.role === 'professional';
+  const isClient = profile.role === 'client';
+  const isAdmin = profile.role === 'admin';
   
   const canManageBarbershop = isOwner || isAdmin;
   const canManageProfessionals = isOwner || isAdmin;
@@ -410,6 +425,11 @@ export const useRequireAuth = () => {
 
   if (loading) {
     console.log('Aguardando Supabase retornar sessão...');
+    return null;
+  }
+
+  if (!user) {
+    console.log('Usuário não autenticado');
     return null;
   }
 
