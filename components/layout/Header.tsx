@@ -5,15 +5,18 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { 
   BellIcon, 
   UserCircleIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  Bars3Icon
 } from "@heroicons/react/24/outline";
-import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { Button } from "@heroui/react";
+import ProfileDropdown from "@/components/profile/ProfileDropdown";
 
 interface HeaderProps {
   isCollapsed: boolean;
+  onMobileMenu: () => void;
 }
 
-export default function Header({ isCollapsed }: HeaderProps) {
+export default function Header({ isCollapsed, onMobileMenu }: HeaderProps) {
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -25,12 +28,17 @@ export default function Header({ isCollapsed }: HeaderProps) {
   };
 
   return (
-    <header className={`
-      fixed top-0 right-0 h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700
-      transition-all duration-300 ease-in-out z-30
-      ${isCollapsed ? 'left-16' : 'left-64'}
-    `}>
-      <div className="flex items-center justify-between h-full px-6">
+    <header className="h-16 flex items-center px-2 md:px-4 border-b bg-white dark:bg-gray-900 shadow-sm flex-shrink-0 z-50">
+      <div className="flex items-center justify-between h-full px-6 w-full">
+        {/* Botão menu mobile */}
+        <button
+          className="md:hidden mr-2"
+          onClick={onMobileMenu}
+          aria-label="Abrir menu"
+        >
+          <Bars3Icon className="w-6 h-6" />
+        </button>
+
         {/* Lado esquerdo - Breadcrumb placeholder */}
         <div className="flex items-center space-x-4">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -57,32 +65,7 @@ export default function Header({ isCollapsed }: HeaderProps) {
           <ThemeToggle />
 
           {/* Usuário */}
-          <Dropdown placement="bottom-end">
-            <DropdownTrigger>
-              <Button
-                variant="light"
-                className="flex items-center space-x-2 px-3 py-2"
-              >
-                <UserCircleIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {user?.user_metadata?.full_name || user?.email || "Usuário"}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {user?.email}
-                  </p>
-                </div>
-                <ChevronDownIcon className="w-4 h-4 text-gray-500" />
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Menu do usuário">
-              <DropdownItem key="profile">Perfil</DropdownItem>
-              <DropdownItem key="settings">Configurações</DropdownItem>
-              <DropdownItem key="logout" color="danger" onClick={handleSignOut}>
-                Sair
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
+          <ProfileDropdown user={user} signOut={handleSignOut} />
         </div>
       </div>
     </header>

@@ -1,4 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
+
+// Definir tipo para pagamentos ASAAS
+interface AsaasPayment {
+  id: string;
+  customer: string;
+  customerName?: string;
+  customerEmail?: string;
+  value: number;
+  confirmedDate?: string;
+  paymentDate?: string;
+  subscription?: string;
+  billingType: string;
+  description?: string;
+  // outros campos relevantes se necessário
+}
 
 export async function GET(request: NextRequest) {
   console.log('🔑 API Key preview:', process.env.ASAAS_TRATO_API_KEY?.substring(0, 20) + '...');
@@ -14,36 +32,45 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Buscando pagamentos ASAAS Trato...');
     
-    const params = new URLSearchParams({
-      status: 'CONFIRMED',
-      limit: '50',
-      offset: '0'
-    });
-
-    const response = await fetch(`https://www.asaas.com/api/v3/payments?${params}`, {
-      method: 'GET',
-      headers: {
-        'access_token': process.env.ASAAS_TRATO_API_KEY!,
-        'Content-Type': 'application/json',
-        'User-Agent': 'Barbearia-System/1.0'
+    // Paginação: buscar todas as páginas
+    let allPayments: AsaasPayment[] = [];
+    let offset = 0;
+    let hasMore = true;
+    const limit = 300;
+    while (hasMore) {
+      const params = new URLSearchParams({
+        status: 'CONFIRMED',
+        limit: String(limit),
+        offset: String(offset)
+      });
+      const response = await fetch(`https://www.asaas.com/api/v3/payments?${params}`, {
+        method: 'GET',
+        headers: {
+          'access_token': process.env.ASAAS_TRATO_API_KEY!,
+          'Content-Type': 'application/json',
+          'User-Agent': 'Barbearia-System/1.0'
+        }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ASAAS API Error: ${response.status} - ${errorText}`);
       }
-    });
-
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ ASAAS Error:', response.status, errorText);
-      throw new Error(`ASAAS API Error: ${response.status} - ${errorText}`);
+      const data = await response.json();
+      console.log(`Página offset ${offset}: trouxe ${data.data.length} pagamentos (totalCount: ${data.totalCount})`);
+      allPayments = allPayments.concat(data.data as AsaasPayment[]);
+      console.log(`Total acumulado até agora: ${allPayments.length}`);
+      if (!data.data || data.data.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
     }
 
-    const data = await response.json();
-    
-    // BUSCAR DADOS COMPLETOS DO CLIENTE PARA CADA PAGAMENTO
-    const paymentsWithCustomers = await Promise.all(
-      data.data.map(async (payment: any) => {
+    // BUSCAR DADOS COMPLETOS DO CLIENTE E ASSINATURA PARA CADA PAGAMENTO
+    const paymentsWithDetails = await Promise.all(
+      allPayments.map(async (payment: AsaasPayment) => {
         let customerData = null;
+        let subscriptionData = null;
         // Buscar dados do cliente se tiver ID
         if (payment.customer) {
           try {
@@ -61,8 +88,50 @@ export async function GET(request: NextRequest) {
             console.error('Erro ao buscar cliente:', payment.customer, error);
           }
         }
+        // Buscar dados da assinatura se houver
+        if (payment.subscription) {
+          try {
+            const subscriptionResponse = await fetch(`https://www.asaas.com/api/v3/subscriptions/${payment.subscription}`, {
+              headers: {
+                'access_token': process.env.ASAAS_TRATO_API_KEY!,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Barbearia-System/1.0'
+              }
+            });
+            if (subscriptionResponse.ok) {
+              subscriptionData = await subscriptionResponse.json();
+            }
+          } catch (error) {
+            console.error('Erro ao buscar assinatura:', payment.subscription, error);
+          }
+        }
         const nextDueDate = calculateNextDueDate(payment.confirmedDate || payment.paymentDate);
         const status = calculatePaymentStatus(nextDueDate);
+
+        // Consultar status local no Supabase
+        let statusLocal = null;
+        if (payment.subscription) {
+          try {
+            const { data: localData, error: localError } = await supabase
+              .from('subscriptions')
+              .select('status')
+              .eq('asaas_subscription_id', payment.subscription)
+              .maybeSingle();
+            if (!localError && localData && localData.status) {
+              statusLocal = localData.status;
+            }
+          } catch (e) {
+            console.error('Erro ao consultar status local Supabase:', e);
+          }
+        }
+
+        // Se status local for CANCELADA, sobrescrever
+        let statusFinal = statusLocal && statusLocal.toUpperCase() === 'CANCELADA' ? 'CANCELADA' : (subscriptionData?.status || status);
+        // Padronizar status para português
+        if (statusFinal === 'ACTIVE') statusFinal = 'ATIVO';
+        if (statusFinal === 'OVERDUE') statusFinal = 'ATRASADO';
+        if (statusFinal === 'INACTIVE') statusFinal = 'INATIVO';
+
         return {
           id: payment.id,
           customerName: customerData?.name || payment.customerName || 'Nome não disponível',
@@ -71,17 +140,26 @@ export async function GET(request: NextRequest) {
           value: payment.value,
           lastPaymentDate: payment.confirmedDate || payment.paymentDate,
           nextDueDate: nextDueDate,
-          status: status,
+          status: statusFinal,
           billingType: payment.billingType,
           description: payment.description,
           originalPayment: payment, // Para debug
-          source: 'ASAAS_TRATO'
+          source: 'ASAAS_TRATO',
+          // Novos campos para integração ASAAS
+          asaas_subscription_id: payment.subscription || subscriptionData?.id || null,
+          asaas_customer_id: payment.customer || customerData?.id || null,
+          plan_name: subscriptionData?.description || payment.description || null,
+          plan_value: subscriptionData?.value || payment.value || null,
+          plan_status: subscriptionData?.status || null,
+          plan_cycle: subscriptionData?.cycle || null,
+          plan_created_at: subscriptionData?.dateCreated || null,
+          plan_next_due_date: subscriptionData?.nextDueDate || null
         };
       })
     );
 
     // REMOVER DUPLICADOS baseado no ID do pagamento
-    const uniquePayments = paymentsWithCustomers.filter((payment, index, self) => 
+    const uniquePayments = paymentsWithDetails.filter((payment, index, self) => 
       index === self.findIndex(p => p.id === payment.id)
     );
 

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { Button, Input, Checkbox, Card, CardBody, CardHeader } from "@heroui/react";
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -15,15 +16,15 @@ const LoginForm = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, user, testSupabaseConnection } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const router = useRouter();
 
   // Redirecionar se já estiver logado
   useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
+    if (!loading && user) {
+      router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,18 +37,33 @@ const LoginForm = () => {
       return;
     }
 
-    const result = await signIn(email, password);
-
-    if (result.success) {
-      // Aguardar um pouco e redirecionar
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
-    } else {
-      setError(result.error || 'Erro ao fazer login');
+    try {
+      const result = await signIn(email, password);
+      
+      if (result.success) {
+        toast.success('Login realizado com sucesso!');
+        router.replace('/dashboard');
+      } else {
+        setError(result.error || 'Erro ao fazer login');
+      }
+    } catch (err) {
+      setError('Erro inesperado ao fazer login');
+      console.error('Erro no login:', err);
+    } finally {
       setIsLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-barbershop-light to-white dark:from-barbershop-dark dark:to-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-barbershop-light to-white dark:from-barbershop-dark dark:to-gray-900 px-4 py-12 sm:px-6 lg:px-8">
@@ -67,7 +83,7 @@ const LoginForm = () => {
           </p>
         </div>
 
-        <Card className="shadow-xl border-0">
+        <Card>
           <CardHeader className="pb-0">
             <h3 className="text-lg font-semibold text-center">Acesso ao Sistema</h3>
           </CardHeader>
@@ -148,22 +164,11 @@ const LoginForm = () => {
                 {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
 
-              {/* Botão de debug de conectividade */}
-              <Button
-                type="button"
-                color="secondary"
-                variant="flat"
-                className="w-full h-10 font-medium"
-                onClick={testSupabaseConnection}
-              >
-                Testar Conectividade Supabase
-              </Button>
-
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Não tem uma conta?{' '}
                   <Link
-                    href="/auth/register"
+                    href="/auth/sign-up"
                     className="font-medium text-primary hover:text-primary-600 transition-colors"
                   >
                     Cadastre-se grátis

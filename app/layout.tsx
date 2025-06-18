@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
+import { Toaster } from 'sonner'
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -26,10 +27,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/img/favicon-trato.svg" />
+      </head>
       <body className={`${geistSans.className} antialiased`} suppressHydrationWarning={true}>
         <Providers>
           {children}
         </Providers>
+        <Toaster richColors />
       </body>
     </html>
   );

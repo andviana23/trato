@@ -70,11 +70,15 @@ export function SignUpForm({
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
-                  placeholder="m@example.com"
-                  required
+                  label="Email"
+                  placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full"
                 />
               </div>
               <div className="grid gap-2">
@@ -83,10 +87,15 @@ export function SignUpForm({
                 </div>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
-                  required
+                  label="Senha"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full"
                 />
               </div>
               <div className="grid gap-2">
@@ -95,10 +104,15 @@ export function SignUpForm({
                 </div>
                 <Input
                   id="repeat-password"
+                  name="repeatPassword"
                   type="password"
-                  required
+                  label="Repita a senha"
+                  placeholder="••••••••"
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full"
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}

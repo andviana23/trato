@@ -7,7 +7,7 @@ import Link from "next/link";
 
 interface MainContainerProps {
   children: ReactNode;
-  isCollapsed: boolean;
+  isCollapsed?: boolean;
 }
 
 export default function MainContainer({ children, isCollapsed }: MainContainerProps) {
@@ -39,47 +39,53 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
   const breadcrumbs = generateBreadcrumbs();
 
   return (
-    <div className={`
-      transition-all duration-300 ease-in-out
-      ${isCollapsed ? 'ml-16' : 'ml-64'}
-    `}>
-      {/* Container principal */}
-      <div className="pt-16 min-h-screen bg-gray-50 dark:bg-gray-800">
-        {/* Breadcrumbs */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
-          <nav className="flex items-center space-x-2 text-sm">
-            {breadcrumbs.map((breadcrumb, index) => (
-              <div key={breadcrumb.href} className="flex items-center">
-                {index > 0 && (
-                  <ChevronRightIcon className="w-4 h-4 text-gray-400 mx-2" />
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* Breadcrumbs */}
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
+        <nav className="flex items-center space-x-2 text-sm">
+          {breadcrumbs.map((breadcrumb, index) => (
+            <div key={breadcrumb.href} className="flex items-center">
+              {index > 0 && (
+                <ChevronRightIcon className="w-4 h-4 text-gray-400 mx-2" />
+              )}
+              <Link
+                href={breadcrumb.href}
+                className={`
+                  flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors
+                  ${index === breadcrumbs.length - 1 
+                    ? 'text-gray-900 dark:text-white font-medium' 
+                    : 'text-gray-500 dark:text-gray-400'
+                  }
+                `}
+              >
+                {breadcrumb.icon && (
+                  <breadcrumb.icon className="w-4 h-4" />
                 )}
-                <Link
-                  href={breadcrumb.href}
-                  className={`
-                    flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors
-                    ${index === breadcrumbs.length - 1 
-                      ? 'text-gray-900 dark:text-white font-medium' 
-                      : 'text-gray-500 dark:text-gray-400'
-                    }
-                  `}
-                >
-                  {breadcrumb.icon && (
-                    <breadcrumb.icon className="w-4 h-4" />
-                  )}
-                  <span>{breadcrumb.name}</span>
-                </Link>
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        {/* Conteúdo principal */}
-        <main className="p-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
+                <span>{breadcrumb.name}</span>
+              </Link>
+            </div>
+          ))}
+        </nav>
       </div>
+
+      {/* Conteúdo principal com scroll */}
+      <main
+        className="
+          flex-1
+          overflow-y-auto
+          bg-gray-50 dark:bg-gray-800
+          px-4 md:px-8
+          py-6
+          transition-all
+          duration-300
+          scroll-smooth
+        "
+        style={{ minWidth: 0 }}
+      >
+        <div>
+          {children}
+        </div>
+      </main>
     </div>
   );
 } 

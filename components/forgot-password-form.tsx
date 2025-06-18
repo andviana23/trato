@@ -75,11 +75,15 @@ export function ForgotPasswordForm({
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
-                    placeholder="m@example.com"
-                    required
+                    label="Email"
+                    placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="w-full"
                   />
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}

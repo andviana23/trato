@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
+import { useRouter } from "next/navigation";
 
 interface Profile {
   id: string;
@@ -27,7 +28,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (data: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
-  testSupabaseConnection: () => Promise<{ success: boolean; error?: string }>;
 }
 
 interface SignUpData {
@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
 };
@@ -56,83 +56,97 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const router = useRouter();
 
-  // Função de teste de conectividade
-  const testSupabaseConnection = async (): Promise<{ success: boolean; error?: string }> => {
-    console.log('=== TESTE DE CONECTIVIDADE SUPABASE ===');
-    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('Key preview:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20) + '...');
-    const supabase = createClient();
+  // Função para buscar o perfil do usuário
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
-      // Teste 1: Get session
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
-      console.log('Session test:', { session, sessionError });
-      // Teste 2: Get user
-      const { data: user, error: userError } = await supabase.auth.getUser();
-      console.log('User test:', { user, userError });
-      toast({ title: 'Teste Supabase', description: 'Conexão OK!', status: 'success' });
-      return { success: true };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('Connection failed:', error);
-      toast({ title: 'Erro Supabase', description: errorMessage, status: 'error' });
-      return { success: false, error: errorMessage };
-    }
-  };
-
-  // Buscar perfil do usuário
-  const fetchProfile = async (userId: string) => {
-    try {
-      console.log('[Auth] Buscando perfil do usuário:', userId);
       const supabase = createClient();
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+
       if (error) {
         console.error('[Auth] Erro ao buscar perfil:', error);
+        // Se erro de autenticação, forçar logout
+        if (status === 401 || status === 403) {
+          await signOut();
+          toast.error('Sessão expirada. Faça login novamente.');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login';
+          }
+        }
         return null;
       }
-      console.log('[Auth] Perfil encontrado:', data);
-      return data as Profile;
+
+      return data;
     } catch (error) {
       console.error('[Auth] Erro inesperado ao buscar perfil:', error);
       return null;
     }
   };
 
-  // Inicializar sessão
+  // Inicialização e monitoramento do estado de autenticação
   useEffect(() => {
-    const initializeAuth = async () => {
+    console.log('[Auth] Iniciando monitoramento de autenticação');
+    const supabase = createClient();
+
+    // Verificar sessão atual
+    const checkSession = async () => {
       try {
-        console.log('[Auth] Iniciando verificação de sessão Supabase...');
-        const supabase = createClient();
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('[Auth] Sessão:', session, 'Erro:', error);
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          const profileData = await fetchProfile(session.user.id);
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        console.log('[Auth] Sessão atual:', { session: currentSession, error });
+
+        if (error) {
+          console.error('[Auth] Erro ao verificar sessão:', error);
+          setLoading(false);
+          // Se erro de autenticação, forçar logout
+          if (error.status === 401 || error.status === 403) {
+            await signOut();
+            toast.error('Sessão expirada. Faça login novamente.');
+            if (typeof window !== 'undefined') {
+              window.location.href = '/auth/login';
+            }
+          }
+          return;
+        }
+
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          const profileData = await fetchProfile(currentSession.user.id);
           console.log('[Auth] Perfil carregado:', profileData);
           setProfile(profileData);
         } else {
+          setSession(null);
+          setUser(null);
           setProfile(null);
         }
       } catch (error) {
-        console.error('[Auth] Erro na inicialização:', error);
-        setProfile(null);
+        console.error('[Auth] Erro inesperado ao verificar sessão:', error);
+        // Forçar logout em erro inesperado
+        await signOut();
+        toast.error('Sessão expirada. Faça login novamente.');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login';
+        }
       } finally {
         setLoading(false);
       }
     };
-    initializeAuth();
-    const supabase = createClient();
+
+    // Verificar sessão inicial
+    checkSession();
+
+    // Monitorar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] Mudança de autenticação:', event, session);
+      console.log('[Auth] Mudança de autenticação:', { event, session });
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
         const profileData = await fetchProfile(session.user.id);
         console.log('[Auth] Perfil atualizado após auth change:', profileData);
@@ -140,17 +154,87 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         setProfile(null);
       }
+      
       setLoading(false);
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      console.log('[Auth] Limpando monitoramento de autenticação');
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Cadastro
-  const signUp = async (email: string, password: string, userData: SignUpData) => {
+  // Login
+  const signIn = async (email: string, password: string) => {
+    console.log('[Auth] Tentando login:', { email });
     try {
       setLoading(true);
       const supabase = createClient();
-      console.log('[Auth] Tentando cadastro:', { email, userData });
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password
+      });
+      
+      console.log('[Auth] Resposta do login:', { data, error });
+      
+      if (error) {
+        console.error('[Auth] Erro no login:', error);
+        toast.error('Erro no login', {
+          description: error.message
+        });
+        return { success: false, error: error.message };
+      }
+
+      toast.success('Login realizado com sucesso!');
+      return { success: true };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado no login';
+      console.error('[Auth] Erro inesperado no login:', error);
+      toast.error('Erro no login', {
+        description: errorMessage
+      });
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout
+  const signOut = async () => {
+    console.log('[Auth] signOut chamado');
+    try {
+      setLoading(true);
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('[Auth] Erro ao fazer logout:', error);
+        toast.error('Erro ao sair', {
+          description: error.message
+        });
+      } else {
+        console.log('[Auth] Logout realizado com sucesso');
+        toast.success('Logout realizado');
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        window.location.assign('/auth/login');
+      }
+    } catch (error) {
+      console.error('[Auth] Erro inesperado ao fazer logout:', error);
+      toast.error('Erro ao sair');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cadastro
+  const signUp = async (email: string, password: string, userData: SignUpData) => {
+    console.log('[Auth] Tentando cadastro:', { email, userData });
+    try {
+      setLoading(true);
+      const supabase = createClient();
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -163,78 +247,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           },
         },
       });
-      console.log('[Auth] Resposta do Supabase (signUp):', { data, error });
+      
+      console.log('[Auth] Resposta do cadastro:', { data, error });
+
       if (error) {
-        toast({ title: 'Erro no cadastro', description: error.message, status: 'error', duration: 5000 });
+        console.error('[Auth] Erro no cadastro:', error);
+        toast.error('Erro no cadastro', {
+          description: error.message
+        });
         return { success: false, error: error.message };
       }
-      toast({ title: 'Verifique seu email', description: 'Enviamos um link de confirmação para seu email.', status: 'info', duration: 7000 });
+
+      toast.success('Cadastro realizado!', {
+        description: 'Verifique seu email para confirmar a conta.'
+      });
       return { success: true };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro inesperado no cadastro';
-      console.error('[Auth] Erro inesperado no cadastro:', errorMessage);
-      toast({ title: 'Erro no cadastro', description: errorMessage, status: 'error', duration: 5000 });
-      return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Login
-  const signIn = async (email: string, password: string) => {
-    console.log('🔑 Tentando login com:', { email });
-    try {
-      setLoading(true);
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password
+      console.error('[Auth] Erro inesperado no cadastro:', error);
+      toast.error('Erro no cadastro', {
+        description: errorMessage
       });
-      console.log('📊 Resposta do Supabase:', { data, error, user: data?.user, session: data?.session });
-      if (error) {
-        console.error('❌ Erro específico:', error.message);
-        toast({ title: 'Erro no login', description: error.message, status: 'error', duration: 5000 });
-        return { success: false, error: error.message };
-      }
-      toast({ title: 'Login realizado com sucesso!', description: 'Bem-vindo de volta!', status: 'success', duration: 3000 });
-      console.log('✅ Login bem-sucedido!');
-      return { success: true };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado no login';
-      console.error('🚨 Erro capturado:', { message: errorMessage, details: error });
-      toast({ title: 'Erro no login', description: errorMessage, status: 'error', duration: 5000 });
       return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Logout
-  const signOut = async () => {
-    try {
-      setLoading(true);
-      const supabase = createClient();
-      
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        toast({
-          title: 'Erro ao sair',
-          description: error.message,
-          status: 'error',
-          duration: 5000,
-        });
-      } else {
-        toast({
-          title: 'Logout realizado',
-          description: 'Até mais!',
-          status: 'info',
-          duration: 2000,
-        });
-      }
-    } catch (error: unknown) {
-      // Silencioso - não mostrar erro no console
-      console.error('Erro silencioso no logout:', error);
     } finally {
       setLoading(false);
     }
@@ -242,46 +276,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Reset de senha
   const resetPassword = async (email: string) => {
+    console.log('[Auth] Tentando reset de senha:', { email });
     try {
+      setLoading(true);
       const supabase = createClient();
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${window.location.origin}/auth/update-password`,
       });
+      
+      console.log('[Auth] Resposta do reset de senha:', { error });
 
       if (error) {
-        toast({
-          title: 'Erro ao enviar email',
-          description: error.message,
-          status: 'error',
-          duration: 5000,
+        console.error('[Auth] Erro no reset de senha:', error);
+        toast.error('Erro ao resetar senha', {
+          description: error.message
         });
         return { success: false, error: error.message };
       }
 
-      toast({
-        title: 'Email enviado!',
-        description: 'Verifique sua caixa de entrada para redefinir a senha.',
-        status: 'success',
-        duration: 5000,
+      toast.success('Email enviado!', {
+        description: 'Verifique sua caixa de entrada para redefinir sua senha.'
       });
-
       return { success: true };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado';
-      toast({
-        title: 'Erro ao enviar email',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
+      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado ao resetar senha';
+      console.error('[Auth] Erro inesperado ao resetar senha:', error);
+      toast.error('Erro ao resetar senha', {
+        description: errorMessage
       });
       return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
     }
   };
 
   // Atualizar perfil
   const updateProfile = async (data: Partial<Profile>) => {
+    console.log('[Auth] Tentando atualizar perfil:', data);
     try {
       if (!user) {
+        console.error('[Auth] Tentativa de atualizar perfil sem usuário autenticado');
         return { success: false, error: 'Usuário não autenticado' };
       }
 
@@ -292,35 +327,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('id', user.id);
 
       if (error) {
-        toast({
-          title: 'Erro ao atualizar perfil',
-          description: error.message,
-          status: 'error',
-          duration: 5000,
+        console.error('[Auth] Erro ao atualizar perfil:', error);
+        toast.error('Erro ao atualizar perfil', {
+          description: error.message
         });
         return { success: false, error: error.message };
       }
 
       // Atualizar estado local
       if (profile) {
-        setProfile({ ...profile, ...data });
+        const updatedProfile = { ...profile, ...data };
+        console.log('[Auth] Perfil atualizado:', updatedProfile);
+        setProfile(updatedProfile);
       }
 
-      toast({
-        title: 'Perfil atualizado!',
-        description: 'Suas informações foram salvas com sucesso.',
-        status: 'success',
-        duration: 3000,
-      });
-
+      toast.success('Perfil atualizado!');
       return { success: true };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado';
-      toast({
-        title: 'Erro ao atualizar perfil',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
+      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado ao atualizar perfil';
+      console.error('[Auth] Erro inesperado ao atualizar perfil:', error);
+      toast.error('Erro ao atualizar perfil', {
+        description: errorMessage
       });
       return { success: false, error: errorMessage };
     }
@@ -336,7 +363,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
     resetPassword,
     updateProfile,
-    testSupabaseConnection,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -373,10 +399,19 @@ export const usePermissions = () => {
 // Hook para requerer autenticação
 export const useRequireAuth = () => {
   const { user, loading } = useAuth();
-  
-  if (!loading && !user) {
-    throw new Error('Autenticação requerida');
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      console.log('Sem sessão ativa. Redirecionando...');
+      router.push('/auth/login');
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
+    console.log('Aguardando Supabase retornar sessão...');
+    return null;
   }
-  
+
   return { user, loading };
 }; 

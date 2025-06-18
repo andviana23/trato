@@ -87,10 +87,31 @@ export function useAssinantesData() {
       });
 
       // Combinar todos os pagamentos
+      const externalPayments: PaymentData[] = (externalData.payments || []).map((p: Record<string, unknown>) => {
+        const customerName = typeof p.customerName === 'string' ? p.customerName : (typeof p.nome === 'string' ? p.nome : '');
+        const customerEmail = typeof p.customerEmail === 'string' ? p.customerEmail : (typeof p.email === 'string' ? p.email : '');
+        const nextDueDateRaw = typeof p.nextDueDate === 'string' ? p.nextDueDate : (typeof p.current_period_end === 'string' ? p.current_period_end : (typeof p.vencimento === 'string' ? p.vencimento : ''));
+        const nextDueDate = nextDueDateRaw.split('T')[0];
+        const status = typeof p.status === 'string' ? (p.status as 'ATIVO' | 'ATRASADO') : 'ATIVO';
+        const billingType = typeof p.billingType === 'string' ? p.billingType : '';
+        return {
+          ...p,
+          customerName,
+          customerEmail,
+          nextDueDate,
+          status,
+          billingType,
+          source: 'EXTERNAL',
+        } as PaymentData;
+      });
       const combined: PaymentData[] = [
-        ...(tratoData.payments || []),
-        ...(andreyData.payments || []),
-        ...(externalData.payments || [])
+        ...(tratoData.payments || []).map((p: PaymentData) => ({
+          ...p
+        })),
+        ...(andreyData.payments || []).map((p: PaymentData) => ({
+          ...p
+        })),
+        ...externalPayments
       ];
 
       setAllPayments(combined);

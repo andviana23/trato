@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth, useRequireAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 import { Card, CardBody, CardHeader, Avatar, Chip } from "@heroui/react";
@@ -8,14 +8,9 @@ import { UserIcon, BuildingOfficeIcon, CalendarIcon, CurrencyDollarIcon } from '
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function DashboardPage() {
+  useRequireAuth();
   const { user, profile, loading } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth/login');
-    }
-  }, [user, loading, router]);
 
   // Memoize datas formatadas para evitar hydration mismatch
   const dataCadastro = useMemo(() => {

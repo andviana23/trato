@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     
     const params = new URLSearchParams({
       status: 'CONFIRMED',
-      limit: '50',
+      limit: '300',
       offset: '0'
     });
 

@@ -58,11 +58,15 @@ export function UpdatePasswordForm({
                 <Label htmlFor="password">New password</Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
-                  placeholder="New password"
-                  required
+                  label="Nova senha"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full"
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
