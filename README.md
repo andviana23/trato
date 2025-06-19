@@ -12,7 +12,8 @@ Sistema completo para gestão de barbearias, com funcionalidades de assinaturas,
 - Integração com Asaas (assinaturas, pagamentos, links)
 - Integração com pagamentos externos
 - Controle de profissionais, serviços e produtos
-- Fila de atendimento (lista da vez)
+- **Fila de atendimento inteligente (lista da vez)**
+- **Sistema de filtros avançados para assinantes**
 - Relatórios e metas
 - Interface responsiva e moderna (Next.js + Tailwind CSS)
 - Temas claro/escuro
@@ -141,6 +142,31 @@ Sistema completo para gestão de barbearias, com funcionalidades de assinaturas,
 
 ---
 
+## 🎯 Funcionalidades Principais
+
+### Fila de Atendimento (Lista da Vez)
+
+- **Reorganização automática** por número de atendimentos
+- **Drag and drop** para reordenação manual
+- **Controle de status** (ativo/inativo) dos barbeiros
+- **Registro de atendimentos** com contadores diários e totais
+- **Sistema de "passar a vez"** para mover barbeiros para o final da fila
+- **Zerar lista** com reset completo dos contadores
+
+### Sistema de Filtros para Assinantes
+
+- **Busca por nome, email ou telefone** em tempo real
+- **Filtro por tipo de pagamento** (ASAAS Trato, ASAAS Andrey, Externo)
+- **Filtro por status de vencimento**:
+  - Próximos de vencer (≤ 7 dias)
+  - Vencidos
+  - Novos assinantes (≤ 30 dias)
+  - Ativos
+- **Ordenação flexível** por nome, vencimento, data de criação e valor
+- **Interface intuitiva** com chips visuais dos filtros ativos
+
+---
+
 ## 📁 Estrutura do Projeto
 
 ```
@@ -150,10 +176,12 @@ saas-barbearia-nextjs/
 │   ├── auth/           # Páginas de autenticação (login, cadastro, recuperação)
 │   ├── dashboard/      # Dashboard principal, clientes, relatórios, financeiro
 │   ├── assinaturas/    # Gestão de assinaturas, planos, assinantes
-│   └── ...             # Outras rotas (clientes, cadastros, lista-da-vez)
+│   ├── lista-da-vez/   # Fila de atendimento inteligente
+│   └── ...             # Outras rotas (clientes, cadastros)
 ├── components/         # Componentes reutilizáveis de UI
-├── lib/                # Serviços, contextos globais, tipos e utilitários
 ├── hooks/              # Hooks customizados
+│   └── useBarberQueue.ts # Hook para gestão da fila de atendimento
+├── lib/                # Serviços, contextos globais, tipos e utilitários
 ├── public/             # Assets públicos (imagens, favicon, screenshots)
 ├── styles/             # Estilos globais (Tailwind, CSS)
 ├── package.json        # Dependências e scripts
@@ -166,8 +194,8 @@ saas-barbearia-nextjs/
 
 - `app/`: Rotas, páginas e APIs (estrutura moderna do Next.js)
 - `components/`: Componentes de interface reutilizáveis
-- `lib/`: Serviços de integração, contextos, tipos e utilitários
 - `hooks/`: Hooks customizados para lógica de negócio
+- `lib/`: Serviços de integração, contextos, tipos e utilitários
 - `public/`: Imagens, favicon e arquivos estáticos
 
 ---
@@ -289,9 +317,61 @@ Consulte o arquivo LICENSE para mais detalhes.
 
 ## 📝 Changelog
 
-- **v1.0.0**: Primeira versão estável
-- **v1.1.0**: Integração com pagamentos externos
-- **v1.2.0**: Novos relatórios e melhorias de UI
+### v1.3.0 - Fila Inteligente e Filtros Avançados (2024-12-XX)
+
+#### ✨ Novas Funcionalidades
+
+**Fila de Atendimento (Lista da Vez)**
+
+- ✅ **Reorganização automática** por número de atendimentos
+- ✅ **Sistema de drag and drop** para reordenação manual
+- ✅ **Controle de status** dos barbeiros (ativo/inativo)
+- ✅ **Registro de atendimentos** com contadores diários e totais
+- ✅ **Função "passar a vez"** para mover barbeiros para o final
+- ✅ **Zerar lista** com reset completo dos contadores
+- ✅ **Interface intuitiva** com feedback visual de status
+
+**Sistema de Filtros para Assinantes**
+
+- ✅ **Busca em tempo real** por nome, email ou telefone
+- ✅ **Filtro por tipo de pagamento** (ASAAS Trato, ASAAS Andrey, Externo)
+- ✅ **Filtro por status de vencimento**:
+  - Próximos de vencer (≤ 7 dias)
+  - Vencidos
+  - Novos assinantes (≤ 30 dias)
+  - Ativos
+- ✅ **Ordenação flexível** por múltiplos critérios
+- ✅ **Interface responsiva** com chips visuais dos filtros ativos
+
+#### 🔧 Melhorias Técnicas
+
+- **Hook useBarberQueue**: Gerenciamento completo da fila de atendimento
+- **Componente FiltrosAssinantes**: Sistema de filtros reutilizável
+- **Drag and Drop**: Implementação com @dnd-kit para reordenação manual
+- **Performance**: Otimizações na busca e filtragem de dados
+- **UX/UI**: Melhorias na interface e feedback visual
+
+#### 🐛 Correções
+
+- Corrigido problema de botões não funcionando na fila de atendimento
+- Melhorado tratamento de erros no sistema de filtros
+- Ajustada lógica de reorganização automática da fila
+
+### v1.2.0 - Integração com Pagamentos Externos
+
+- Integração com pagamentos externos
+- Novos relatórios e melhorias de UI
+
+### v1.1.0 - Melhorias de Performance
+
+- Otimizações de carregamento
+- Melhorias na interface
+
+### v1.0.0 - Primeira Versão Estável
+
+- Funcionalidades básicas implementadas
+- Integração com ASAAS
+- Dashboard inicial
 
 ---
 

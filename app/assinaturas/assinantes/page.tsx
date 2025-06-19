@@ -8,18 +8,19 @@ import { useAssinantesData } from "./hooks/useAssinantesData";
 import { useFiltrosAssinantes } from "./hooks/useFiltrosAssinantes";
 import AssinantesTable from "./components/AssinantesTable";
 import CadastrarAssinanteModal from "./components/CadastrarAssinanteModal";
+import FiltrosAssinantes from "./components/FiltrosAssinantes";
 
 export default function AssinantesPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const { allPayments, metrics, refreshData, loading } = useAssinantesData();
-  const { filtros, setFiltros, assinantesFiltrados } = useFiltrosAssinantes(allPayments);
+  const { filtros, setFiltros, assinantesFiltrados, limparFiltros } = useFiltrosAssinantes(allPayments);
 
   const handleNovoAssinante = () => setModalAberto(true);
   const handleFecharModal = () => setModalAberto(false);
   const handleAssinanteCriado = () => refreshData();
 
   // Cálculos para UI
-  const totalAssinantes = assinantesFiltrados.length;
+  const totalAssinantes = allPayments.length;
   const ativosTrato = metrics.asaasTrato.active;
   const ativosAndrey = metrics.asaasAndrey.active;
   const ativosExternos = metrics.external.active;
@@ -121,6 +122,15 @@ export default function AssinantesPage() {
             </Card>
           </div>
         </div>
+
+        {/* Filtros */}
+        <FiltrosAssinantes
+          filtros={filtros}
+          setFiltros={setFiltros}
+          limparFiltros={limparFiltros}
+          totalAssinantes={totalAssinantes}
+          assinantesFiltrados={assinantesFiltrados.length}
+        />
 
         {/* Tabela de Assinantes */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
