@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { Button, Input, Checkbox, Card, CardBody, CardHeader, Select, SelectItem } from "@heroui/react";
+import { Button, Input, Checkbox, Card, CardBody, CardHeader, Select, SelectItem } from "@nextui-org/react";
 import Link from 'next/link';
 
 interface FormData {

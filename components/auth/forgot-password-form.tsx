@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Button, Input, Card, CardBody, CardHeader } from "@heroui/react";
+import { Button, Input, Card, CardBody, CardHeader } from "@nextui-org/react";
 import { CheckIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 

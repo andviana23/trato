@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Card, CardBody, Progress, Chip } from '@heroui/react';
+import { Card, CardBody, Progress, Chip } from '@nextui-org/react';
 import { 
   LineChart, 
   Line, 

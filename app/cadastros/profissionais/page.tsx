@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, Button, Input, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Avatar, Chip, RadioGroup, Radio, Breadcrumbs, BreadcrumbItem } from "@heroui/react";
+import { Card, CardBody, Button, Input, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Avatar, Chip, RadioGroup, Radio, Breadcrumbs, BreadcrumbItem } from "@nextui-org/react";
 import { PlusIcon, UserIcon, EnvelopeIcon, PhoneIcon, CalendarIcon, UsersIcon, TrashIcon, PencilIcon } from "@heroicons/react/24/outline";
 import LayoutCadastros from "../../../components/LayoutCadastros";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "react-hot-toast";
 
 const supabase = createClient();
+
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=365E78&color=fff';
 
 const funcaoOptions = [
   { value: "barbeiro", label: "Barbeiro", icon: <UsersIcon className="w-4 h-4" /> },
@@ -156,7 +159,7 @@ export default function PaginaProfissionais() {
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Avatar name={p.nome} size="sm" />
+                      <Avatar src={p.avatar_url || DEFAULT_AVATAR} name={p.nome} size="sm" />
                       <span className="font-medium">{p.nome}</span>
                     </div>
                   </TableCell>
@@ -179,7 +182,7 @@ export default function PaginaProfissionais() {
         </CardBody>
       </Card>
       {/* Modal Cadastro/Edição */}
-      <Modal isOpen={modalOpen} onOpenChange={setModalOpen} placement="center">
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} size="xl">
         <ModalContent>
           <ModalHeader>{profissionalEdit ? "Editar Profissional" : "Novo Profissional"}</ModalHeader>
           <ModalBody>
@@ -202,11 +205,11 @@ export default function PaginaProfissionais() {
         </ModalContent>
       </Modal>
       {/* Modal Exclusão */}
-      <Modal isOpen={modalDelete} onOpenChange={setModalDelete} placement="center">
+      <Modal isOpen={modalDelete} onClose={() => setModalDelete(false)} size="sm">
         <ModalContent>
           <ModalHeader>Excluir Profissional</ModalHeader>
           <ModalBody>
-            Tem certeza que deseja excluir <b>{profissionalDelete?.nome}</b>? Esta ação não poderá ser desfeita.
+            <p>Tem certeza que deseja excluir o profissional {profissionalDelete?.nome}?</p>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onClick={() => setModalDelete(false)}>Cancelar</Button>

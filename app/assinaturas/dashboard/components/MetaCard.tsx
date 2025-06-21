@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Card, CardBody, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/react'
+import { Card, CardBody, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@nextui-org/react'
 import { PencilIcon, CheckIcon, XMarkIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 import { DashboardData } from '@/lib/types/dashboard'
 import { toast } from 'sonner'

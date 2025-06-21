@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardBody, Chip } from '@heroui/react'
+import { Card, CardBody, Chip } from '@nextui-org/react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { DashboardData } from '@/lib/types/dashboard'
 

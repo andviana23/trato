@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Card, CardBody, CardHeader } from "@nextui-org/react";
 import { ChartBarIcon } from '@heroicons/react/24/outline';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 

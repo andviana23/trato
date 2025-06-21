@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button } from '@heroui/react';
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button } from '@nextui-org/react';
 import AssinanteDetalhesModal from './AssinanteDetalhesModal';
 import BadgeTipoAssinatura from './BadgeTipoAssinatura';
 import { useState } from 'react';

@@ -9,10 +9,8 @@ import { useRouter } from "next/navigation";
 interface Profile {
   id: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  role: 'barbershop_owner' | 'professional' | 'client' | 'admin';
+  name: string;
+  role: 'barbershop_owner' | 'professional' | 'client' | 'admin' | 'recepcionista';
   phone?: string;
   avatar_url?: string;
   is_active: boolean;
@@ -56,103 +54,122 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
 
   // Função para buscar o perfil do usuário
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
+      console.log('[Auth] Buscando perfil para usuário:', userId);
       const supabase = createClient();
-      const { data, error, status } = await supabase
-        .from('profiles')
+      
+      // Primeiro, buscar na tabela profissionais
+      const { data: profissionalData, error: profissionalError } = await supabase
+        .from('profissionais')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) {
-        console.error('[Auth] Erro ao buscar perfil:', error);
-        // Se erro de autenticação, forçar logout
-        if (status === 401 || status === 403) {
-          await signOut();
-          toast.error('Sessão expirada. Faça login novamente.');
-          if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login';
-          }
-        }
-        return null;
+      console.log('[Auth] Dados do profissional:', { profissionalData, profissionalError });
+
+      if (profissionalData) {
+        // Se encontrou na tabela profissionais, usar esses dados
+        return {
+          id: userId,
+          email: profissionalData.email || '',
+          name: profissionalData.nome || '',
+          role: profissionalData.funcao || 'client',
+          phone: profissionalData.telefone,
+          avatar_url: profissionalData.avatar_url,
+          is_active: profissionalData.is_active
+        };
       }
 
-      return data;
+      // Se não encontrou em nenhuma tabela, verificar user_metadata
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('[Auth] Dados do user_metadata:', user?.user_metadata);
+
+      if (user?.user_metadata) {
+        return {
+          id: userId,
+          email: user.email || '',
+          name: user.user_metadata.full_name || '',
+          role: user.user_metadata.role || user.user_metadata.funcao || 'client',
+          phone: user.user_metadata.telefone,
+          avatar_url: undefined,
+          is_active: true
+        };
+      }
+
+      // Se não encontrou nenhum perfil, criar um perfil básico
+      return {
+        id: userId,
+        email: user?.email || '',
+        name: '',
+        role: 'client',
+        is_active: true
+      };
     } catch (error) {
-      console.error('[Auth] Erro inesperado ao buscar perfil:', error);
+      console.error('[Auth] Erro ao buscar perfil:', error);
       return null;
     }
   };
 
   // Inicialização e monitoramento do estado de autenticação
   useEffect(() => {
+    if (isInitialized) return;
+
     console.log('[Auth] Iniciando monitoramento de autenticação');
     const supabase = createClient();
 
-    // Verificar sessão atual
-    const checkSession = async () => {
+    // Verificar usuário atual
+    const checkUser = async () => {
       try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        console.log('[Auth] Sessão atual:', { session: currentSession, error });
+        const { data: { user }, error } = await supabase.auth.getUser();
+        console.log('[Auth] Usuário atual:', { user, error });
 
         if (error) {
-          console.error('[Auth] Erro ao verificar sessão:', error);
+          console.error('[Auth] Erro ao verificar usuário:', error);
           setLoading(false);
-          // Se erro de autenticação, forçar logout
-          if (error.status === 401 || error.status === 403) {
-            await signOut();
-            toast.error('Sessão expirada. Faça login novamente.');
-            if (typeof window !== 'undefined') {
-              window.location.href = '/auth/login';
-            }
-          }
           return;
         }
 
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          const profileData = await fetchProfile(currentSession.user.id);
+        if (user) {
+          setUser(user);
+          const profileData = await fetchProfile(user.id);
           console.log('[Auth] Perfil carregado:', profileData);
           setProfile(profileData);
         } else {
-          setSession(null);
           setUser(null);
           setProfile(null);
         }
       } catch (error) {
-        console.error('[Auth] Erro inesperado ao verificar sessão:', error);
-        // Forçar logout em erro inesperado
-        await signOut();
-        toast.error('Sessão expirada. Faça login novamente.');
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
-        }
+        console.error('[Auth] Erro inesperado ao verificar usuário:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    // Verificar sessão inicial
-    checkSession();
+    // Verificar usuário inicial
+    checkUser();
+    setIsInitialized(true);
 
     // Monitorar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Auth] Mudança de autenticação:', { event, session });
       
-      setSession(session);
-      setUser(session?.user ?? null);
-      
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        router.push('/auth/login');
+        return;
+      }
+
       if (session?.user) {
+        setUser(session.user);
         const profileData = await fetchProfile(session.user.id);
         console.log('[Auth] Perfil atualizado após auth change:', profileData);
         setProfile(profileData);
-      } else {
-        setProfile(null);
       }
       
       setLoading(false);
@@ -162,7 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[Auth] Limpando monitoramento de autenticação');
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router, isInitialized]);
 
   // Login
   const signIn = async (email: string, password: string) => {
@@ -172,29 +189,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const supabase = createClient();
       
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password
+        email,
+        password,
       });
-      
-      console.log('[Auth] Resposta do login:', { data, error });
-      
+
       if (error) {
         console.error('[Auth] Erro no login:', error);
-        toast.error('Erro no login', {
-          description: error.message
-        });
+        toast.error('Erro ao fazer login: ' + error.message);
         return { success: false, error: error.message };
       }
 
-      toast.success('Login realizado com sucesso!');
-      return { success: true };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro inesperado no login';
+      if (data.user) {
+        const profileData = await fetchProfile(data.user.id);
+        console.log('[Auth] Perfil carregado no login:', profileData);
+        
+        if (!profileData) {
+          console.error('[Auth] Perfil não encontrado após login');
+          toast.error('Erro ao carregar perfil do usuário');
+          await supabase.auth.signOut();
+          return { success: false, error: 'Perfil não encontrado' };
+        }
+
+        setProfile(profileData);
+        setUser(data.user);
+        setSession(data.session);
+
+        console.log('[Auth] Login bem sucedido:', { user: data.user, profile: profileData });
+        router.push('/dashboard');
+        return { success: true };
+      }
+
+      return { success: false, error: 'Usuário não encontrado' };
+    } catch (error) {
       console.error('[Auth] Erro inesperado no login:', error);
-      toast.error('Erro no login', {
-        description: errorMessage
-      });
-      return { success: false, error: errorMessage };
+      toast.error('Erro inesperado ao fazer login');
+      return { success: false, error: 'Erro inesperado ao fazer login' };
     } finally {
       setLoading(false);
     }
@@ -372,43 +401,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const usePermissions = () => {
   const { profile } = useAuth();
   
+  console.log('[Permissions] Verificando permissões para perfil:', profile);
+  
   // Verificar se profile existe
   if (!profile) {
+    console.log('[Permissions] Perfil não encontrado, retornando permissões padrão');
     return {
       isOwner: false,
       isProfessional: false,
       isClient: false,
       isAdmin: false,
+      isRecepcionista: false,
       canManageBarbershop: false,
       canManageProfessionals: false,
       canManageClients: false,
       canViewQueue: false,
       canManageSubscriptions: false,
+      canViewSubscriptions: false,
     };
   }
   
-  const isOwner = profile.role === 'barbershop_owner';
-  const isProfessional = profile.role === 'professional';
-  const isClient = profile.role === 'client';
-  const isAdmin = profile.role === 'admin';
+  const role = profile.role?.toLowerCase();
+  console.log('[Permissions] Role do usuário:', role);
   
-  const canManageBarbershop = isOwner || isAdmin;
-  const canManageProfessionals = isOwner || isAdmin;
-  const canManageClients = isOwner || isProfessional || isAdmin;
-  const canViewQueue = isOwner || isProfessional || isAdmin;
-  const canManageSubscriptions = isOwner || isAdmin;
+  const isOwner = role === 'barbershop_owner';
+  const isProfessional = role === 'professional';
+  const isClient = role === 'client';
+  const isAdmin = role === 'admin' || role === 'administrador';
+  const isRecepcionista = role === 'recepcionista';
   
-  return {
+  const permissions = {
     isOwner,
     isProfessional,
     isClient,
     isAdmin,
-    canManageBarbershop,
-    canManageProfessionals,
-    canManageClients,
-    canViewQueue,
-    canManageSubscriptions,
+    isRecepcionista,
+    canManageBarbershop: isOwner || isAdmin,
+    canManageProfessionals: isOwner || isAdmin,
+    canManageClients: isOwner || isProfessional || isAdmin || isRecepcionista,
+    canViewQueue: isOwner || isProfessional || isAdmin || isRecepcionista,
+    canManageSubscriptions: isOwner || isAdmin,
+    canViewSubscriptions: isOwner || isAdmin || isRecepcionista,
   };
+  
+  console.log('[Permissions] Permissões calculadas:', permissions);
+  return permissions;
 };
 
 // Hook para requerer autenticação

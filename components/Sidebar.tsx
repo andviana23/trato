@@ -17,7 +17,7 @@ import {
   WrenchScrewdriverIcon,
   CubeIcon
 } from "@heroicons/react/24/outline";
-import { Button } from "@heroui/react";
+import { Button } from "@nextui-org/react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },

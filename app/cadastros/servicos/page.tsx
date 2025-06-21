@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, CardBody, CardHeader, Chip, Avatar, Button } from "@heroui/react";
+import { Card, CardBody, CardHeader, Chip, Avatar, Button } from "@nextui-org/react";
 import { PlusIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import LayoutCadastros from "../../../components/LayoutCadastros";
 

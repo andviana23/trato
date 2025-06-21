@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Card, CardBody, Button, Select, SelectItem } from '@heroui/react';
+import { Card, CardBody, Button, Select, SelectItem } from '@nextui-org/react';
 import { CalendarIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
 interface PeriodFilterProps {

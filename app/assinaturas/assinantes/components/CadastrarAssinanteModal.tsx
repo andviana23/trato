@@ -18,7 +18,7 @@ import {
   Chip,
   Spinner,
   Divider
-} from "@heroui/react";
+} from "@nextui-org/react";
 import { 
   UserIcon, 
   CreditCardIcon, 

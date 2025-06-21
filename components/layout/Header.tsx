@@ -8,7 +8,7 @@ import {
   ChevronDownIcon,
   Bars3Icon
 } from "@heroicons/react/24/outline";
-import { Button } from "@heroui/react";
+import { Button } from "@nextui-org/react";
 import ProfileDropdown from "@/components/profile/ProfileDropdown";
 
 interface HeaderProps {

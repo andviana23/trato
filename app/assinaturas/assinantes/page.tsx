@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Button, Card, CardBody, CardHeader, Chip, Tooltip, Progress } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Chip, Tooltip, Progress } from "@nextui-org/react";
 import { ArrowPathIcon, UserGroupIcon, CreditCardIcon, BanknotesIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { useAssinantesData } from "./hooks/useAssinantesData";
 import { useFiltrosAssinantes } from "./hooks/useFiltrosAssinantes";

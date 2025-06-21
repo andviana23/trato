@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardBody, Progress } from '@heroui/react'
+import { Card, CardBody, Progress } from '@nextui-org/react'
 import { DashboardData } from '@/lib/types/dashboard'
 
 interface Props {

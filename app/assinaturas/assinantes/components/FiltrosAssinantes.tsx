@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Select, SelectItem, Button, Chip } from "@heroui/react";
+import { Input, Select, SelectItem, Button, Chip } from "@nextui-org/react";
 import { MagnifyingGlassIcon, XMarkIcon, FunnelIcon } from "@heroicons/react/24/outline";
 
 interface Filtros {

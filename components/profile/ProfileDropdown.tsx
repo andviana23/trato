@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Avatar } from "@heroui/react";
+import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Avatar } from "@nextui-org/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import ProfileModal from "./ProfileModal";
 
@@ -7,6 +7,8 @@ interface ProfileDropdownProps {
   user: any;
   signOut: () => void;
 }
+
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=365E78&color=fff';
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, signOut }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,7 +19,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, signOut }) => {
   }
   
   const fullName = user?.user_metadata?.full_name || user?.email || "Usuário";
-  const avatarUrl = user?.user_metadata?.avatar_url || '/img/default-avatar.png';
+  const avatarUrl = user?.user_metadata?.avatar_url || DEFAULT_AVATAR;
 
   return (
     <>

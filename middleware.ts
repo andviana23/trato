@@ -1,25 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-
-// Rotas públicas que não requerem autenticação
-const publicRoutes = [
-  '/auth/login',
-  '/auth/register',
-  '/auth/forgot-password',
-  '/auth/reset-password',
-  '/auth/update-password',
-  '/auth/verify',
-];
-
-// Rotas que requerem autenticação
-const protectedRoutes = [
-  '/dashboard',
-  '/assinaturas',
-  '/clientes',
-  '/agenda',
-  '/configuracoes',
-  '/perfil',
-];
+import { publicRoutes, hasPermission, type UserRole } from '@/lib/utils/route-permissions';
 
 export async function middleware(request: NextRequest) {
   try {
@@ -78,20 +59,20 @@ export async function middleware(request: NextRequest) {
       }
     );
 
-    // Verificar sessão
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // Verificar usuário autenticado
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    console.log('[Middleware] Status da sessão:', {
-      hasSession: !!session,
-      error: error?.message,
+    console.log('[Middleware] Status do usuário:', {
+      hasUser: !!user,
+      error: userError?.message,
       path: request.nextUrl.pathname,
     });
 
-    // Se houver erro na verificação da sessão
-    if (error) {
-      console.error('[Middleware] Erro ao verificar sessão:', error);
-      // Redirecionar para login se tentar acessar rota protegida
-      if (protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
+    // Se houver erro na verificação do usuário
+    if (userError) {
+      console.error('[Middleware] Erro ao verificar usuário:', userError);
+      // Redirecionar para login se não for rota pública
+      if (!publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
         const redirectUrl = new URL('/auth/login', request.url);
         redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
         return NextResponse.redirect(redirectUrl);
@@ -100,42 +81,57 @@ export async function middleware(request: NextRequest) {
     }
 
     // Se não estiver autenticado
-    if (!session) {
-      // Se tentar acessar rota protegida, redirecionar para login
-      if (protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
+    if (!user) {
+      // Se tentar acessar rota que não é pública, redirecionar para login
+      if (!publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
         console.log('[Middleware] Usuário não autenticado tentando acessar rota protegida');
         const redirectUrl = new URL('/auth/login', request.url);
         redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
         return NextResponse.redirect(redirectUrl);
       }
-      // Se tentar acessar rota pública, permitir
-      if (publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-        console.log('[Middleware] Permitindo acesso a rota pública');
-        return response;
-      }
+      return response;
     }
 
     // Se estiver autenticado
-    if (session) {
+    if (user) {
       // Se tentar acessar rota de autenticação, redirecionar para dashboard
       if (publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
         console.log('[Middleware] Usuário autenticado tentando acessar rota de auth');
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-      // Se tentar acessar rota protegida, permitir
-      if (protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-        console.log('[Middleware] Permitindo acesso a rota protegida');
+
+      // Buscar o perfil do usuário para verificar a role
+      const { data: profissionalData } = await supabase
+        .from('profissionais')
+        .select('funcao')
+        .eq('id', user.id)
+        .single();
+
+      console.log('[Middleware] Dados do profissional:', profissionalData);
+
+      // Se não encontrou na tabela profissionais, permitir acesso básico
+      if (!profissionalData) {
+        console.log('[Middleware] Profissional não encontrado, permitindo acesso básico');
         return response;
+      }
+
+      const userRole = profissionalData.funcao as UserRole;
+      console.log('[Middleware] Role do usuário:', userRole);
+
+      // Verificar se o usuário tem permissão para acessar a rota
+      if (!hasPermission(userRole, request.nextUrl.pathname)) {
+        console.log('[Middleware] Usuário sem permissão para acessar a rota');
+        return NextResponse.redirect(new URL('/dashboard', request.url));
       }
     }
 
     // Para outras rotas, permitir acesso
-    console.log('[Middleware] Permitindo acesso a rota não protegida');
+    console.log('[Middleware] Permitindo acesso a rota');
     return response;
   } catch (error) {
     console.error('[Middleware] Erro inesperado:', error);
-    // Em caso de erro, redirecionar para login se tentar acessar rota protegida
-    if (protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
+    // Em caso de erro, redirecionar para login se não for rota pública
+    if (!publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }
     return NextResponse.next();

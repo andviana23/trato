@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Chip, Button } from '@heroui/react';
+import { Card, CardBody, Chip, Button } from '@nextui-org/react';
 import { CreditCardIcon, UserGroupIcon, BanknotesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAssinantesData } from '../hooks/useAssinantesData';
 

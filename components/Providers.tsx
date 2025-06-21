@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { HeroUIProvider } from "@heroui/react";
+import { NextUIProvider } from "@nextui-org/react";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 
 interface ProvidersProps {
@@ -10,12 +10,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <HeroUIProvider>
+    <NextUIProvider>
       <NextThemesProvider attribute="class" defaultTheme="light">
         <AuthProvider>
           {children}
         </AuthProvider>
       </NextThemesProvider>
-    </HeroUIProvider>
+    </NextUIProvider>
   );
 } 

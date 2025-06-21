@@ -376,3 +376,55 @@ Consulte o arquivo LICENSE para mais detalhes.
 ---
 
 > Para dúvidas, sugestões ou bugs, abra uma issue ou entre em contato!
+
+# Log de Desenvolvimento - Sistema de Barbearia SaaS
+
+Este documento registra o progresso e os problemas encontrados durante o desenvolvimento.
+
+## 📅 Data: 26/07/2024
+
+### ✅ Onde Paramos
+
+A implementação da página de gerenciamento da **Lista da Vez** (`/lista-da-vez`) está em andamento. O objetivo é criar uma interface para que o administrador ou recepcionista possa gerenciar a fila de barbeiros em tempo real.
+
+**Funcionalidades Implementadas:**
+
+- **Visualização da Fila:** A fila de barbeiros é exibida em uma tabela.
+- **Reordenação Drag-and-Drop:** A ordem dos barbeiros na fila pode ser alterada arrastando e soltando.
+- **Ações por Barbeiro:**
+  - `+1 Atendido`: Incrementa o contador de serviços do barbeiro.
+  - `Passar a Vez`: Registra que o barbeiro passou a vez.
+  - `Ativar/Inativar`: Controla se um barbeiro está na fila para atendimento.
+- **Ações Gerais da Fila:**
+  - `Reorganizar por Atendimentos`: Reordena a fila com base no número de atendimentos diários.
+  - `Zerar Lista`: Limpa os contadores de atendimento do dia.
+
+### 🚨 Erro Atual a ser Corrigido
+
+Ao acessar a página `/lista-da-vez`, a aplicação quebra e exibe o seguinte erro em tempo de execução:
+
+**Erro:** `Error: type.getCollectionNode is not a function`
+
+Este erro impede a renderização de qualquer componente na página, bloqueando totalmente o teste e o desenvolvimento da funcionalidade. A imagem do erro foi capturada e está disponível no histórico da conversa.
+
+### 🛠️ O que já foi tentado
+
+1.  **Correção de Importação:** A suspeita inicial era que os componentes da biblioteca UI estavam sendo importados de um pacote incorreto (`@heroui/react`). A importação no arquivo `saas-barbearia-nextjs/app/lista-da-vez/page.tsx` foi corrigida para usar `@nextui-org/react`.
+2.  **Limpeza de Cache:** O cache do Next.js (diretório `.next`) foi removido.
+3.  **Reinicialização do Servidor:** O servidor de desenvolvimento foi reiniciado após as alterações.
+
+Apesar dessas ações, o erro persiste, indicando que a causa raiz é outra.
+
+### 🚀 Próximos Passos Sugeridos para Amanhã
+
+1.  **Verificar o `NextUIProvider`:** A causa mais provável é a falta do `NextUIProvider` envolvendo a aplicação. Verifique o arquivo `saas-barbearia-nextjs/app/layout.tsx` para garantir que o provider está configurado e envolvendo o `{children}`.
+
+2.  **Analisar o `tailwind.config.js`:** Confirme se o arquivo `tailwind.config.js` está corretamente configurado para o NextUI, importando e incluindo o plugin `nextui()` na array `plugins`.
+
+3.  **Conflito de Dependências:** Investigue o `package.json`. A versão do React é a `^19.0.0`, que é muito recente. Pode haver uma incompatibilidade entre o React 19 e o `@nextui-org/react` ou uma de suas dependências (como `framer-motion`). Considere fazer o downgrade do React para a versão 18 estável.
+
+4.  **Isolar o Componente:** Crie uma página de teste simples e renderize apenas um componente do NextUI (ex: `<Button>`). Se o erro ocorrer, o problema é na configuração global do projeto. Caso contrário, o problema está em um dos componentes mais complexos usados na página `lista-da-vez` (como `Table` ou `Dropdown`).
+
+---
+
+**Foco para amanhã:** Resolver o erro `getCollectionNode` para desbloquear o desenvolvimento da funcionalidade da fila.

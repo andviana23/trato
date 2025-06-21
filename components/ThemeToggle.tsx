@@ -3,7 +3,7 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
-import { Switch } from '@heroui/react';
+import { Switch } from '@nextui-org/react';
 
 export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);

@@ -1,4 +1,4 @@
-import { Breadcrumbs, BreadcrumbItem } from "@heroui/react";
+import { Breadcrumbs, BreadcrumbItem } from "@nextui-org/react";
 
 export default function LayoutCadastros({ children, titulo }: { children: React.ReactNode, titulo: string }) {
   return (

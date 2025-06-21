@@ -21,11 +21,11 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
     ];
 
     let currentPath = '';
-    paths.forEach((path, index) => {
+    paths.forEach((path) => {
       if (path === 'dashboard') return;
       
       currentPath += `/${path}`;
-      const name = path.charAt(0).toUpperCase() + path.slice(1);
+      const name = path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ');
       breadcrumbs.push({
         name,
         href: currentPath,
@@ -39,9 +39,9 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
   const breadcrumbs = generateBreadcrumbs();
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Breadcrumbs */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
         <nav className="flex items-center space-x-2 text-sm">
           {breadcrumbs.map((breadcrumb, index) => (
             <div key={breadcrumb.href} className="flex items-center">
@@ -69,20 +69,8 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
       </div>
 
       {/* Conteúdo principal com scroll */}
-      <main
-        className="
-          flex-1
-          overflow-y-auto
-          bg-gray-50 dark:bg-gray-800
-          px-4 md:px-8
-          py-6
-          transition-all
-          duration-300
-          scroll-smooth
-        "
-        style={{ minWidth: 0 }}
-      >
-        <div>
+      <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-800">
+        <div className="container mx-auto px-4 py-6">
           {children}
         </div>
       </main>

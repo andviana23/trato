@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
-import { Card, CardBody, CardHeader, Button, Chip } from "@heroui/react";
+import { Card, CardBody, CardHeader, Button, Chip } from "@nextui-org/react";
 import { PlusIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Avatar, Button } from "@heroui/react";
+import { Avatar, Button } from "@nextui-org/react";
 
 interface AvatarUploadProps {
   value?: File;
@@ -7,17 +7,19 @@ interface AvatarUploadProps {
   currentUrl?: string;
 }
 
+const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=365E78&color=fff';
+
 const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl }) => {
-  const [preview, setPreview] = useState<string | undefined>(currentUrl || '/img/default-avatar.png');
+  const [preview, setPreview] = useState<string | undefined>(currentUrl || DEFAULT_AVATAR);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setPreview(currentUrl || '/img/default-avatar.png');
+    setPreview(currentUrl || DEFAULT_AVATAR);
   }, [currentUrl]);
 
   const handleFile = (file: File | null) => {
     if (!file) {
-      setPreview('/img/default-avatar.png');
+      setPreview(DEFAULT_AVATAR);
       onChange(null);
       return;
     }
@@ -52,7 +54,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl
       aria-label="Upload de avatar"
     >
       <Avatar
-        src={preview || '/img/default-avatar.png'}
+        src={preview || DEFAULT_AVATAR}
         name="Avatar"
         size="lg"
         className="ring-2 ring-primary border-2 border-white shadow-md"

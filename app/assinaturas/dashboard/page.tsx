@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Card, CardBody, CardHeader, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Chip, Tooltip, Progress, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Badge
-} from '@heroui/react';
+} from '@nextui-org/react';
 import { ArrowPathIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, CalendarIcon, ChartBarIcon, BanknotesIcon, UserIcon, EnvelopeIcon, ClockIcon } from '@heroicons/react/24/outline';
 import PeriodFilter from './components/PeriodFilter';
 import RevenueTimeline from './components/RevenueTimeline';

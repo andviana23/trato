@@ -10,7 +10,7 @@ import {
   Divider,
   Chip,
   Spinner
-} from "@heroui/react";
+} from "@nextui-org/react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -80,7 +80,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
         const { data: uploadData, error: uploadError } = await supabase.storage.from('avatars').upload(fileName, avatarFile, { upsert: true });
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-          updates.data.avatar_url = urlData?.publicUrl || '/img/default-avatar.png';
+          updates.data.avatar_url = urlData?.publicUrl || 'https://ui-avatars.com/api/?name=User&background=365E78&color=fff';
         } else {
           console.error('Erro no upload do avatar:', uploadError);
         }
@@ -114,7 +114,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
                     setAvatarFile(file);
                     field.onChange(file);
                   }}
-                  currentUrl={user?.user_metadata?.avatar_url || '/img/default-avatar.png'}
+                  currentUrl={user?.user_metadata?.avatar_url || 'https://ui-avatars.com/api/?name=User&background=365E78&color=fff'}
                 />
               )}
             />

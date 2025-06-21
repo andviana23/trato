@@ -3,9 +3,8 @@
 import { useAuth, useRequireAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
-import { Card, CardBody, CardHeader, Avatar, Chip } from "@heroui/react";
+import { Card, CardBody, CardHeader, Avatar, Chip } from "@nextui-org/react";
 import { UserIcon, BuildingOfficeIcon, CalendarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
-import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function DashboardPage() {
   useRequireAuth();
@@ -48,6 +47,8 @@ export default function DashboardPage() {
         return 'Cliente';
       case 'admin':
         return 'Administrador';
+      case 'recepcionista':
+        return 'Recepcionista';
       default:
         return role;
     }
@@ -63,17 +64,19 @@ export default function DashboardPage() {
         return 'default';
       case 'admin':
         return 'warning';
+      case 'recepcionista':
+        return 'success';
       default:
         return 'default';
     }
   };
 
   return (
-    <DashboardLayout>
+    <>
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Bem-vindo, {profile?.first_name || 'Usuário'}!
+          Bem-vindo, {profile?.name || 'Usuário'}!
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Gerencie sua barbearia de forma eficiente e profissional
@@ -149,10 +152,10 @@ export default function DashboardPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome Completo
+                  Nome
                 </label>
                 <p className="text-gray-900 dark:text-white">
-                  {profile?.first_name} {profile?.last_name}
+                  {profile?.name || 'Não informado'}
                 </p>
               </div>
               <div>
@@ -196,6 +199,6 @@ export default function DashboardPage() {
           </div>
         </CardBody>
       </Card>
-    </DashboardLayout>
+    </>
   );
 } 
