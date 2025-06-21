@@ -38,6 +38,7 @@ Sistema completo para gestão de barbearias, com funcionalidades de assinaturas,
 - [Instalação](#instalação)
 - [Como Usar](#como-usar)
 - [Estrutura do Projeto](#estrutura-do-projeto)
+- [Correções e Melhorias Recentes](#correções-e-melhorias-recentes)
 - [API/Endpoints](#apiendpoints)
 - [Configuração](#configuração)
 - [Contribuição](#contribuição)
@@ -164,6 +165,255 @@ Sistema completo para gestão de barbearias, com funcionalidades de assinaturas,
   - Ativos
 - **Ordenação flexível** por nome, vencimento, data de criação e valor
 - **Interface intuitiva** com chips visuais dos filtros ativos
+
+---
+
+## 🔧 Correções e Melhorias Recentes
+
+### 🚨 Correções Críticas Implementadas
+
+Esta seção documenta as correções críticas realizadas no sistema **Lista da Vez** para resolver problemas de estrutura HTML, tipos de dados e propagação de eventos.
+
+#### 1. **Correção de Estrutura HTML (CRÍTICO)**
+
+**Problema:** Erro de hidratação causado por `<div>` dentro de `<tbody>`
+
+```html
+<!-- ❌ ESTRUTURA INCORRETA -->
+<tbody>
+  <div>
+    <!-- ERRO: div dentro de tbody -->
+    <tr>
+      ...
+    </tr>
+  </div>
+</tbody>
+```
+
+**Solução Implementada:**
+
+```html
+<!-- ✅ ESTRUTURA CORRETA -->
+<div className="overflow-x-auto">
+  <DndContext sensors="{sensors}" collisionDetection="{closestCenter}">
+    <table className="min-w-full">
+      <thead>
+        ...
+      </thead>
+      <SortableContext items="{items}">
+        <tbody className="bg-white divide-y divide-gray-200">
+          {/* Linhas da tabela - SEM divs extras */}
+        </tbody>
+      </SortableContext>
+    </table>
+  </DndContext>
+</div>
+```
+
+**Resultado:** HTML válido, sem erros de hidratação e acessibilidade correta.
+
+#### 2. **Correção de Tipos de Dados do Banco (CRÍTICO)**
+
+**Problema:** Erro 400 - `invalid input syntax for type integer: "true"`
+
+**Causa:** Campo `passou_vez` é `integer` mas estava recebendo `boolean true`
+
+**Solução Implementada:**
+
+```javascript
+// ❌ ANTES - enviando boolean para campo integer
+const updateData = {
+  passou_vez: true, // Erro: string "true" para campo integer
+};
+
+// ✅ DEPOIS - incrementando contador numérico
+const updateData = {
+  passou_vez: parseInt(String(barbeiro.passou_vez || 0)) + 1, // Correto: número
+  total_services: parseInt(String(barbeiro.total_services || 0)) + 1,
+  daily_services: parseInt(String(barbeiro.daily_services || 0)) + 1,
+};
+```
+
+**Melhorias Adicionais:**
+
+- Logs detalhados antes de cada operação PATCH
+- Validação de tipos com `parseInt()` e `Boolean()`
+- Tratamento de valores nulos com fallback `|| 0`
+
+#### 3. **Correção de Propagação de Eventos (CRÍTICO)**
+
+**Problema:** Botão "+1" executava duas ações simultaneamente (incremento + passar vez)
+
+**Causa:** Propagação de eventos entre elementos pai e filho
+
+**Solução Implementada:**
+
+```javascript
+// ✅ Event handling correto com stopPropagation
+const handleAtendimento = async (
+  event: React.MouseEvent,
+  barbeiroId: string,
+  refetch: () => void
+) => {
+  event.preventDefault(); // Previne comportamento padrão
+  event.stopPropagation(); // CRÍTICO: Para a propagação do evento
+
+  console.log("🔢 [+1] Botão clicado para:", barbeiroId);
+  // Lógica do incremento...
+};
+
+const handlePassarVez = async (
+  event: React.MouseEvent,
+  barbeiroId: string,
+  refetch: () => void
+) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  console.log("➡️ [PASSAR] Botão clicado para:", barbeiroId);
+  // Lógica de passar vez...
+};
+```
+
+**Handlers Específicos:**
+
+```javascript
+// Handlers separados para cada botão
+const handleIncrementClick = (event: React.MouseEvent) => {
+  console.log("🔢 Botão +1 clicado - iniciando handler");
+  handleAtendimento(event, item.id, refetch);
+};
+
+const handlePassClick = (event: React.MouseEvent) => {
+  console.log("➡️ Botão Passar clicado - iniciando handler");
+  handlePassarVez(event, item.id, refetch);
+};
+```
+
+#### 4. **Correção de Importações e Cliente Supabase**
+
+**Problema:** `'supabase' is not exported from '@/lib/supabase/client'`
+
+**Solução:**
+
+```javascript
+// ❌ ANTES - importação incorreta
+import { supabase } from "@/lib/supabase/client";
+
+// ✅ DEPOIS - importação correta
+import { createClient } from "@/lib/supabase/client";
+const supabase = createClient();
+```
+
+#### 5. **Redesign da Interface com Tailwind CSS**
+
+**Problema:** Dependência problemática do HeroUI causando erros de build
+
+**Solução:** Substituição completa por HTML + Tailwind CSS
+
+```javascript
+// ❌ ANTES - componentes HeroUI
+import { Card, Table, Button, Switch } from "@heroui/react";
+
+// ✅ DEPOIS - HTML + Tailwind
+<div className="bg-white rounded-lg shadow-md border">
+  <table className="min-w-full divide-y divide-gray-200">
+    <button className="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700">
+      +1
+    </button>
+  </table>
+</div>;
+```
+
+### 🎨 Melhorias de UX/UI
+
+#### **Design Moderno e Responsivo**
+
+- Cards com gradientes e bordas coloridas
+- Chips coloridos para status e contadores
+- Botões com estados hover e focus
+- Layout responsivo para mobile e desktop
+
+#### **Sistema de Logs Avançado**
+
+```javascript
+// Logs com emojis para fácil identificação
+console.log("🔄 Processando..."); // Operações em andamento
+console.log("✅ Sucesso!"); // Operações bem-sucedidas
+console.log("❌ Erro:"); // Erros específicos
+console.log("💥 Erro crítico:"); // Erros gerais
+```
+
+#### **Estados de Loading e Feedback**
+
+- Botões desabilitados durante operações
+- Toast notifications para feedback do usuário
+- Skeleton loading para carregamento inicial
+- Estados visuais para elementos interativos
+
+### 🧪 Validação e Testes
+
+#### **Checklist de Validação Implementado:**
+
+- ✅ HTML válido sem erros de hidratação
+- ✅ Tipos de dados corretos em todas as operações
+- ✅ Botões funcionando independentemente
+- ✅ Console com logs informativos
+- ✅ Drag & drop funcionando corretamente
+- ✅ Interface responsiva em todos os dispositivos
+
+#### **Testes Recomendados:**
+
+1. **Abrir DevTools (F12)** → Console deve estar limpo
+2. **Testar botão "+1"** → Deve executar apenas incremento
+3. **Testar "Passar a Vez"** → Deve executar apenas passar vez
+4. **Verificar drag & drop** → Deve reorganizar sem conflitos
+5. **Testar responsividade** → Interface deve adaptar-se a diferentes telas
+
+### 📊 Resultados das Correções
+
+#### **Antes das Correções:**
+
+- ❌ Erros de hidratação HTML
+- ❌ Erro 400: `invalid input syntax for type integer: "true"`
+- ❌ Botão "+1" executava ações duplas
+- ❌ Dependências problemáticas do HeroUI
+- ❌ Console com múltiplos erros
+
+#### **Depois das Correções:**
+
+- ✅ HTML válido e estrutura correta
+- ✅ Tipos de dados corretos em todas as operações
+- ✅ Botões funcionando independentemente
+- ✅ Interface moderna com Tailwind CSS
+- ✅ Console limpo com logs informativos
+- ✅ Zero erros de hidratação ou banco de dados
+
+### 🔍 Arquivos Modificados
+
+#### **Principais Arquivos Alterados:**
+
+- `app/lista-da-vez/page.tsx` - Correções principais do sistema
+- `hooks/useBarberQueue.ts` - Hook para gestão da fila
+- `lib/supabase/client.ts` - Cliente Supabase configurado
+
+#### **Estrutura de Dados Corrigida:**
+
+```sql
+-- Tabela barber_queue com tipos corretos
+CREATE TABLE barber_queue (
+  id UUID PRIMARY KEY,
+  profissional_id UUID REFERENCES profissionais(id),
+  queue_position INTEGER,           -- Posição na fila
+  daily_services INTEGER DEFAULT 0, -- Atendimentos do dia
+  total_services INTEGER DEFAULT 0, -- Total de atendimentos
+  passou_vez INTEGER DEFAULT 0,     -- Contador de vezes que passou
+  is_active BOOLEAN DEFAULT true,   -- Status ativo/inativo
+  last_service_date DATE,          -- Data do último atendimento
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
 
 ---
 
