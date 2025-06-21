@@ -125,16 +125,12 @@ export default function AssinantesTable({ assinantes, loading = false, onUpdate 
           <TableColumn>PRÓX. VENCIMENTO</TableColumn>
           <TableColumn>AÇÕES</TableColumn>
         </TableHeader>
-        <TableBody>
-          {loading ? (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center text-zinc-500 dark:text-zinc-300">Carregando...</TableCell>
-            </TableRow>
-          ) : assinantes.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center text-zinc-400 dark:text-zinc-500">Nenhum assinante encontrado.</TableCell>
-            </TableRow>
-          ) : assinantes.map((assinante) => {
+        <TableBody 
+          emptyContent={"Nenhum assinante encontrado."}
+          isLoading={loading}
+          loadingContent={<div className="text-center py-4">Carregando...</div>}
+        >
+          {assinantes.map((assinante) => {
             const diasParaVencer = getDiasParaVencer(assinante.nextDueDate);
             const isVencido = diasParaVencer !== null && diasParaVencer < 0;
             const isProximoVencer = diasParaVencer !== null && diasParaVencer >= 0 && diasParaVencer <= 7;
