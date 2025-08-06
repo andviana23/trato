@@ -143,67 +143,67 @@ export default function MetasTrato() {
         console.log("🔍 Verificando sistema de Metas...");
         
         // Verificar conexão com Supabase
-        Listar apenas os pagamentos confirmados do mês, com dados completos do cliente
+        // Listar apenas os pagamentos confirmados do mês, com dados completos do cliente
 
-        Buscar somente pagamentos confirmados no período:
+        // Buscar somente pagamentos confirmados no período:
         
-        Faça a requisição para a API do Asaas usando o endpoint /v3/payments, filtrando:
+        // Faça a requisição para a API do Asaas usando o endpoint /v3/payments, filtrando:
         
-        status=CONFIRMED (ou RECEIVED, se necessário)
+        // status=CONFIRMED (ou RECEIVED, se necessário)
         
-        paymentDate[gte]=YYYY-MM-DD (primeiro dia do mês/intervalo)
+        // paymentDate[gte]=YYYY-MM-DD (primeiro dia do mês/intervalo)
         
-        paymentDate[lte]=YYYY-MM-DD (último dia do mês/intervalo)
+        // paymentDate[lte]=YYYY-MM-DD (último dia do mês/intervalo)
         
-        Exemplo de endpoint:
+        // Exemplo de endpoint:
         
-        bash
-        Copiar
-        Editar
-        https://www.asaas.com/api/v3/payments?status=CONFIRMED&paymentDate[gte]=2025-08-01&paymentDate[lte]=2025-08-31
-        Isso deve retornar apenas os pagamentos confirmados (pagos) no período selecionado.
+        // bash
+        // Copiar
+        // Editar
+        // https://www.asaas.com/api/v3/payments?status=CONFIRMED&paymentDate[gte]=2025-08-01&paymentDate[lte]=2025-08-31
+        // Isso deve retornar apenas os pagamentos confirmados (pagos) no período selecionado.
         
-        Buscar dados completos do cliente:
+        // Buscar dados completos do cliente:
         
-        Para cada pagamento retornado, use o campo customer (ID do cliente).
+        // Para cada pagamento retornado, use o campo customer (ID do cliente).
         
-        Faça uma segunda requisição na API do Asaas para /v3/customers/{customerId} e obtenha nome, e-mail, etc.
+        // Faça uma segunda requisição na API do Asaas para /v3/customers/{customerId} e obtenha nome, e-mail, etc.
         
-        Utilize Promise.all para buscar todos os clientes em paralelo e não travar a aplicação.
+        // Utilize Promise.all para buscar todos os clientes em paralelo e não travar a aplicação.
         
-        Montar lista final:
+        // Montar lista final:
         
-        Monte a lista final da tabela unindo os dados do pagamento (valor, status, data do pagamento, próxima cobrança) + dados completos do cliente (nome, e-mail, etc).
+        // Monte a lista final da tabela unindo os dados do pagamento (valor, status, data do pagamento, próxima cobrança) + dados completos do cliente (nome, e-mail, etc).
         
-        Exiba apenas esses clientes na tabela, ou seja, somente quem teve pagamento confirmado no período filtrado.
+        // Exiba apenas esses clientes na tabela, ou seja, somente quem teve pagamento confirmado no período filtrado.
         
-        Não inclua clientes que não pagaram no período.
+        // Não inclua clientes que não pagaram no período.
         
-        Validação:
+        // Validação:
         
-        Antes de renderizar, faça um console.log do array final da lista para garantir que cada item tem os dados do pagamento e do cliente.
+        // Antes de renderizar, faça um console.log do array final da lista para garantir que cada item tem os dados do pagamento e do cliente.
         
-        A tabela deve mostrar nome, e-mail, valor pago, status, fonte, data do pagamento e próxima cobrança.
+        // A tabela deve mostrar nome, e-mail, valor pago, status, fonte, data do pagamento e próxima cobrança.
         
-        Se não houver pagamentos confirmados no mês, mostrar mensagem clara: “Nenhum assinante efetuou pagamento confirmado neste mês.”
+        // Se não houver pagamentos confirmados no mês, mostrar mensagem clara: “Nenhum assinante efetuou pagamento confirmado neste mês.”
         
-        Resumo técnico:
+        // Resumo técnico:
         
-        Use o endpoint /v3/payments para filtrar por status=CONFIRMED e intervalo de datas.
+        // Use o endpoint /v3/payments para filtrar por status=CONFIRMED e intervalo de datas.
         
-        Use /v3/customers/{customerId} para buscar os dados completos dos clientes listados nos pagamentos.
+        // Use /v3/customers/{customerId} para buscar os dados completos dos clientes listados nos pagamentos.
         
-        Não mostre outros clientes ou pagamentos fora do período, e não busque toda a base — só o resultado filtrado.
+        // Não mostre outros clientes ou pagamentos fora do período, e não busque toda a base — só o resultado filtrado.
         
-        Não finalize até garantir que:
+        // Não finalize até garantir que:
         
-        Só aparecem clientes que realmente pagaram (status CONFIRMED) no mês/período filtrado.
+        // Só aparecem clientes que realmente pagaram (status CONFIRMED) no mês/período filtrado.
         
-        Todos os dados do cliente estão sendo exibidos corretamente na tabela.
+        // Todos os dados do cliente estão sendo exibidos corretamente na tabela.
         
-        O filtro por mês/período funciona sem erros.
+        // O filtro por mês/período funciona sem erros.
         
-        Se não souber implementar o fetch duplo (pagamento + cliente), peça ajuda ou explique a limitação antes de finalizar.
+        // Se não souber implementar o fetch duplo (pagamento + cliente), peça ajuda ou explique a limitação antes de finalizar.
         
         console.log("✅ Conexão com Supabase OK");
         

@@ -10,6 +10,22 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import CadastrarAssinanteModal from "./components/CadastrarAssinanteModal";
 import { getAssinaturas, updateAssinaturaStatus } from "@/lib/services/subscriptions";
+import type { Assinatura } from '@/lib/services/subscriptions';
+import type { PagamentoAsaas } from './hooks/usePagamentosAsaas';
+import { useMemo } from 'react';
+
+// Tipo para unificação dos dados
+interface AssinanteUnificado {
+  id: string;
+  nome: string;
+  plano: string;
+  valor: number;
+  status: string;
+  data_pagamento: string;
+  proximo_vencimento: string;
+  tipo_pagamento: string;
+  origem: 'asaas' | 'dinheiro';
+}
 
 export default function AssinantesPage() {
   // Período padrão: mês atual
@@ -18,18 +34,18 @@ export default function AssinantesPage() {
     dataFim: dayjs().endOf('month').format('YYYY-MM-DD')
   });
   const { pagamentos, loading: loadingAtivos } = usePagamentosAsaas(periodo);
-  const [assinaturas, setAssinaturas] = useState([]);
+  const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
-  const [modalConfirmar, setModalConfirmar] = useState<{ open: boolean, assinatura: any | null }>({ open: false, assinatura: null });
+  const [modalConfirmar, setModalConfirmar] = useState<{ open: boolean, assinatura: AssinanteUnificado | null }>({ open: false, assinatura: null });
 
   useEffect(() => {
-    getAssinaturas().then(setAssinaturas);
+    getAssinaturas().then((assinaturas: Assinatura[]) => setAssinaturas(assinaturas));
   }, []);
 
-  // Unir pagamentos_asaas e assinaturas (dinheiro)
-  const todosAssinantes = [
-    ...pagamentos.map(p => ({
+  // Unir pagamentos_asaas e assinaturas (dinheiro) - agora com useMemo
+  const todosAssinantes: AssinanteUnificado[] = useMemo(() => [
+    ...pagamentos.map((p: PagamentoAsaas) => ({
       id: p.payment_id,
       nome: p.customer_name,
       plano: p.plano,
@@ -38,20 +54,20 @@ export default function AssinantesPage() {
       data_pagamento: p.payment_date,
       proximo_vencimento: p.next_due_date,
       tipo_pagamento: (p.billing_type || '').toUpperCase(),
-      origem: 'asaas',
+      origem: 'asaas' as const,
     })),
-    ...assinaturas.map(a => ({
+    ...assinaturas.map((a: Assinatura) => ({
       id: a.id,
-      nome: a.nome_cliente || '',
-      plano: a.plan_name || '',
-      valor: a.price,
+      nome: a.cliente_id, // Ajuste conforme necessário se quiser buscar nome do cliente
+      plano: a.plano_id,  // Ajuste conforme necessário se quiser buscar nome do plano
+      valor: a.valor,
       status: a.status,
       data_pagamento: a.created_at,
       proximo_vencimento: a.data_vencimento,
-      tipo_pagamento: (a.forma_pagamento || '').toUpperCase(),
-      origem: 'dinheiro',
+      tipo_pagamento: 'DINHEIRO',
+      origem: 'dinheiro' as const,
     }))
-  ];
+  ], [pagamentos, assinaturas]);
 
   const [busca, setBusca] = useState("");
 

@@ -1,24 +1,28 @@
 "use client";
 import { useState, useEffect } from 'react';
-import supabase from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import { Card, Button, Input, Select } from '@nextui-org/react';
+// Removido: import { useUnidade } from '@/contexts/UnidadeContext';
 
 const UNIDADES = [
   { id: '244c0543-7108-4892-9eac-48186ad1d5e7', nome: 'Trato de Barbados' },
   { id: '87884040-cafc-4625-857b-6e0402ede7d7', nome: 'Barber Beer Sport Club' },
 ];
 
+interface VendaProduto {
+  id?: string;
+  unidade_id: string;
+  quantidade: number;
+  created_at?: string;
+}
+
 export default function ProdutosDistribuicao() {
-  const [unidadeSelecionada, setUnidadeSelecionada] = useState(UNIDADES[0].id);
-  const [quantidade, setQuantidade] = useState(1);
-  const [vendas, setVendas] = useState<any[]>([]);
+  const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>(UNIDADES[0].id);
+  const [quantidade, setQuantidade] = useState<string>('1');
+  const [vendas, setVendas] = useState<VendaProduto[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchVendas();
-  }, [unidadeSelecionada]);
-
-  async function fetchVendas() {
+  const fetchVendas = async () => {
     setLoading(true);
     const { data } = await supabase
       .from('vendas_produtos')
@@ -27,16 +31,21 @@ export default function ProdutosDistribuicao() {
       .order('created_at', { ascending: false });
     setVendas(data || []);
     setLoading(false);
-  }
+  };
+
+  useEffect(() => {
+    fetchVendas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unidadeSelecionada]);
 
   async function adicionarVenda() {
-    if (!quantidade || quantidade < 1) return;
+    if (!quantidade || Number(quantidade) < 1) return;
     setLoading(true);
     await supabase.from('vendas_produtos').insert({
       unidade_id: unidadeSelecionada,
-      quantidade,
+      quantidade: Number(quantidade),
     });
-    setQuantidade(1);
+    setQuantidade('1');
     await fetchVendas();
     setLoading(false);
   }
@@ -64,7 +73,7 @@ export default function ProdutosDistribuicao() {
               type="number"
               min={1}
               value={quantidade}
-              onChange={e => setQuantidade(Number(e.target.value))}
+              onChange={e => setQuantidade(e.target.value)}
               className="w-28"
             />
           </div>
@@ -82,7 +91,7 @@ export default function ProdutosDistribuicao() {
             <Card key={v.id || idx} className="p-4 flex items-center justify-between">
               <div>
                 <div className="font-medium text-gray-900">{UNIDADES.find(u => u.id === v.unidade_id)?.nome || '-'}</div>
-                <div className="text-sm text-gray-500">{v.quantidade} un. - {new Date(v.created_at).toLocaleString('pt-BR')}</div>
+                <div className="text-sm text-gray-500">{v.quantidade} un. - {v.created_at ? new Date(v.created_at).toLocaleString('pt-BR') : ''}</div>
               </div>
             </Card>
           ))
