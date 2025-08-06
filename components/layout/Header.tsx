@@ -14,9 +14,10 @@ import ProfileDropdown from "@/components/profile/ProfileDropdown";
 interface HeaderProps {
   isCollapsed: boolean;
   onMobileMenu: () => void;
+  unified?: boolean;
 }
 
-export default function Header({ isCollapsed, onMobileMenu }: HeaderProps) {
+export default function Header({ isCollapsed, onMobileMenu, unified }: HeaderProps) {
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -28,24 +29,22 @@ export default function Header({ isCollapsed, onMobileMenu }: HeaderProps) {
   };
 
   return (
-    <header className="h-16 flex items-center px-2 md:px-4 border-b bg-white dark:bg-gray-900 shadow-sm flex-shrink-0 z-50">
-      <div className="flex items-center justify-between h-full px-6 w-full">
+    <header className={`h-16 flex items-center ${unified ? 'px-0' : 'px-2 md:px-4'} bg-[#171717] text-gray-100 flex-shrink-0 z-50 border-b-0 shadow-none`}>
+      <div className={`flex items-center justify-between h-full w-full ${unified ? 'px-4' : 'px-6'}`}>
         {/* Botão menu mobile */}
         <button
-          className="md:hidden mr-2"
+          className="md:hidden mr-2 text-gray-200"
           onClick={onMobileMenu}
           aria-label="Abrir menu"
         >
           <Bars3Icon className="w-6 h-6" />
         </button>
-
         {/* Lado esquerdo - Breadcrumb placeholder */}
         <div className="flex items-center space-x-4">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-lg font-semibold text-gray-100">
             Dashboard
           </h1>
         </div>
-
         {/* Lado direito - Ações */}
         <div className="flex items-center space-x-4">
           {/* Notificações */}
@@ -53,19 +52,16 @@ export default function Header({ isCollapsed, onMobileMenu }: HeaderProps) {
             isIconOnly
             variant="light"
             size="sm"
-            className="relative"
+            className="relative text-gray-200"
           >
             <BellIcon className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
               3
             </span>
           </Button>
-
           {/* Toggle de Tema */}
           <ThemeToggle />
-
-          {/* Usuário */}
-          <ProfileDropdown user={user} signOut={handleSignOut} />
+          {/* Usuário REMOVIDO do header */}
         </div>
       </div>
     </header>

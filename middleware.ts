@@ -123,6 +123,12 @@ export async function middleware(request: NextRequest) {
         console.log('[Middleware] Usuário sem permissão para acessar a rota');
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
+      // --- INÍCIO: Checagem de permissão para recepcionista ---
+      if (userRole === 'recepcionista' && !hasPermission(userRole, request.nextUrl.pathname)) {
+        console.log('[Middleware] Recepcionista tentando acessar rota não permitida. Redirecionando para /lista-da-vez');
+        return NextResponse.redirect(new URL('/lista-da-vez', request.url));
+      }
+      // --- FIM: Checagem de permissão para recepcionista ---
     }
 
     // Para outras rotas, permitir acesso

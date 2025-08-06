@@ -25,12 +25,12 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, signOut }) => {
     <>
       <Dropdown placement="bottom-end">
         <DropdownTrigger>
-          <Button variant="light" className="flex items-center space-x-2 px-3 py-2">
-            <Avatar src={avatarUrl} name={fullName} size="sm" className="mr-2" />
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{fullName}</p>
-            </div>
-            <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+          <Button variant="light" className="flex items-center space-x-2 px-3 py-2 w-full max-w-full border-none shadow-none">
+            <Avatar src={avatarUrl} name={fullName} size="sm" className="mr-2 flex-shrink-0" />
+            <span className="truncate text-sm text-gray-900 dark:text-white max-w-[140px] overflow-hidden text-ellipsis block">
+              {user?.email || fullName}
+            </span>
+            <ChevronDownIcon className="w-4 h-4 text-gray-500 ml-2" />
           </Button>
         </DropdownTrigger>
         <DropdownMenu aria-label="Menu do usuário">

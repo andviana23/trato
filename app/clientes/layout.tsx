@@ -1,7 +1,6 @@
 "use client";
 import { useState, ReactNode } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
 import MainContainer from "@/components/layout/MainContainer";
 
 interface ClientesLayoutProps {
@@ -21,8 +20,6 @@ export default function ClientesLayout({ children }: ClientesLayoutProps) {
       <Sidebar isCollapsed={isCollapsed} onToggle={toggleSidebar} />
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <Header isCollapsed={isCollapsed} />
         {/* Main Container */}
         <MainContainer isCollapsed={isCollapsed}>
           {children}

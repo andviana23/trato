@@ -57,9 +57,8 @@ export async function GET(request: NextRequest) {
       year: year,
       revenue: {
         asaasTrato: revenueData.bySource.asaasTrato,
-        asaasAndrey: revenueData.bySource.asaasAndrey,
         external: externalSum,
-        total: revenueData.bySource.asaasTrato + revenueData.bySource.asaasAndrey + externalSum
+        total: revenueData.bySource.asaasTrato + externalSum
       },
       overdueCount: overdueCount,
       goal: {

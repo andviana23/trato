@@ -8,8 +8,8 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { nome, email, funcao, senha, telefone, data_nascimento } = await req.json();
-    if (!nome || !email || !funcao || !senha || !telefone) {
+    const { nome, email, funcao, senha, telefone, data_nascimento, unidade_id } = await req.json();
+    if (!nome || !email || !funcao || !senha || !telefone || !unidade_id) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 });
     }
     // 1. Cria usuário no Auth
@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
         funcao,
         telefone,
         data_nascimento: data_nascimento || null,
-        user_id: userData.user.id
+        user_id: userData.user.id,
+        unidade_id
       }])
       .select();
     if (profError) {

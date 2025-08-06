@@ -17,21 +17,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleMobileClose = () => setMobileSidebarOpen(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-800">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isCollapsed}
-        onToggle={toggleSidebar}
-        mobileOpen={mobileSidebarOpen}
-        onMobileClose={handleMobileClose}
-      />
-
-      {/* Main Content */}
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'ml-16' : 'ml-64'}`}>
-        <Header
+    <div className="flex h-screen bg-[#171717]">
+      {/* Sidebar + Header unificados */}
+      <div className={`flex flex-col h-screen ${isCollapsed ? 'w-16' : 'w-56'} bg-[#171717]`}>
+        <Sidebar
           isCollapsed={isCollapsed}
-          onMobileMenu={() => setMobileSidebarOpen(true)}
+          onToggle={toggleSidebar}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={handleMobileClose}
+          headerSlot={
+            <Header
+              isCollapsed={isCollapsed}
+              onMobileMenu={() => setMobileSidebarOpen(true)}
+              unified
+            />
+          }
         />
+      </div>
+      {/* Main Content */}
+      <div className={`flex-1 flex flex-col min-h-screen bg-white dark:bg-gray-900`}>
         <MainContainer isCollapsed={isCollapsed}>
           {children}
         </MainContainer>

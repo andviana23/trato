@@ -11,7 +11,6 @@ module.exports = {
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "SUA_CHAVE_ANON",
         SUPABASE_SERVICE_ROLE_KEY: "SUA_CHAVE_SERVICE",
         ASAAS_TRATO_API_KEY: "SUA_CHAVE_TRATO",
-        ASAAS_ANDREY_API_KEY: "SUA_CHAVE_ANDREY",
         NEXT_PUBLIC_API_URL: "https://sistema.tratodebarbados.com",
       },
     },

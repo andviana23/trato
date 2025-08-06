@@ -32,6 +32,7 @@ export function useFiltrosAssinantes(assinantes: Assinante[]) {
     ordenacao: 'NOME_ASC'
   });
 
+  // Remover qualquer limitação de filtragem desnecessária
   const assinantesFiltrados = useMemo(() => {
     let resultado = [...assinantes];
 

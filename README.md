@@ -678,3 +678,20 @@ Apesar dessas ações, o erro persiste, indicando que a causa raiz é outra.
 ---
 
 **Foco para amanhã:** Resolver o erro `getCollectionNode` para desbloquear o desenvolvimento da funcionalidade da fila.
+
+### Melhorias na Página de Assinantes e Dashboard de Assinaturas
+
+#### Melhorias na Página de Assinantes
+
+- **Redesign de UX/UI:** A página de Assinantes foi redesenhada para melhorar a experiência do usuário, tornando-a mais intuitiva e visualmente atraente.
+- **Informações em Tempo Real:** Agora, a página exibe informações em tempo real do ASAAS, incluindo o total de clientes ativos e pagamentos confirmados no mês.
+- **Cards de Métricas:** Foram adicionados cards de métricas que mostram dados importantes, como o número de clientes ativos e pagamentos confirmados.
+- **Modal de Clientes Pagos:** Ao clicar no card de "Pagamentos Confirmados no Mês", um modal é exibido com a lista de clientes pagos no mês vigente.
+
+#### Melhorias no Dashboard de Assinaturas
+
+- **Layout Simplificado:** O dashboard foi redesenhado para apresentar informações reais de forma mais clara e direta.
+- **Atualizações de Dados:** Os dados exibidos no dashboard são atualizados em tempo real, garantindo que as informações sejam sempre precisas.
+- **Boas Práticas de UI/UX:** A interface foi ajustada para seguir boas práticas de design, melhorando a usabilidade e a estética.
+
+---

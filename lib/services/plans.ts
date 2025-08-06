@@ -1,26 +1,30 @@
-import { createClient } from "../supabase/client";
+import { createClient } from '../supabase/client';
 
-const supabase = createClient();
+export type Plano = {
+  id: string;
+  nome: string;
+  valor: number;
+  descricao?: string;
+  created_at: string;
+  updated_at: string;
+};
 
-export async function getPlanos() {
-  const { data, error } = await supabase.from("plans").select("*");
+// Buscar todos os planos
+export async function getPlanos(): Promise<Plano[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from('planos').select('*').order('nome', { ascending: true });
   if (error) throw error;
-  return (data || []).map(plano => ({
-    id: plano.id,
-    nome: plano.nome,
-    preco: Number(plano.preco),
-    descricao: plano.descricao,
-    categoria: plano.categoria
-  }));
+  return data as Plano[];
 }
 
-export async function criarPlano(plano: { nome: string; preco: number; descricao: string; categoria?: string }) {
-  const { data, error } = await supabase.from("plans").insert([{
-    nome: plano.nome,
-    preco: plano.preco,
-    descricao: plano.descricao,
-    categoria: plano.categoria
-  }]).select();
-  if (error) throw new Error(error.message || 'Erro ao criar plano');
-  return data?.[0];
+// Criar novo plano
+export async function criarPlano(plano: Omit<Plano, 'id' | 'created_at' | 'updated_at'>): Promise<Plano> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('planos')
+    .insert([plano])
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Plano;
 } 

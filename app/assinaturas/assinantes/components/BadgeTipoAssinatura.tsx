@@ -15,12 +15,6 @@ const tipoAssinaturaConfig = {
     border: 'border-purple-200',
     label: '🟣 Asaas Trato'
   },
-  'ASAAS_ANDREY': {
-    bg: 'bg-green-100', 
-    text: 'text-green-800',
-    border: 'border-green-200',
-    label: '🟢 Asaas Andrey'
-  },
   'EXTERNAL': {
     bg: 'bg-gray-100',
     text: 'text-gray-800', 

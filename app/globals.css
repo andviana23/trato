@@ -58,6 +58,45 @@
   }
 }
 
+.sidebar-item-active::before,
+.sidebar-item-active::after,
+nav [class*='sidebar'] a::before,
+nav [class*='sidebar'] a::after,
+nav [class*='sidebar'] button::before,
+nav [class*='sidebar'] button::after,
+nav [class*='sidebar'] a:hover::before,
+nav [class*='sidebar'] a:hover::after,
+nav [class*='sidebar'] button:hover::before,
+nav [class*='sidebar'] button:hover::after,
+nav [class*='sidebar'] a:active::before,
+nav [class*='sidebar'] a:active::after,
+nav [class*='sidebar'] button:active::before,
+nav [class*='sidebar'] button:active::after,
+nav [class*='sidebar'] .group:hover::before,
+nav [class*='sidebar'] .group:hover::after {
+  display: none !important;
+  content: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  border: none !important;
+}
+
+.sidebar-menu {
+  overflow-y: auto !important;
+  max-height: 100vh !important;
+  min-height: 0 !important;
+  scrollbar-width: thin;
+  scrollbar-color: #bcd0fa #f7faff;
+}
+.sidebar-menu::-webkit-scrollbar {
+  width: 8px;
+  background: #f7faff;
+}
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: #bcd0fa;
+  border-radius: 8px;
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -29,15 +29,25 @@ export default function ClienteModal({ open, onClose, onSuccess, cliente }: { op
 
   async function onSubmit(data: any) {
     try {
+      const payload: any = {
+        nome: data.nome,
+        telefone: data.telefone,
+      };
+      if (data.email) payload.email = data.email;
+      if (data.cpf_cnpj) payload.cpf_cnpj = data.cpf_cnpj;
+      if (data.endereco) payload.endereco = data.endereco;
+      if (data.observacoes) payload.observacoes = data.observacoes;
+      if (data.data_nascimento && data.data_nascimento.length === 10) payload.data_nascimento = data.data_nascimento;
       if (cliente) {
-        await atualizarCliente(cliente.id, data);
+        await atualizarCliente(cliente.id, payload);
       } else {
-        await cadastrarCliente(data);
+        await cadastrarCliente(payload);
       }
       onSuccess();
       reset();
     } catch (e: any) {
-      alert("Erro ao salvar cliente: " + (e.message || e));
+      console.error("Erro ao salvar cliente:", e);
+      alert("Erro ao salvar cliente: " + JSON.stringify(e, null, 2));
     }
   }
 

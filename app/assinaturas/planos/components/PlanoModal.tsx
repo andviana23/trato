@@ -48,7 +48,7 @@ export default function PlanoModal({ open, onClose, onSalvar, plano }: PlanoModa
         setCategorias([...categorias, novaCategoria]);
       }
     }
-    const planoData = { id: plano?.id, nome, preco: Number(preco), descricao, categoria: categoriaFinal };
+    const planoData = { nome, preco: Number(preco), descricao, categoria: categoriaFinal };
     onSalvar(planoData);
     setNome("");
     setPreco("");

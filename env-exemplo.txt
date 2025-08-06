@@ -1,0 +1,25 @@
+# INSTRUÇÕES IMPORTANTES:
+# 1. Copie TODO o conteúdo abaixo (a partir da linha "# Supabase Configuration")
+# 2. Cole no arquivo .env.local (substitua todo o conteúdo existente)
+# 3. Substitua os valores de exemplo pelos valores reais do seu projeto Supabase
+# 4. Salve o arquivo
+# 5. Pare o servidor (Ctrl+C) e execute novamente: npm run dev
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto-aqui.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.cole-sua-anon-key-aqui
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.cole-sua-service-role-key-aqui
+
+# NextAuth Configuration
+NEXTAUTH_SECRET=32caracteresaleatoriosaquiABCD1234567890XYZ
+NEXTAUTH_URL=http://localhost:3000
+
+# ONDE ENCONTRAR ESSES VALORES:
+# 1. Acesse https://supabase.com/dashboard
+# 2. Faça login e selecione seu projeto
+# 3. No menu lateral, clique em "Settings" (ícone de engrenagem)
+# 4. Clique em "API"
+# 5. Você verá:
+#    - Project URL: copie e cole no lugar de "https://seu-projeto-aqui.supabase.co"
+#    - anon public: copie e cole no lugar de "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.cole-sua-anon-key-aqui"
+#    - service_role: copie e cole no lugar de "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.cole-sua-service-role-key-aqui" 

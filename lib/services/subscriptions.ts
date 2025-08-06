@@ -1,23 +1,39 @@
-import { createClient } from "../supabase/client";
+import { createClient } from '../supabase/client';
 
-const supabase = createClient();
+export type Assinatura = {
+  id: string;
+  cliente_id: string;
+  plano_id: string;
+  status: string;
+  data_inicio: string;
+  data_vencimento: string;
+  valor: number;
+  created_at: string;
+  updated_at: string;
+};
 
-export async function criarAssinatura({ cliente_id, plano_id, vencimento, forma_pagamento, plan_name, price }: { cliente_id: string, plano_id: string, vencimento: string, forma_pagamento: string, plan_name: string, price: number }) {
-  const hoje = new Date();
-  const fim = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  const { data, error } = await supabase.from("subscriptions").insert([
-    {
-      client_id: cliente_id,
-      plan_id: plano_id,
-      plan_name: plan_name,
-      price: price,
-      due_date: vencimento,
-      payment_method: forma_pagamento,
-      barbershop_id: "41abae7d-ac5f-410f-a2e8-9c027a25d60d",
-      current_period_start: hoje.toISOString().split('T')[0],
-      current_period_end: fim.toISOString().split('T')[0]
-    }
-  ]).select();
+// Criar uma nova assinatura
+export async function criarAssinatura(assinatura: Omit<Assinatura, 'id' | 'created_at' | 'updated_at'>): Promise<Assinatura> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from('assinaturas').insert([assinatura]).select('*').single();
   if (error) throw error;
-  return data?.[0];
+  return data as Assinatura;
+}
+
+// Buscar todas as assinaturas
+export async function getAssinaturas(): Promise<Assinatura[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from('assinaturas').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Assinatura[];
+}
+
+// Atualizar status da assinatura
+export async function updateAssinaturaStatus(id: string, status: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('assinaturas')
+    .update({ status })
+    .eq('id', id);
+  if (error) throw error;
 } 

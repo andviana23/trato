@@ -29,6 +29,7 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
+import dayjs from 'dayjs';
 
 interface ModalProps {
   open: boolean;
@@ -47,8 +48,9 @@ interface Cliente {
 interface Plano {
   id: string;
   nome: string;
-  valor: number;
+  preco: number;
   descricao?: string;
+  categoria?: string; // Adicionado para categorizar os planos
 }
 
 export default function CadastrarAssinanteModal({ open, onClose, onSuccess }: ModalProps) {
@@ -69,21 +71,38 @@ export default function CadastrarAssinanteModal({ open, onClose, onSuccess }: Mo
   const [showConfirmacaoPagamento, setShowConfirmacaoPagamento] = useState(false);
   const [confirmandoPagamento, setConfirmandoPagamento] = useState(false);
 
+  // Wizard multi-etapas
+  const [etapa, setEtapa] = useState(1);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string | null>(null);
+  const [planosCategoria, setPlanosCategoria] = useState<Plano[]>([]);
+  const [observacao, setObservacao] = useState('');
+  const [notificando, setNotificando] = useState(false);
+  const [categorias, setCategorias] = useState<string[]>([]);
+
   const clienteInputRef = useRef<HTMLInputElement>(null);
   const planoInputRef = useRef<HTMLInputElement>(null);
 
+  // Logar o array de planos completo ao carregar
   useEffect(() => {
     if (open) {
       getClientes().then(setClientes);
-      setPlanos([]);
+      getPlanos().then((planos) => {
+        setPlanos(planos);
+        setCategorias(Array.from(new Set(planos.map((p: any) => p.categoria).filter(Boolean))));
+        console.log('planos carregados:', planos);
+      });
       setClienteBusca("");
       setPlanoBusca("");
       setClienteSelecionado(null);
       setPlanoSelecionado(null);
       setVencimento("");
-      setFormaPagamento("cartao");
+      setFormaPagamento("");
       setErro("");
       setShowConfirmacaoPagamento(false);
+      setEtapa(1);
+      setCategoriaSelecionada(null);
+      setPlanosCategoria([]);
+      setObservacao("");
     }
   }, [open]);
 
@@ -112,6 +131,11 @@ export default function CadastrarAssinanteModal({ open, onClose, onSuccess }: Mo
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  // Adicionar log de debug no componente
+  useEffect(() => {
+    console.log('etapa:', etapa, 'formaPagamento:', formaPagamento, 'categoriaSelecionada:', categoriaSelecionada, 'planosCategoria:', planosCategoria);
+  }, [etapa, formaPagamento, categoriaSelecionada, planosCategoria]);
 
   const clientesFiltrados = clientes.filter((c) => {
     const busca = clienteBusca.toLowerCase();
@@ -242,309 +266,216 @@ export default function CadastrarAssinanteModal({ open, onClose, onSuccess }: Mo
     setShowPlanos(false);
   };
 
+  // Ao selecionar cliente:
+  const handleSelecionarCliente = (cliente: Cliente) => {
+    setClienteSelecionado(cliente);
+    setEtapa(2); // Avança para forma de pagamento
+  };
+
+  // Ao selecionar categoria:
+  function renderPasso2() {
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <h3 className="text-lg font-bold">Escolha a forma de pagamento:</h3>
+        <div className="flex gap-6">
+          <button onClick={() => { setFormaPagamento('link'); setEtapa(5); }} className="px-6 py-4 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold text-lg shadow transition-all">Link</button>
+          <button onClick={() => { setFormaPagamento('dinheiro'); setEtapa(3); }} className="px-6 py-4 rounded-xl bg-green-100 hover:bg-green-200 text-green-700 font-semibold text-lg shadow transition-all">Dinheiro</button>
+        </div>
+        <button onClick={() => setEtapa(1)} className="mt-4 text-sm text-gray-500 hover:underline">Voltar</button>
+      </div>
+    );
+  }
+
+  // Passo 3: Seleção de plano
+  function renderPasso3() {
+    console.log('planosCategoria:', planosCategoria);
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <h3 className="text-lg font-bold">Selecione o plano:</h3>
+        <div className="flex flex-wrap gap-4 justify-center">
+          {planosCategoria.length === 0 ? (
+            <span className="text-gray-400 text-sm">Nenhum plano encontrado para esta categoria.</span>
+          ) : (
+            planosCategoria.map(plano => (
+              <button key={plano.id} onClick={() => { setPlanoSelecionado(plano); setEtapa(5); }} className={`px-6 py-4 rounded-xl border-2 font-semibold text-lg shadow transition-all ${planoSelecionado?.id === plano.id ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}>
+              <div>{plano.nome}</div>
+              <div className="text-sm text-gray-500">{plano.descricao}</div>
+              <div className="text-base font-bold mt-2">R$ {Number(plano.preco).toFixed(2)}</div>
+            </button>
+            ))
+          )}
+        </div>
+        <button onClick={() => setEtapa(2)} className="mt-4 text-sm text-gray-500 hover:underline">Voltar</button>
+      </div>
+    );
+  }
+
+  // Passo 4: Confirmação e observação
+  function renderPasso4() {
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <h3 className="text-lg font-bold">Confirmação</h3>
+        <div className="w-full max-w-xs bg-gray-50 rounded-xl p-4 shadow flex flex-col gap-2">
+          <div><b>Forma de pagamento:</b> {formaPagamento === 'link' ? 'Link' : 'Dinheiro'}</div>
+          {formaPagamento === 'dinheiro' && planoSelecionado && (
+            <>
+              <div><b>Categoria:</b> {categoriaSelecionada}</div>
+              <div><b>Plano:</b> {planoSelecionado.nome}</div>
+              <div><b>Valor:</b> R$ {planoSelecionado.valor?.toFixed(2)}</div>
+            </>
+          )}
+          <div className="text-sm text-gray-500 mt-2">Observação: <b>Aguardando pagamento</b></div>
+        </div>
+        <div className="flex gap-4 mt-4">
+          <button onClick={() => setEtapa(formaPagamento === 'dinheiro' ? 3 : 1)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium">Voltar</button>
+          <button onClick={async () => {
+            setNotificando(true);
+            try {
+              await criarAssinatura({
+                // Adicione todos os campos obrigatórios
+                cliente_id: clienteSelecionado?.id,
+                plano_id: planoSelecionado?.id,
+                plan_name: planoSelecionado?.nome,
+                price: Number(planoSelecionado?.preco),
+                status: 'AGUARDANDO_PAGAMENTO',
+                observacao: 'Aguardando pagamento',
+                categoria: categoriaSelecionada,
+                forma_pagamento: formaPagamento
+              });
+              toast.success('Cliente adicionado com sucesso e aguardando pagamento!');
+              onClose();
+            } catch (err: any) {
+              const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+              toast.error('Erro ao adicionar assinante: ' + msg);
+            } finally {
+              setNotificando(false);
+            }
+          }} className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all" disabled={notificando}>
+            {notificando ? 'Salvando...' : 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Novo fluxo multi-etapas: 1) Seleção de cliente, 2) Forma de pagamento, 3) Categoria, 4) Plano, 5) Confirmação
+  function renderPasso1Cliente() {
+    const clientesFiltrados = clientes.filter((c) =>
+      c.nome?.toLowerCase().includes(clienteBusca.toLowerCase()) ||
+      c.email?.toLowerCase().includes(clienteBusca.toLowerCase()) ||
+      c.telefone?.toLowerCase().includes(clienteBusca.toLowerCase())
+    );
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <h3 className="text-lg font-bold">Selecione o cliente:</h3>
+        <input
+          type="text"
+          placeholder="Buscar cliente por nome, email ou telefone"
+          value={clienteBusca}
+          onChange={e => setClienteBusca(e.target.value)}
+          className="w-72 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <div className="flex flex-col gap-2 max-h-48 overflow-y-auto w-full">
+          {clientesFiltrados.map(cliente => (
+            <button key={cliente.id} onClick={() => handleSelecionarCliente(cliente)} className={`px-4 py-2 rounded-lg border text-left ${clienteSelecionado?.id === cliente.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}>{cliente.nome} {cliente.email && <span className="text-xs text-gray-400 ml-2">{cliente.email}</span>}</button>
+          ))}
+          {clientesFiltrados.length === 0 && <span className="text-gray-400 text-sm">Nenhum cliente encontrado</span>}
+        </div>
+      </div>
+    );
+  }
+
+  // Novo passo: seleção de categoria
+  function renderPassoCategoria() {
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <h3 className="text-lg font-bold">Selecione a categoria:</h3>
+        <div className="flex flex-wrap gap-4 justify-center">
+          {categorias.length === 0 ? (
+            <span className="text-gray-400 text-sm">Nenhuma categoria cadastrada.</span>
+          ) : (
+            categorias.map(cat => (
+              <button key={cat} onClick={() => {
+                setCategoriaSelecionada(cat);
+                setPlanosCategoria(planos.filter(p => (p.categoria || '').toLowerCase() === cat.toLowerCase()));
+                setEtapa(4);
+              }} className={`px-6 py-4 rounded-xl border-2 font-semibold text-lg shadow transition-all ${categoriaSelecionada === cat ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}>{cat}</button>
+            ))
+          )}
+        </div>
+        <button onClick={() => setEtapa(2)} className="mt-4 text-sm text-gray-500 hover:underline">Voltar</button>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {/* Modal Principal - Cadastrar Assinante */}
-      <Modal 
-        isOpen={open} 
-        onOpenChange={onClose}
-        size="2xl"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Cadastrar Assinante
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Preencha os dados para cadastrar um novo assinante
-            </p>
-          </ModalHeader>
-          
-          <ModalBody className="space-y-6">
-            {/* Cliente */}
-            <div className="relative">
-              <Input
-                ref={clienteInputRef}
-                label="Nome do Cliente"
-                placeholder="Buscar cliente..."
-                value={clienteBusca}
-                onFocus={() => setShowClientes(true)}
-                onChange={(e) => {
-                  setClienteBusca(e.target.value);
-                  setShowClientes(true);
-                  setClienteSelecionado(null);
-                }}
-                startContent={<UserIcon className="w-4 h-4 text-gray-400" />}
-                endContent={
-                  clienteSelecionado && (
-                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                  )
-                }
-                color={clienteSelecionado ? "success" : "default"}
-                className="cliente-dropdown"
-              />
-              
-              {/* Dropdown de Clientes */}
-              {showClientes && (
-                <div 
-                  className="absolute top-full left-0 right-0 z-[9999] mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto cliente-dropdown"
-                  style={{ position: 'absolute', zIndex: 9999 }}
-                >
-                  {clientesFiltrados.length > 0 ? (
-                    clientesFiltrados.map((cliente) => (
-                      <div
-                        key={cliente.id}
-                        onClick={() => handleClienteSelect(cliente)}
-                        className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
-                      >
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {cliente.nome}
-                        </div>
-                        {cliente.email && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {cliente.email}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">
-                      {clienteBusca ? 'Nenhum cliente encontrado' : 'Digite para buscar clientes'}
-                    </div>
-                  )}
+    <Modal isOpen={open} onClose={onClose} placement="top-center">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex flex-col gap-1">Cadastrar Assinante</ModalHeader>
+            <ModalBody>
+              {etapa === 1 && renderPasso1Cliente()}
+              {etapa === 2 && renderPasso2()}
+              {etapa === 3 && renderPassoCategoria()}
+              {etapa === 4 && renderPasso3()}
+              {etapa === 5 && (
+                <div className="flex flex-col items-center gap-6">
+                  <h3 className="text-lg font-bold">Confirmação</h3>
+                  <div className="w-full max-w-xs bg-gray-50 rounded-xl p-4 shadow flex flex-col gap-2">
+                    <div><b>Forma de pagamento:</b> {formaPagamento === 'link' ? 'Link' : 'Dinheiro'}</div>
+                    {formaPagamento === 'dinheiro' && planoSelecionado && (
+                      <>
+                        <div><b>Categoria:</b> {categoriaSelecionada}</div>
+                        <div><b>Plano:</b> {planoSelecionado.nome}</div>
+                        <div><b>Valor:</b> R$ {planoSelecionado.valor?.toFixed(2)}</div>
+                      </>
+                    )}
+                    <div className="text-sm text-gray-500 mt-2">Observação: <b>Aguardando pagamento</b></div>
+                  </div>
+                  <div className="flex gap-4 mt-4">
+                    <button onClick={() => setEtapa(formaPagamento === 'dinheiro' ? 3 : 1)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium">Voltar</button>
+                    <button onClick={async () => {
+                      setNotificando(true);
+                      try {
+                        const dataPagamento = dayjs();
+                        const dataVencimento = dataPagamento.add(30, 'day').format('YYYY-MM-DD');
+                        await criarAssinatura({
+                          // Adicione todos os campos obrigatórios
+                          cliente_id: clienteSelecionado?.id,
+                          nome_cliente: clienteSelecionado?.nome,
+                          plano_id: planoSelecionado?.id,
+                          plan_name: planoSelecionado?.nome,
+                          price: Number(planoSelecionado?.preco),
+                          status: 'AGUARDANDO_PAGAMENTO',
+                          observacao: 'Aguardando pagamento',
+                          categoria: categoriaSelecionada,
+                          forma_pagamento: formaPagamento,
+                          data_vencimento: dataVencimento
+                        });
+                        toast.success('Cliente adicionado com sucesso e aguardando pagamento!');
+                        onClose();
+                      } catch (err: any) {
+                        const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                        toast.error('Erro ao adicionar assinante: ' + msg);
+                      } finally {
+                        setNotificando(false);
+                      }
+                    }} className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all" disabled={notificando}>
+                      {notificando ? 'Salvando...' : 'Confirmar'}
+                    </button>
+                  </div>
                 </div>
               )}
-            </div>
-
-            {/* Plano */}
-            <div className="relative">
-              <Input
-                ref={planoInputRef}
-                label="Plano"
-                placeholder={clienteSelecionado ? "Buscar plano..." : "Selecione um cliente primeiro"}
-                value={planoBusca}
-                disabled={!clienteSelecionado}
-                onFocus={() => setShowPlanos(true)}
-                onChange={(e) => {
-                  setPlanoBusca(e.target.value);
-                  setShowPlanos(true);
-                  setPlanoSelecionado(null);
-                }}
-                startContent={<CreditCardIcon className="w-4 h-4 text-gray-400" />}
-                endContent={
-                  planoSelecionado && (
-                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                  )
-                }
-                color={planoSelecionado ? "success" : "default"}
-                className="plano-dropdown"
-              />
-              
-              {/* Dropdown de Planos */}
-              {showPlanos && clienteSelecionado && planosFiltrados.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto plano-dropdown">
-                  {planosFiltrados.map((plano) => (
-                    <div
-                      key={plano.id}
-                      onClick={() => handlePlanoSelect(plano)}
-                      className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white">
-                            {plano.nome}
-                          </div>
-                          {plano.descricao && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {plano.descricao}
-                            </div>
-                          )}
-                        </div>
-                        <Chip size="sm" color="primary" variant="flat">
-                          {formatCurrency(plano.valor)}
-                        </Chip>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Data do Vencimento */}
-            <Input
-              label="Data do Vencimento"
-              type="date"
-              value={vencimento}
-              min={hoje.toISOString().split("T")[0]}
-              max={maxDate.toISOString().split("T")[0]}
-              onChange={(e) => setVencimento(e.target.value)}
-              startContent={<CalendarIcon className="w-4 h-4 text-gray-400" />}
-            />
-
-            {/* Forma de Pagamento */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                Forma de Pagamento
-              </label>
-              <RadioGroup
-                value={formaPagamento}
-                onValueChange={setFormaPagamento}
-                orientation="horizontal"
-                classNames={{
-                  wrapper: "gap-6"
-                }}
-              >
-                <Radio value="cartao" description="Pagamento via cartão de crédito">
-                  <div className="flex items-center gap-2">
-                    <CreditCardIcon className="w-4 h-4" />
-                    Cartão de Crédito
-                  </div>
-                </Radio>
-                <Radio value="externo" description="Pagamento recebido externamente">
-                  <div className="flex items-center gap-2">
-                    <BanknotesIcon className="w-4 h-4" />
-                    Pagamento Externo
-                  </div>
-                </Radio>
-              </RadioGroup>
-            </div>
-
-            {/* Resumo da Seleção */}
-            {(clienteSelecionado || planoSelecionado) && (
-              <Card className="bg-gray-50 dark:bg-gray-800">
-                <CardBody className="p-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">Resumo da Seleção</h4>
-                  <div className="space-y-2 text-sm">
-                    {clienteSelecionado && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Cliente:</span>
-                        <span className="font-medium text-gray-900 dark:text-white">{clienteSelecionado.nome}</span>
-                      </div>
-                    )}
-                    {planoSelecionado && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Plano:</span>
-                        <span className="font-medium text-gray-900 dark:text-white">{planoSelecionado.nome}</span>
-                      </div>
-                    )}
-                    {planoSelecionado && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Valor:</span>
-                        <span className="font-medium text-green-600 dark:text-green-400">
-                          {formatCurrency(planoSelecionado.valor)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </CardBody>
-              </Card>
-            )}
-
-            {/* Mensagem de Erro */}
-            {erro && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-red-700 dark:text-red-400 text-sm">{erro}</p>
-              </div>
-            )}
-          </ModalBody>
-
-          <ModalFooter>
-            <Button variant="light" onPress={onClose}>
-              Cancelar
-            </Button>
-            <Button 
-              color="primary" 
-              onPress={handleConfirmar}
-              isLoading={carregando}
-              disabled={!clienteSelecionado || !planoSelecionado || !vencimento}
-            >
-              {carregando ? "Salvando..." : "Confirmar"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Modal Secundário - Confirmar Pagamento Externo */}
-      <Modal 
-        isOpen={showConfirmacaoPagamento} 
-        onOpenChange={setShowConfirmacaoPagamento}
-        size="md"
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              Confirmar Pagamento
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Confirme que o pagamento foi recebido
-            </p>
-          </ModalHeader>
-          
-          <ModalBody>
-            <Card className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <CardBody className="p-4">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-3">
-                  Resumo do Assinante
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 dark:text-blue-300">Cliente:</span>
-                    <span className="font-medium text-blue-900 dark:text-blue-100">
-                      {clienteSelecionado?.nome}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 dark:text-blue-300">Plano:</span>
-                    <span className="font-medium text-blue-900 dark:text-blue-100">
-                      {planoSelecionado?.nome}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 dark:text-blue-300">Valor:</span>
-                    <span className="font-medium text-green-600 dark:text-green-400">
-                      {planoSelecionado ? formatCurrency(planoSelecionado.valor) : ''}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 dark:text-blue-300">Vencimento:</span>
-                    <span className="font-medium text-blue-900 dark:text-blue-100">
-                      {vencimento}
-                    </span>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-            
-            <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <p className="text-yellow-800 dark:text-yellow-200 text-sm font-medium">
-                Confirmar que o pagamento foi recebido?
-              </p>
-              <p className="text-yellow-700 dark:text-yellow-300 text-xs mt-1">
-                O cliente será marcado como "Assinatura Ativa" e adicionado à lista de Pagamentos Externos.
-              </p>
-            </div>
-          </ModalBody>
-
-          <ModalFooter>
-            <Button 
-              variant="light" 
-              onPress={() => setShowConfirmacaoPagamento(false)}
-              disabled={confirmandoPagamento}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              color="success" 
-              onPress={handleConfirmarPagamentoExterno}
-              isLoading={confirmandoPagamento}
-              startContent={<CheckCircleIcon className="w-4 h-4" />}
-            >
-              {confirmandoPagamento ? "Confirmando..." : "Confirmar Pagamento"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </>
+            </ModalBody>
+            <ModalFooter>
+              <Button color="danger" variant="flat" onPress={onClose}>
+                Fechar
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
-} 
+}

@@ -1,347 +1,287 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Card, CardBody, CardHeader, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Chip, Tooltip, Progress, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Badge
-} from '@nextui-org/react';
-import { ArrowPathIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, CalendarIcon, ChartBarIcon, BanknotesIcon, UserIcon, EnvelopeIcon, ClockIcon } from '@heroicons/react/24/outline';
-import PeriodFilter from './components/PeriodFilter';
-import RevenueTimeline from './components/RevenueTimeline';
-import { toast } from 'sonner';
-import { usePermissions } from '@/lib/contexts/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Card, CardBody, Button, Chip, Progress } from '@nextui-org/react';
+import { ChartBarIcon, CalendarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { useEffect, useState } from 'react';
+import { getAssinaturas } from '@/lib/services/subscriptions';
+import { usePagamentosAsaas } from '../assinantes/hooks/usePagamentosAsaas';
+import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
-interface DashboardData {
-  month: number;
-  year: number;
-  revenue: {
-    asaasTrato: number;
-    asaasAndrey: number;
-    external: number;
-    total: number;
-  };
-  overdueCount: number;
-  goal: {
-    amount: number;
-    description: string;
-  };
-  updatedAt: string;
-  revenueTimeline?: {
-    revenue?: number;
-    paymentsCount?: number;
-    customers?: string[];
-    bySource?: {
-      asaasTrato?: number;
-      asaasAndrey?: number;
-      external?: number;
-    };
-  }[];
-}
+const COLORS = ['#f59e42', '#6366f1', '#22c55e', '#e11d48'];
 
-interface ExternalPayment {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  value: number;
-  status: 'ATIVO' | 'ATRASADO';
-  nextDueDate: string;
-  daysOverdue?: number;
-  notes?: string;
+function exportToCSV(data: any[], filename: string) {
+  const csvRows = [];
+  const headers = Object.keys(data[0]);
+  csvRows.push(headers.join(','));
+  for (const row of data) {
+    const values = headers.map(h => JSON.stringify(row[h] ?? ''));
+    csvRows.push(values.join(','));
+  }
+  const csv = csvRows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('hidden', '');
+  a.setAttribute('href', url);
+  a.setAttribute('download', filename);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 export default function DashboardAssinaturas() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [externalPayments, setExternalPayments] = useState<ExternalPayment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [externalLoading, setExternalLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({
-    period: 'month' as 'day' | 'month' | 'year',
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-    day: new Date().getDate()
+  const [assinaturas, setAssinaturas] = useState<any[]>([]);
+  const { pagamentos } = usePagamentosAsaas({ dataInicio: dayjs().startOf('year').format('YYYY-MM-DD'), dataFim: dayjs().endOf('year').format('YYYY-MM-DD') });
+  useEffect(() => { getAssinaturas().then(setAssinaturas); }, []);
+
+  // Unir pagamentos do Asaas e assinaturas em dinheiro
+  const todosPagamentos = [
+    ...pagamentos.map(p => ({
+      id: p.payment_id,
+      nome: p.customer_name,
+      valor: p.valor,
+      status: p.status,
+      data_pagamento: p.payment_date,
+      tipo_pagamento: (p.billing_type || '').toUpperCase(),
+      origem: 'asaas',
+    })),
+    ...assinaturas.map(a => ({
+      id: a.id,
+      nome: a.nome_cliente || '',
+      valor: a.price,
+      status: a.status,
+      data_pagamento: a.created_at,
+      tipo_pagamento: (a.forma_pagamento || '').toUpperCase(),
+      origem: 'dinheiro',
+    }))
+  ];
+
+  const [filtros, setFiltros] = useState({
+    dataInicio: '',
+    dataFim: '',
+    status: '',
+    tipoPagamento: ''
   });
-  const [metaModalOpen, setMetaModalOpen] = useState(false);
-  const [metaInput, setMetaInput] = useState<string>('');
-  const [metaDesc, setMetaDesc] = useState<string>('');
-  const [metaSaving, setMetaSaving] = useState(false);
-  const metaInputRef = useRef<HTMLInputElement>(null);
-  const { isAdmin, isOwner } = usePermissions();
+  const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
 
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({
-        year: filters.year.toString(),
-        month: filters.month.toString()
-      });
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(`/api/dashboard/faturamento-mensal?${params}`, { signal: controller.signal });
-      clearTimeout(timeout);
-      const result = await response.json();
-      if (result.success) {
-        setData(result);
-      } else {
-        setError(result.error || 'Erro ao carregar dados');
-        toast.error('Erro ao carregar dados do dashboard');
-      }
-    } catch {
-      setError('Erro ao conectar com o servidor');
-      toast.error('Erro de conexão');
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  // Função para aplicar os filtros ao clicar no botão
+  function aplicarFiltros() {
+    setFiltrosAplicados({ ...filtros });
+  }
 
-  const fetchExternalPayments = useCallback(async () => {
-    try {
-      setExternalLoading(true);
-      const response = await fetch('/api/external-payments');
-      const result = await response.json();
-      
-      if (result.success) {
-        const payments: ExternalPayment[] = (result.payments || []).map((p: any) => ({
-          id: p.id,
-          customerName: p.customerName || p.nome || 'Não informado',
-          customerEmail: p.customerEmail || p.email || 'Não informado',
-          value: p.value || p.price || 0,
-          status: p.status || 'ATIVO',
-          nextDueDate: p.nextDueDate || p.current_period_end || p.vencimento || '',
-          daysOverdue: p.daysOverdue || 0,
-          notes: p.notes || ''
-        }));
-        setExternalPayments(payments);
-      } else {
-        console.error('Erro ao carregar pagamentos externos:', result.error);
-        toast.error('Erro ao carregar pagamentos externos');
-      }
-    } catch (error) {
-      console.error('Erro ao buscar pagamentos externos:', error);
-      toast.error('Erro de conexão com pagamentos externos');
-    } finally {
-      setExternalLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDashboardData();
-    fetchExternalPayments();
-  }, [fetchDashboardData, fetchExternalPayments]);
-
-  const handleFilterChange = (newFilters: { period: 'day' | 'month' | 'year'; year: number; month?: number; day?: number }) => {
-    setFilters({
-      ...newFilters,
-      month: newFilters.month || filters.month,
-      day: newFilters.day || filters.day
+  // Função para filtrar os dados
+  function filtrarDados(pagamentos) {
+    return pagamentos.filter(p => {
+      const dataOk = (!filtrosAplicados.dataInicio || dayjs(p.data_pagamento).isSameOrAfter(filtrosAplicados.dataInicio)) &&
+        (!filtrosAplicados.dataFim || dayjs(p.data_pagamento).isSameOrBefore(filtrosAplicados.dataFim));
+      const statusOk = !filtrosAplicados.status || p.status === filtrosAplicados.status;
+      const tipoOk = !filtrosAplicados.tipoPagamento || p.tipo_pagamento === filtrosAplicados.tipoPagamento;
+      return dataOk && statusOk && tipoOk;
     });
-  };
+  }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  const todosPagamentosFiltrados = filtrarDados(todosPagamentos);
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '--';
-    try {
-      return new Date(dateString).toLocaleDateString('pt-BR');
-    } catch {
-      return '--';
-    }
-  };
+  // Filtro para o mês vigente no fuso de São Paulo
+  const inicioMes = dayjs().tz('America/Sao_Paulo').startOf('month');
+  const fimMes = dayjs().tz('America/Sao_Paulo').endOf('month');
+  const pagamentosMesVigente = todosPagamentosFiltrados.filter(p => {
+    const data = dayjs(p.data_pagamento).tz('America/Sao_Paulo');
+    return data.isSameOrAfter(inicioMes) && data.isSameOrBefore(fimMes);
+  });
 
-  const openMetaModal = () => {
-    setMetaInput(data?.goal?.amount?.toString() || '');
-    setMetaDesc(data?.goal?.description || '');
-    setMetaModalOpen(true);
-    setTimeout(() => metaInputRef.current?.focus(), 100);
-  };
+  // KPIs do mês vigente
+  const assinaturasAtivas = pagamentosMesVigente.filter(
+    p => p.status === 'CONFIRMED' && (p.tipo_pagamento === 'CREDIT_CARD' || p.tipo_pagamento === 'PIX')
+  );
+  const faturamento = pagamentosMesVigente.filter(p => p.status === 'CONFIRMED').reduce((acc, p) => acc + Number(p.valor), 0);
+  const inadimplentes = pagamentosMesVigente.filter(p => p.status !== 'CONFIRMED');
+  const cancelados = pagamentosMesVigente.filter(p => p.status === 'CANCELLED');
 
-  const handleSaveMeta = async () => {
-    setMetaSaving(true);
-    try {
-      const amount = parseFloat(metaInput.replace(/[^0-9,\.]/g, '').replace(',', '.'));
-      const desc = metaDesc;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const res = await fetch('/api/dashboard/metas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          year: filters.year,
-          month: filters.month,
-          goalAmount: amount,
-          description: desc
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-      const result = await res.json();
-      if (result.success) {
-        toast.success('Meta atualizada!');
-        setMetaModalOpen(false);
-        fetchDashboardData();
-      } else {
-        toast.error(result.error || 'Erro ao salvar meta');
-      }
-    } catch {
-      toast.error('Erro ao salvar meta');
-    } finally {
-      setMetaSaving(false);
-    }
-  };
+  // Gráfico de faturamento mensal
+  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const faturamentoMensal = meses.map((mes, i) => {
+    const mesNum = i + 1;
+    const doMes = todosPagamentosFiltrados.filter(p => dayjs(p.data_pagamento).month() + 1 === mesNum && p.status === 'CONFIRMED');
+    return {
+      mes,
+      Cartao: doMes.filter(p => p.tipo_pagamento === 'CREDIT_CARD').reduce((acc, p) => acc + Number(p.valor), 0),
+      PIX: doMes.filter(p => p.tipo_pagamento === 'PIX').reduce((acc, p) => acc + Number(p.valor), 0),
+      Dinheiro: doMes.filter(p => p.tipo_pagamento === 'DINHEIRO').reduce((acc, p) => acc + Number(p.valor), 0),
+    };
+  });
 
-  // Cálculos para UI
-  const meta = data?.goal?.amount || 0;
-  const faturamento = (data?.revenue?.asaasTrato || 0) + (data?.revenue?.asaasAndrey || 0) + (data?.revenue?.external || 0);
-  const percentMeta = meta ? Math.round((faturamento / meta) * 100) : 0;
-  const overdue = data?.overdueCount || 0;
+  // Gráfico de pizza por tipo de pagamento
+  const tipos = ['CREDIT_CARD', 'PIX', 'DINHEIRO'];
+  const pieData = tipos.map(tipo => ({
+    name: tipo === 'CREDIT_CARD' ? 'Cartão' : tipo.charAt(0) + tipo.slice(1).toLowerCase(),
+    value: todosPagamentosFiltrados.filter(p => p.tipo_pagamento === tipo && p.status === 'CONFIRMED').reduce((acc, p) => acc + Number(p.valor), 0)
+  }));
 
-  // Faturamento de pagamentos externos (apenas valor total)
-  const externalRevenue = data?.revenue?.external || 0;
+  // Tabela analítica
+  const tabelaDados = todosPagamentosFiltrados.map(p => ({
+    Cliente: p.nome,
+    Plano: p.plano,
+    Valor: Number(p.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+    Status: p.status,
+    Data: dayjs(p.data_pagamento).tz('America/Sao_Paulo').format('DD/MM/YYYY'),
+    Tipo: p.tipo_pagamento === 'CREDIT_CARD' ? 'Cartão' : p.tipo_pagamento === 'PIX' ? 'PIX' : p.tipo_pagamento === 'DINHEIRO' ? 'Dinheiro' : p.tipo_pagamento
+  }));
 
   return (
     <DashboardLayout>
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-10 font-sans">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-1 flex items-center gap-2">
               <ChartBarIcon className="w-7 h-7 text-primary-500" /> Dashboard de Assinaturas
             </h1>
-            <p className="text-default-500">
-              Faturamento e metas de {filters.month.toString().padStart(2, '0')}/{filters.year}
-            </p>
+            <p className="text-default-500">Visão financeira e analítica das assinaturas</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              color="primary"
-              variant="flat"
-              startContent={<ArrowPathIcon className="w-4 h-4" />}
-              onPress={fetchDashboardData}
-              isLoading={loading}
-            >
-              Atualizar Dados
-            </Button>
+            <Button color="primary" variant="flat">Atualizar Dados</Button>
+            <Button color="success" onClick={() => exportToCSV(tabelaDados, 'assinaturas.csv')}>Exportar CSV</Button>
           </div>
         </div>
 
         {/* Filtros */}
-        <div className="mb-4">
-          <PeriodFilter onFilterChange={handleFilterChange} currentFilters={filters} />
+        <div className="flex flex-wrap gap-4 items-end bg-white rounded-xl shadow p-4 mb-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Período</label>
+            <input type="date" className="w-36 px-2 py-1 border rounded" value={filtros.dataInicio} onChange={e => setFiltros(f => ({ ...f, dataInicio: e.target.value }))} />
+            <span className="mx-2 text-gray-500">até</span>
+            <input type="date" className="w-36 px-2 py-1 border rounded" value={filtros.dataFim} onChange={e => setFiltros(f => ({ ...f, dataFim: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select className="px-3 py-2 rounded-lg border border-zinc-300 bg-white text-zinc-800 focus:outline-none" value={filtros.status} onChange={e => setFiltros(f => ({ ...f, status: e.target.value }))}>
+              <option value="">Todos</option>
+              <option value="CONFIRMED">Confirmados</option>
+              <option value="PENDING">Pendentes</option>
+              <option value="CANCELLED">Cancelados</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de Pagamento</label>
+            <select className="px-3 py-2 rounded-lg border border-zinc-300 bg-white text-zinc-800 focus:outline-none" value={filtros.tipoPagamento} onChange={e => setFiltros(f => ({ ...f, tipoPagamento: e.target.value }))}>
+              <option value="">Todos</option>
+              <option value="CREDIT_CARD">Cartão</option>
+              <option value="PIX">PIX</option>
+              <option value="DINHEIRO">Dinheiro</option>
+            </select>
+          </div>
+          <Button color="primary" className="h-10" onClick={aplicarFiltros}>Filtrar</Button>
         </div>
 
-        {/* Cards de Destaque */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="shadow-sm">
-            <CardBody className="flex flex-col items-center justify-center text-center p-4 gap-2">
-              <span className="text-xs text-default-500">Meta Mensal</span>
-              <span className="text-2xl font-bold text-primary-600">{formatCurrency(meta)}</span>
-              <Chip color={percentMeta >= 100 ? "success" : "warning"} variant="flat" className="mt-1">
-                {percentMeta}% atingido
-              </Chip>
-              <Tooltip content={data?.goal?.description || "Sem descrição"}>
-                <Button isIconOnly size="sm" variant="light" onPress={openMetaModal}>
-                  <PencilIcon className="w-4 h-4" />
-                </Button>
-              </Tooltip>
-            </CardBody>
+        {/* Cards de KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white rounded-2xl shadow-md border-t-4 border-orange-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+            <span className="text-xs text-gray-500 font-semibold">Assinaturas Ativas</span>
+            <span className="text-3xl font-bold text-orange-600">{assinaturasAtivas.length}</span>
+            <span className="text-xs text-gray-400">Total CONFIRMED</span>
           </Card>
-          <Card className="shadow-sm">
-            <CardBody className="flex flex-col items-center justify-center text-center p-4 gap-2">
-              <span className="text-xs text-default-500">Faturamento Total</span>
-              <span className="text-2xl font-bold text-success-600">{formatCurrency(faturamento)}</span>
-              <Progress value={percentMeta} color={percentMeta >= 100 ? "success" : "warning"} className="w-full mt-2" />
-              <span className="text-xs text-default-500">{percentMeta}% da meta</span>
-            </CardBody>
+          <Card className="bg-white rounded-2xl shadow-md border-t-4 border-purple-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+            <span className="text-xs text-gray-500 font-semibold">Faturamento</span>
+            <span className="text-3xl font-bold text-purple-600">R$ {faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <Progress value={0} color="secondary" className="w-full mt-2" />
           </Card>
-          <Card className="shadow-sm">
-            <CardBody className="flex flex-col items-center justify-center text-center p-4 gap-2">
-              <span className="text-xs text-default-500">Inadimplentes</span>
-              <span className="text-2xl font-bold text-danger-600 flex items-center gap-1">
-                {overdue}
-                {overdue > 0 ? <ExclamationTriangleIcon className="w-5 h-5 text-danger-500" /> : <CheckCircleIcon className="w-5 h-5 text-success-500" />}
-              </span>
-              <span className="text-xs text-default-500">Este mês</span>
-            </CardBody>
+          <Card className="bg-white rounded-2xl shadow-md border-t-4 border-green-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+            <span className="text-xs text-gray-500 font-semibold">Inadimplentes</span>
+            <span className="text-3xl font-bold text-green-600">{inadimplentes.length}</span>
+            <span className="text-xs text-gray-400">Pagamentos atrasados</span>
+          </Card>
+          <Card className="bg-white rounded-2xl shadow-md border-t-4 border-blue-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+            <span className="text-xs text-gray-500 font-semibold">Cancelamentos</span>
+            <span className="text-3xl font-bold text-blue-600">{cancelados.length}</span>
+            <span className="text-xs text-gray-400">Assinaturas canceladas</span>
           </Card>
         </div>
 
-        {/* Detalhamento Mensal por Fonte */}
-        <div className="mb-8">
+        {/* Gráfico de Faturamento Mensal */}
+        <div className="bg-white rounded-2xl shadow-md p-6 mb-8 min-h-[350px] flex flex-col items-center justify-center">
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-primary-500" /> Faturamento do Mês
+            <ArrowTrendingUpIcon className="w-5 h-5 text-primary-500" /> Faturamento Mensal
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="shadow-md border-l-4 border-primary-500">
-              <CardBody className="flex flex-col items-center justify-center text-center p-4 gap-2">
-                <span className="text-xs text-default-500">ASAAS Trato</span>
-                <span className="text-2xl font-bold text-primary-600">{formatCurrency(data?.revenue?.asaasTrato || 0)}</span>
-                <Progress value={meta ? Math.round(((data?.revenue?.asaasTrato || 0) / meta) * 100) : 0} color="primary" className="w-full mt-2" />
-              </CardBody>
-            </Card>
-            <Card className="shadow-md border-l-4 border-success-500">
-              <CardBody className="flex flex-col items-center justify-center text-center p-4 gap-2">
-                <span className="text-xs text-default-500">ASAAS Andrey</span>
-                <span className="text-2xl font-bold text-success-600">{formatCurrency(data?.revenue?.asaasAndrey || 0)}</span>
-                <Progress value={meta ? Math.round(((data?.revenue?.asaasAndrey || 0) / meta) * 100) : 0} color="success" className="w-full mt-2" />
-              </CardBody>
-            </Card>
-            <Card className="shadow-md border-l-4 border-purple-500">
-              <CardBody className="flex flex-col items-center justify-center text-center p-4 gap-2">
-                <span className="text-xs text-default-500">Pagamentos Externos</span>
-                <span className="text-2xl font-bold text-purple-600">{formatCurrency(externalRevenue)}</span>
-                <Progress value={meta ? Math.round((externalRevenue / meta) * 100) : 0} color="secondary" className="w-full mt-2" />
-              </CardBody>
-            </Card>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={faturamentoMensal} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="mes" />
+              <YAxis tickFormatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+              <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+              <Legend formatter={(value) => {
+                if (value === 'Cartao') return <span style={{ color: '#f59e42' }}>Cartão</span>;
+                if (value === 'PIX') return <span style={{ color: '#6366f1' }}>PIX</span>;
+                if (value === 'Dinheiro') return <span style={{ color: '#22c55e' }}>Dinheiro</span>;
+                return value;
+              }} />
+              <Line type="monotone" dataKey="Cartao" stroke="#f59e42" strokeWidth={3} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="PIX" stroke="#6366f1" strokeWidth={3} />
+              <Line type="monotone" dataKey="Dinheiro" stroke="#22c55e" strokeWidth={3} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Gráfico de Pizza por Tipo de Pagamento */}
+        <div className="bg-white rounded-2xl shadow-md p-6 mb-8 min-h-[300px] flex flex-col items-center justify-center">
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <ChartBarIcon className="w-5 h-5 text-primary-500" /> Distribuição por Tipo de Pagamento
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, value }) => `${name}: R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }>
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Tabela Analítica */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Tabela Analítica de Assinaturas</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm text-gray-700">
+              <thead>
+                <tr className="bg-gray-50 text-gray-800 font-bold">
+                  <th className="px-4 py-3 text-left">Cliente</th>
+                  <th className="px-4 py-3 text-left">Plano</th>
+                  <th className="px-4 py-3 text-left">Valor</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Data</th>
+                  <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tabelaDados.map((row, i) => (
+                  <tr key={i} className="border-b hover:bg-gray-50 transition-all">
+                    <td className="px-4 py-2">{row.Cliente}</td>
+                    <td className="px-4 py-2">{row.Plano}</td>
+                    <td className="px-4 py-2 font-bold text-blue-700">{row.Valor}</td>
+                    <td className="px-4 py-2"><Chip color={row.Status === 'CONFIRMED' ? 'success' : row.Status === 'PENDING' ? 'warning' : row.Status === 'CANCELLED' ? 'danger' : 'default'} size="sm">{row.Status}</Chip></td>
+                    <td className="px-4 py-2">{row.Data}</td>
+                    <td className="px-4 py-2">{row.Tipo}</td>
+                    <td className="px-4 py-2 text-center"><Button size="sm" variant="light">Ver</Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-
-        {/* Gráfico de linha do tempo anual */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <ArrowTrendingUpIcon className="w-5 h-5 text-primary-500" /> Evolução Anual
-          </h2>
-          <RevenueTimeline selectedYear={filters.year} />
-        </div>
-
-        {/* Modal de edição de meta */}
-        <Modal isOpen={metaModalOpen} onOpenChange={setMetaModalOpen} placement="center">
-          <ModalContent>
-            <ModalHeader className="flex flex-col gap-1">
-              Editar Meta Mensal
-            </ModalHeader>
-            <ModalBody>
-              <Input
-                ref={metaInputRef}
-                label="Valor da Meta (R$)"
-                type="number"
-                min="0"
-                step="0.01"
-                value={metaInput}
-                onValueChange={setMetaInput}
-              />
-              <Input
-                label="Descrição"
-                type="text"
-                value={metaDesc}
-                onValueChange={setMetaDesc}
-              />
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="light" onPress={() => setMetaModalOpen(false)} disabled={metaSaving}>
-                Cancelar
-              </Button>
-              <Button color="primary" onPress={handleSaveMeta} isLoading={metaSaving}>
-                Salvar
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
       </div>
     </DashboardLayout>
   );
