@@ -1,8 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import supabase from '@/lib/supabase/client';
 import { Card, Button, Input, Select } from '@nextui-org/react';
-import { useUnidade } from '@/contexts/UnidadeContext';
 
 const UNIDADES = [
   { id: '244c0543-7108-4892-9eac-48186ad1d5e7', nome: 'Trato de Barbados' },
@@ -10,8 +9,7 @@ const UNIDADES = [
 ];
 
 export default function ProdutosDistribuicao() {
-  const { unidade } = useUnidade();
-  const [unidadeSelecionada, setUnidadeSelecionada] = useState(unidade || UNIDADES[0].id);
+  const [unidadeSelecionada, setUnidadeSelecionada] = useState(UNIDADES[0].id);
   const [quantidade, setQuantidade] = useState(1);
   const [vendas, setVendas] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
