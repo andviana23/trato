@@ -1,0 +1,2 @@
+"use strict";
+// Arquivo criado apenas para eliminar erro de importação do asaas 

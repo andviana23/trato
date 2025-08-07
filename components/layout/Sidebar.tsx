@@ -103,7 +103,7 @@ const distribuicaoSubmenuBarberBeer = [
 const distribuicaoSubmenuTrato = [
   { name: "Faturamento da Assinatura", href: "/dashboard/distribuicao/faturamento-assinatura", icon: CurrencyDollarIcon },
   { name: "Lançamento de Assinatura", href: "/dashboard/distribuicao/lancamento-assinatura", icon: ClipboardDocumentListIcon },
-  { name: "Lançamento", href: "/dashboard/distribuicao/lancamento", icon: WrenchScrewdriverIcon },
+  { name: "Lançamento", href: "/dashboard/distribuicao/lancamento-servico", icon: WrenchScrewdriverIcon },
   { name: "Lançamento de Produto", href: "/dashboard/distribuicao/produtos", icon: CubeIcon },
   { name: "Comissão", href: "/dashboard/distribuicao/comissao", icon: CurrencyDollarIcon },
   { name: "Comissão Avulsa", href: "/dashboard/distribuicao/comissao-avulsa", icon: CurrencyDollarIcon },

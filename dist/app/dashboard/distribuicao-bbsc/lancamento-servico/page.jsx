@@ -1,0 +1,226 @@
+"use client";
+import { useEffect, useState } from "react";
+import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Avatar } from "@nextui-org/react";
+import { PlusIcon, WrenchScrewdriverIcon, InformationCircleIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+const supabase = createClient();
+function getMesAtual() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+export default function LancamentoServicoPage() {
+    const [servicos, setServicos] = useState([]);
+    const [barbeiros, setBarbeiros] = useState([]);
+    const [realizados, setRealizados] = useState([]);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [form, setForm] = useState({ barbeiro_id: "", servico_id: "", data: "", hora: "", quantidade: 1 });
+    const [erro, setErro] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(true);
+    // Buscar dados iniciais
+    useEffect(() => {
+        async function fetchAll() {
+            setLoading(true);
+            const mesAtual = getMesAtual();
+            const { data: servicos } = await supabase.from("servicos").select("*");
+            // Buscar barbeiros apenas da unidade BarberBeer
+            const { data: barbeiros } = await supabase.from("profissionais").select("*").eq("funcao", "barbeiro").eq("unidade_id", "87884040-cafc-4625-857b-6e0402ede7d7");
+            const { data: realizados } = await supabase
+                .from("servicos_realizados")
+                .select("*, servico:servico_id(*), barbeiro:barbeiro_id(*)")
+                .gte("data_hora", `${mesAtual}-01`)
+                .lte("data_hora", `${mesAtual}-31`);
+            setServicos(servicos || []);
+            setBarbeiros(barbeiros || []);
+            setRealizados(realizados || []);
+            setLoading(false);
+        }
+        fetchAll();
+    }, []);
+    // Cards de totais
+    const barbeirosIds = barbeiros.map(b => b.id);
+    const realizadosBarberBeer = realizados.filter(r => barbeirosIds.includes(r.barbeiro_id));
+    const totalServicosMes = realizadosBarberBeer.length;
+    const diasUnicos = Array.from(new Set(realizadosBarberBeer.map(r => new Date(r.data_hora).toISOString().slice(0, 10))));
+    const mediaPorDia = diasUnicos.length ? (totalServicosMes / diasUnicos.length).toFixed(1) : "0";
+    // Calcular total de minutos do mês
+    const totalMinutosMes = barbeiros.reduce((acc, b) => acc + getResumoBarbeiro(b).minutos, 0);
+    // Lançamento manual
+    function openNovo() {
+        setForm({ barbeiro_id: "", servico_id: "", data: new Date().toISOString().slice(0, 10), hora: new Date().toISOString().slice(11, 16), quantidade: 1 });
+        setErro("");
+        setModalOpen(true);
+    }
+    async function salvarLancamento() {
+        setSaving(true);
+        setErro("");
+        if (!form.barbeiro_id || !form.servico_id || !form.data || !form.quantidade || form.quantidade < 1) {
+            setErro("Preencha todos os campos obrigatórios.");
+            setSaving(false);
+            return;
+        }
+        const data_hora = `${form.data}T${form.hora || "00:00"}:00`;
+        const registros = Array.from({ length: form.quantidade }, () => ({ barbeiro_id: form.barbeiro_id, servico_id: form.servico_id, data_hora }));
+        await supabase.from("servicos_realizados").insert(registros);
+        setModalOpen(false);
+        setSaving(false);
+        toast.success("Serviços cadastrados com sucesso!");
+        // Atualizar lista
+        const mesAtual = getMesAtual();
+        const { data: realizados } = await supabase
+            .from("servicos_realizados")
+            .select("*, servico:servico_id(*), barbeiro:barbeiro_id(*)")
+            .gte("data_hora", `${mesAtual}-01`)
+            .lte("data_hora", `${mesAtual}-31`);
+        setRealizados(realizados || []);
+    }
+    // Agrupar por barbeiro
+    function getResumoBarbeiro(barbeiro) {
+        const feitos = realizados.filter(r => r.barbeiro_id === barbeiro.id);
+        const tipos = { barba: 0, corte: 0, "corte e barba": 0, acabamento: 0 };
+        let minutos = 0;
+        feitos.forEach(r => {
+            var _a, _b, _c;
+            const nome = ((_b = (_a = r.servico) === null || _a === void 0 ? void 0 : _a.nome) === null || _b === void 0 ? void 0 : _b.toLowerCase()) || "";
+            if (nome.includes("barba") && nome.includes("corte"))
+                tipos["corte e barba"]++;
+            else if (nome.includes("barba"))
+                tipos.barba++;
+            else if (nome.includes("corte"))
+                tipos.corte++;
+            else if (nome.includes("acabamento"))
+                tipos.acabamento++;
+            minutos += ((_c = r.servico) === null || _c === void 0 ? void 0 : _c.tempo_minutos) || 0;
+        });
+        return Object.assign(Object.assign({ total: feitos.length }, tipos), { minutos });
+    }
+    return (<div className="container mx-auto px-4 py-6">
+      {/* Cards de totais */}
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="shadow-lg border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
+          <CardHeader className="flex items-center gap-3 pb-0">
+            <ChartBarIcon className="w-7 h-7 text-blue-500"/>
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">Total de Serviços no Mês</span>
+          </CardHeader>
+          <CardBody className="pt-2">
+            <span className="text-4xl font-extrabold text-blue-700 dark:text-blue-400">{totalServicosMes}</span>
+          </CardBody>
+        </Card>
+        <Card className="shadow-lg border border-green-100 bg-gradient-to-br from-green-50 to-white">
+          <CardHeader className="flex items-center gap-3 pb-0">
+            <InformationCircleIcon className="w-7 h-7 text-green-500"/>
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">Média de Serviços por Dia</span>
+          </CardHeader>
+          <CardBody className="pt-2">
+            <span className="text-4xl font-extrabold text-green-700 dark:text-green-400">{mediaPorDia}</span>
+          </CardBody>
+        </Card>
+        <Card className="shadow-lg border border-purple-100 bg-gradient-to-br from-purple-50 to-white">
+          <CardHeader className="flex items-center gap-3 pb-0">
+            <WrenchScrewdriverIcon className="w-7 h-7 text-purple-500"/>
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">Minutos Totais Trabalhados</span>
+          </CardHeader>
+          <CardBody className="pt-2">
+            <span className="text-4xl font-extrabold text-purple-700 dark:text-purple-400">{totalMinutosMes} min</span>
+          </CardBody>
+        </Card>
+        <div className="flex items-end justify-center">
+          <Button color="primary" startContent={<PlusIcon className="w-5 h-5"/>} onClick={openNovo} className="w-full md:w-auto text-base font-semibold shadow-lg h-14">
+            Adicionar Serviço para Barbeiro
+          </Button>
+        </div>
+      </div>
+      {/* Tabela de barbeiros */}
+      <Card className="shadow-lg mb-8 border border-gray-100">
+        <CardHeader className="bg-gray-50 dark:bg-gray-900 rounded-t-lg">
+          <span className="text-lg font-semibold text-gray-900 dark:text-white">Serviços por Barbeiro (Mês Atual)</span>
+        </CardHeader>
+        <CardBody className="p-0">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">Barbeiro</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Total</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Barba</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Corte</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Corte e Barba</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Acabamento</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Minutos Trabalhados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {barbeiros.length === 0 ? (<tr><td colSpan={7} className="text-center py-8 text-gray-400">Nenhum barbeiro cadastrado.</td></tr>) : (barbeiros.map((b, idx) => {
+            const resumo = getResumoBarbeiro(b);
+            return (<tr key={b.id} className={idx % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800"}>
+                        <td className="px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                          <Avatar src={b.avatar_url} name={b.nome} size="sm"/>
+                          <span className="font-medium text-gray-900 dark:text-white">{b.nome}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center font-semibold">{resumo.total}</td>
+                        <td className="px-4 py-3 text-center">{resumo.barba}</td>
+                        <td className="px-4 py-3 text-center">{resumo.corte}</td>
+                        <td className="px-4 py-3 text-center">{resumo["corte e barba"]}</td>
+                        <td className="px-4 py-3 text-center">{resumo.acabamento}</td>
+                        <td className="px-4 py-3 text-center font-semibold">
+                          {resumo.minutos} min
+                          {totalMinutosMes > 0 && (<span className="ml-2 text-xs text-gray-500">({Math.round((resumo.minutos / totalMinutosMes) * 100)}%)</span>)}
+                        </td>
+                      </tr>);
+        }))}
+              </tbody>
+            </table>
+          </div>
+        </CardBody>
+      </Card>
+      {/* Modal de lançamento manual */}
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} size="md">
+        <ModalContent>
+          <ModalHeader>Lançar Serviço Realizado</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Barbeiro <span className="text-red-500">*</span></label>
+                <Select label="Selecione o barbeiro" selectedKeys={form.barbeiro_id ? [form.barbeiro_id] : []} onChange={e => setForm(f => (Object.assign(Object.assign({}, f), { barbeiro_id: e.target.value })))} isRequired>
+                  {barbeiros.map(b => (<SelectItem key={b.id} value={b.id} textValue={b.nome}>
+                      <div className="flex items-center gap-2">
+                        <Avatar src={b.avatar_url} name={b.nome} size="sm"/>
+                        <span>{b.nome}</span>
+                      </div>
+                    </SelectItem>))}
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Serviço <span className="text-red-500">*</span></label>
+                <Select label="Selecione o serviço" selectedKeys={form.servico_id ? [form.servico_id] : []} onChange={e => setForm(f => (Object.assign(Object.assign({}, f), { servico_id: e.target.value })))} isRequired>
+                  {servicos.map(s => (<SelectItem key={s.id} value={s.id} textValue={s.nome}>
+                      {s.nome}
+                    </SelectItem>))}
+                </Select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Data <span className="text-red-500">*</span></label>
+                  <Input label="Data" type="date" value={form.data} onChange={e => setForm(f => (Object.assign(Object.assign({}, f), { data: e.target.value })))} isRequired/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Horário</label>
+                  <Input label="Horário" type="time" value={form.hora} onChange={e => setForm(f => (Object.assign(Object.assign({}, f), { hora: e.target.value })))}/>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Quantidade de Serviços <span className="text-red-500">*</span></label>
+                <Input label="Quantidade de Serviços" type="number" min={1} value={String(form.quantidade)} onChange={e => setForm(f => (Object.assign(Object.assign({}, f), { quantidade: Number(e.target.value) })))} isRequired description="Informe quantos serviços iguais deseja lançar para o barbeiro nesta data e horário."/>
+              </div>
+              {erro && <div className="text-red-600 text-sm mt-2">{erro}</div>}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button color="primary" isLoading={saving} onClick={salvarLancamento}>Adicionar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>);
+}

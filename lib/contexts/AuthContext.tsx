@@ -5,6 +5,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useRouter } from "next/navigation";
+// Removido: import { exec } from 'child_process';
 
 interface Profile {
   id: string;
@@ -213,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile(profileData);
         setUser(data.user);
         setSession(data.session);
-
+        // Removido: chamada dos scripts via exec
         console.log('[Auth] Login bem sucedido:', { user: data.user, profile: profileData });
         router.push('/dashboard');
         return { success: true };

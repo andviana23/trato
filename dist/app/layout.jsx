@@ -1,0 +1,29 @@
+import { Geist } from "next/font/google";
+import { Providers } from "@/components/Providers";
+import "./globals.css";
+import { Toaster } from 'sonner';
+const defaultUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+export const metadata = {
+    metadataBase: new URL(defaultUrl),
+    title: "Sistema de Barbearia - Next.js",
+    description: "Sistema completo de gerenciamento para barbearias",
+};
+const geistSans = Geist({
+    variable: "--font-geist-sans",
+    display: "swap",
+    subsets: ["latin"],
+});
+export default function RootLayout({ children, }) {
+    return (<html lang="pt-BR" suppressHydrationWarning>
+      <head>
+      </head>
+      <body className={`${geistSans.className} antialiased`} suppressHydrationWarning={true}>
+        <Providers>
+          {children}
+        </Providers>
+        <Toaster richColors/>
+      </body>
+    </html>);
+}

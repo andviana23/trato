@@ -9,13 +9,15 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import CadastrarAssinanteModal from "./components/CadastrarAssinanteModal";
-import { getAssinaturas, updateAssinaturaStatus } from "@/lib/services/subscriptions";
-import type { Assinatura } from '@/lib/services/subscriptions';
+import { getAssinaturas, updateAssinaturaStatus, deletarAssinatura } from "@/lib/services/subscriptions";
 import type { PagamentoAsaas } from './hooks/usePagamentosAsaas';
 import { useMemo } from 'react';
+import { getPlanos } from '@/lib/services/plans';
+import { getClientes } from '@/lib/services/clients';
+import AssinantesTable from "./components/AssinantesTable";
 
 // Tipo para unificação dos dados
-interface AssinanteUnificado {
+export type AssinanteUnificado = {
   id: string;
   nome: string;
   plano: string;
@@ -24,7 +26,25 @@ interface AssinanteUnificado {
   data_pagamento: string;
   proximo_vencimento: string;
   tipo_pagamento: string;
-  origem: 'asaas' | 'dinheiro';
+  origem: "asaas" | "dinheiro" | "pix";
+  forma_pagamento?: string;
+  data_cadastro?: string; // <-- ADICIONADO
+};
+
+// Ajustar tipo Assinatura para incluir campos opcionais:
+export interface Assinatura {
+  id: string;
+  cliente_id: string;
+  plano_id: string;
+  valor: number;
+  status: string;
+  created_at: string;
+  data_vencimento: string;
+  nome_cliente?: string;
+  nome_plano?: string;
+  price?: number;
+  forma_pagamento?: string;
+  data_cadastro?: string; // <-- ADICIONADO
 }
 
 export default function AssinantesPage() {
@@ -38,9 +58,31 @@ export default function AssinantesPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [modalConfirmar, setModalConfirmar] = useState<{ open: boolean, assinatura: AssinanteUnificado | null }>({ open: false, assinatura: null });
+  // Adicione o estado para controlar o assinante em edição
+  const [assinanteEditando, setAssinanteEditando] = useState(null);
+
+  // Move fetchAssinaturasComNomes here
+  async function fetchAssinaturasComNomes() {
+    const assinaturas = await getAssinaturas();
+    const clientes = await getClientes();
+    const planos = await getPlanos();
+    // Monta assinaturas com nome do cliente e do plano
+    const assinaturasComNomes = assinaturas.map(a => {
+      const cliente = (clientes as { id: string; nome: string }[]).find((c) => c.id === a.cliente_id);
+      const plano = planos.find(p => p.id === a.plano_id);
+      return {
+        ...a,
+        nome_cliente: cliente ? cliente.nome : a.cliente_id,
+        nome_plano: plano ? plano.nome : a.plano_id,
+        valor: a.valor,
+        status: a.status,
+      };
+    });
+    setAssinaturas(assinaturasComNomes);
+  }
 
   useEffect(() => {
-    getAssinaturas().then((assinaturas: Assinatura[]) => setAssinaturas(assinaturas));
+    fetchAssinaturasComNomes();
   }, []);
 
   // Unir pagamentos_asaas e assinaturas (dinheiro) - agora com useMemo
@@ -56,17 +98,22 @@ export default function AssinantesPage() {
       tipo_pagamento: (p.billing_type || '').toUpperCase(),
       origem: 'asaas' as const,
     })),
-    ...assinaturas.map((a: Assinatura) => ({
-      id: a.id,
-      nome: a.cliente_id, // Ajuste conforme necessário se quiser buscar nome do cliente
-      plano: a.plano_id,  // Ajuste conforme necessário se quiser buscar nome do plano
-      valor: a.valor,
-      status: a.status,
-      data_pagamento: a.created_at,
-      proximo_vencimento: a.data_vencimento,
-      tipo_pagamento: 'DINHEIRO',
-      origem: 'dinheiro' as const,
-    }))
+    ...assinaturas.map((a: Assinatura) => {
+      const origem: 'dinheiro' | 'pix' = a.forma_pagamento?.toLowerCase?.() === 'pix' ? 'pix' : 'dinheiro';
+      return {
+        id: a.id,
+        nome: a.nome_cliente ?? a.cliente_id ?? '',
+        plano: a.nome_plano ?? a.plano_id ?? '',
+        valor: a.price ?? a.valor ?? 0,
+        status: a.status ?? '',
+        data_pagamento: a.data_cadastro ?? '',
+        proximo_vencimento: a.data_vencimento ?? '',
+        tipo_pagamento: a.forma_pagamento?.toUpperCase?.() || 'DINHEIRO',
+        origem,
+        forma_pagamento: a.forma_pagamento ?? undefined,
+        data_cadastro: a.data_cadastro ?? '', // <-- ADICIONADO
+      };
+    })
   ], [pagamentos, assinaturas]);
 
   const [busca, setBusca] = useState("");
@@ -108,7 +155,7 @@ export default function AssinantesPage() {
   // Remover referência a todosAssinantes
   // Se necessário, remova o card de Pagamentos Externos ou ajuste para usar pagamentosFiltrados
   const pagamentosExternos = assinantesFiltrados.filter(
-    a => a.origem === 'dinheiro' && (a.status === 'AGUARDANDO_PAGAMENTO' || a.status === 'CONFIRMED')
+    a => (a.origem === 'dinheiro' || a.origem === 'pix') && (a.status === 'AGUARDANDO_PAGAMENTO' || a.status === 'CONFIRMED')
   );
 
   // Cards de métricas e layout
@@ -119,15 +166,18 @@ export default function AssinantesPage() {
     }
     setIsSyncing(true);
     try {
-      const res = await fetch('/api/sync-asaas', { method: 'POST' });
-      const data = await res.json();
-      if (res.status === 401) {
-        alert('Chave de API do Asaas inválida ou permissão insuficiente.');
-      } else if (data.success) {
+      // Chama ambas as rotas de atualização
+      const res1 = await fetch('/api/sync-pagamentos-asaas', { method: 'POST' });
+      const res2 = await fetch('/api/atualizar-assinaturas', { method: 'POST' });
+      const data1 = await res1.json();
+      const data2 = await res2.json();
+      if ((res1.status === 401 || res2.status === 401)) {
+        alert('Chave de API inválida ou permissão insuficiente.');
+      } else if ((data1.success || data2.success)) {
         alert('Dados atualizados com sucesso!');
         window.location.reload();
       } else {
-        alert('Erro ao atualizar: ' + (data.error || 'Erro desconhecido.'));
+        alert('Erro ao atualizar: ' + (data1.error || data2.error || 'Erro desconhecido.'));
       }
     } catch (e) {
       alert('Erro ao sincronizar pagamentos.');
@@ -139,14 +189,13 @@ export default function AssinantesPage() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-10 font-sans">
-        {/* Header e botões de ação */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-1 flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-black mb-1 flex items-center gap-2">
               <span className="inline-block bg-orange-100 p-2 rounded-full"><svg className="w-7 h-7 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2h5m4-4v4m0 0v-4m0 4h4m-4 0H7" /></svg></span>
               Assinantes
             </h1>
-            <p className="text-default-500">Gerencie todos os assinantes ativos e históricos do sistema</p>
+            <p className="text-gray-500">Gerencie todos os assinantes ativos e históricos do sistema</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -154,35 +203,35 @@ export default function AssinantesPage() {
               onClick={handleSyncPagamentos}
               disabled={isSyncing}
             >
-              {isSyncing && (
-                <svg className="animate-spin w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-              )}
-              Atualizar Dados
+              {isSyncing ? 'Sincronizando...' : 'Atualizar Dados'}
             </button>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-green-700 transition-all" onClick={() => setModalAberto(true)}>Novo Assinante</button>
+            <button
+              className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-green-600 transition-all"
+              onClick={() => setModalAberto(true)}
+            >Novo Assinante</button>
           </div>
         </div>
         {/* Cards de Métricas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl shadow-md border-t-4 border-orange-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+          <div className="bg-white rounded-xl shadow border-t-4 border-orange-500 flex flex-col items-center justify-center p-6">
             <span className="text-xs text-gray-500 font-semibold">ASAAS Trato</span>
-            <span className="text-3xl font-bold text-orange-600">{asaasTratoAtivos.length}</span>
-            <svg className="w-10 h-10 text-orange-400 mt-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg>
+            <span className="text-3xl font-bold text-orange-500">{asaasTratoAtivos.length}</span>
+            <span className="text-orange-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg></span>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border-t-4 border-purple-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+          <div className="bg-white rounded-xl shadow border-t-4 border-purple-500 flex flex-col items-center justify-center p-6">
             <span className="text-xs text-gray-500 font-semibold">Pagamentos Externos</span>
-            <span className="text-3xl font-bold text-purple-600">{pagamentosExternos.length}</span>
-            <svg className="w-10 h-10 text-purple-400 mt-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-7a2 2 0 00-2-2z" /></svg>
+            <span className="text-3xl font-bold text-purple-500">{pagamentosExternos.length}</span>
+            <span className="text-purple-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-7a2 2 0 00-2-2z" /></svg></span>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border-t-4 border-green-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+          <div className="bg-white rounded-xl shadow border-t-4 border-green-500 flex flex-col items-center justify-center p-6">
             <span className="text-xs text-gray-500 font-semibold">Clientes Ativos</span>
-            <span className="text-3xl font-bold text-green-600">{assinantesFiltrados.length}</span>
-            <svg className="w-10 h-10 text-green-400 mt-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2h5" /></svg>
+            <span className="text-3xl font-bold text-green-500">{assinantesFiltrados.length}</span>
+            <span className="text-green-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2h5" /></svg></span>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border-t-4 border-blue-500 flex flex-col items-center justify-center p-6 gap-2 animate-fade-in">
+          <div className="bg-white rounded-xl shadow border-t-4 border-blue-500 flex flex-col items-center justify-center p-6">
             <span className="text-xs text-gray-500 font-semibold">Total de Assinantes</span>
-            <span className="text-3xl font-bold text-blue-600">{assinantesFiltrados.length}</span>
-            <svg className="w-10 h-10 text-blue-400 mt-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg>
+            <span className="text-3xl font-bold text-blue-500">{assinantesFiltrados.length}</span>
+            <span className="text-blue-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg></span>
           </div>
         </div>
         {/* Barra de Filtros */}
@@ -213,7 +262,7 @@ export default function AssinantesPage() {
           <button className="bg-red-100 text-red-600 font-semibold px-4 py-2 rounded-lg hover:bg-red-200 transition-all">Limpar</button>
         </div>
         {/* Tabela de pagamentos_asaas */}
-        <div className="overflow-x-auto rounded-xl shadow bg-white animate-fade-in">
+        <div className="overflow-x-auto rounded-xl shadow bg-white">
           <table className="min-w-full text-sm text-gray-700">
             <thead>
               <tr className="bg-gray-50 text-gray-800 font-bold">
@@ -246,17 +295,12 @@ export default function AssinantesPage() {
                     <td className="px-4 py-2">{a.tipo_pagamento === 'CREDIT_CARD' ? 'Cartão' : a.tipo_pagamento === 'PIX' ? 'PIX' : a.tipo_pagamento === 'DINHEIRO' ? 'Dinheiro' : a.tipo_pagamento}</td>
                     <td className="px-4 py-2 text-center">
                       <button
-                        className="bg-gray-100 hover:bg-gray-200 rounded p-2 transition-all"
-                        title={a.origem === 'dinheiro' && a.status === 'AGUARDANDO_PAGAMENTO' ? 'Confirmar pagamento' : 'Ver detalhes'}
-                        onClick={() => {
-                          if (a.origem === 'dinheiro' && a.status === 'AGUARDANDO_PAGAMENTO') {
-                            setModalConfirmar({ open: true, assinatura: a });
-                          } else {
-                            // ...ação padrão...
-                          }
-                        }}
+                        className="bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded flex items-center gap-2 transition-all"
+                        title="Editar assinante"
+                        onClick={() => setAssinanteEditando(a)}
                       >
-                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405M19 13V7a2 2 0 00-2-2h-4.586a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 008.586 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2v-5z" /></svg>
+                        Editar
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" /></svg>
                       </button>
                     </td>
                   </tr>
@@ -265,25 +309,78 @@ export default function AssinantesPage() {
             </tbody>
           </table>
         </div>
-        <CadastrarAssinanteModal open={modalAberto} onClose={() => setModalAberto(false)} />
-        {/* Modal de confirmação de pagamento */}
-        {modalConfirmar.open && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md mx-2 animate-fade-in">
-              <h2 className="text-xl font-bold mb-4">Confirmar pagamento</h2>
-              <p className="mb-4">Deseja confirmar o pagamento do cliente <b>{modalConfirmar.assinatura?.nome}</b>?</p>
-              <div className="flex gap-4 justify-end">
-                <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium" onClick={() => setModalConfirmar({ open: false, assinatura: null })}>Cancelar</button>
-                <button className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all" onClick={async () => {
+      </div>
+      <CadastrarAssinanteModal open={modalAberto} onClose={() => setModalAberto(false)} />
+      {/* Modal de confirmação de pagamento */}
+      {modalConfirmar.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md mx-2 animate-fade-in">
+            <h2 className="text-xl font-bold mb-4">Confirmar pagamento</h2>
+            <p className="mb-4">Deseja confirmar o pagamento do cliente <b>{modalConfirmar.assinatura?.nome}</b>?</p>
+            <div className="flex gap-4 justify-end">
+              <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium" onClick={() => setModalConfirmar({ open: false, assinatura: null })}>Cancelar</button>
+              <button className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-semibold transition-all" onClick={async () => {
+                if (modalConfirmar.assinatura?.id) {
+                  await deletarAssinatura(modalConfirmar.assinatura.id);
+                }
+                setModalConfirmar({ open: false, assinatura: null });
+                window.location.reload();
+              }}>Cancelar assinatura</button>
+              <button className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-semibold transition-all" onClick={async () => {
+                if (modalConfirmar.assinatura?.id) {
                   await updateAssinaturaStatus(modalConfirmar.assinatura.id, 'CONFIRMED');
-                  setModalConfirmar({ open: false, assinatura: null });
-                  window.location.reload();
-                }}>Confirmar</button>
-              </div>
+                }
+                setModalConfirmar({ open: false, assinatura: null });
+                window.location.reload();
+              }}>Confirmar</button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+      {/* Modal de edição/ação do assinante */}
+      {assinanteEditando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md mx-2 animate-fade-in relative">
+            {/* Botão fechar discreto */}
+            <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-700" onClick={() => setAssinanteEditando(null)} title="Fechar">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h2 className="text-xl font-bold mb-4">{assinanteEditando.tipo_pagamento === 'DINHEIRO' || assinanteEditando.tipo_pagamento === 'PIX' ? 'Confirmar pagamento' : 'Editar Assinante'}</h2>
+            {/* Informações do assinante */}
+            <div className="mb-4 space-y-1 text-sm">
+              <div><b>Nome:</b> {assinanteEditando.nome}</div>
+              <div><b>Plano:</b> {assinanteEditando.plano}</div>
+              <div><b>Valor:</b> R$ {Number(assinanteEditando.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              <div><b>Status:</b> {assinanteEditando.status}</div>
+              <div><b>Vencimento:</b> {dayjs(assinanteEditando.proximo_vencimento).format('DD/MM/YYYY')}</div>
+              <div><b>Tipo de Pagamento:</b> {assinanteEditando.tipo_pagamento === 'CREDIT_CARD' ? 'Cartão' : assinanteEditando.tipo_pagamento === 'PIX' ? 'PIX' : assinanteEditando.tipo_pagamento === 'DINHEIRO' ? 'Dinheiro' : assinanteEditando.tipo_pagamento}</div>
+            </div>
+            {/* Fluxo de ação */}
+            {assinanteEditando.tipo_pagamento === 'DINHEIRO' || assinanteEditando.tipo_pagamento === 'PIX' ? (
+              <button className="w-full mb-4 px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all" onClick={async () => {
+                await updateAssinaturaStatus(assinanteEditando.id, 'CONFIRMED');
+                setAssinanteEditando(null);
+                window.location.reload();
+              }}>Confirmar Pagamento</button>
+            ) : null}
+            {/* Cancelar assinatura com confirmação */}
+            <button className="w-full px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-all" onClick={async () => {
+              if (window.confirm('Tem certeza que deseja cancelar esta assinatura? Ela será removida do sistema e do Supabase na data de vencimento.')) {
+                const hoje = new Date();
+                const vencimento = new Date(assinanteEditando.proximo_vencimento);
+                if (vencimento <= hoje) {
+                  await fetch(`/api/assinantes/${assinanteEditando.id}`, { method: 'DELETE' });
+                  setAssinanteEditando(null);
+                  window.location.reload();
+                } else {
+                  alert('A assinatura só será cancelada na data de vencimento.');
+                  setAssinanteEditando(null);
+                }
+              }
+            }}>Cancelar Assinatura</button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 } 

@@ -27,4 +27,16 @@ export async function cadastrarCliente(cliente: Omit<Cliente, 'id'>): Promise<Cl
     .single();
   if (error) throw error;
   return data as Cliente;
+}
+
+// Busca clientes filtrando por nome/email/telefone
+export async function listarClientes(busca: string): Promise<Cliente[]> {
+  const supabase = createClient();
+  let query = supabase.from('clientes').select('*').order('nome', { ascending: true });
+  if (busca && busca.trim() !== "") {
+    query = query.ilike('nome', `%${busca}%`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return data as Cliente[];
 } 

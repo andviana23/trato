@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Card, CardBody, CardHeader, Button, Input } from "@nextui-org/react";
 import { CurrencyDollarIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useFaturamentoAssinatura, Lancamento } from './useFaturamentoAssinatura';
+import { usePagamentosAsaas } from '@/app/assinaturas/assinantes/hooks/usePagamentosAsaas';
+import { getAssinaturas } from '@/lib/services/subscriptions';
+import dayjs from 'dayjs';
+import { useEffect } from 'react';
 
 export default function FaturamentoAssinaturaPage() {
   // Mês de referência atual
@@ -13,9 +17,27 @@ export default function FaturamentoAssinaturaPage() {
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [assinaturas, setAssinaturas] = useState<any[]>([]);
+  const { pagamentos } = usePagamentosAsaas({ dataInicio: dayjs().startOf('month').format('YYYY-MM-DD'), dataFim: dayjs().endOf('month').format('YYYY-MM-DD') });
+  useEffect(() => { getAssinaturas().then(setAssinaturas); }, []);
 
-  // Cálculo do faturamento total do mês
-  const faturamentoTotal = lancamentos.reduce((acc, l) => acc + Number(l.valor), 0);
+  // Faturamento igual ao dashboard
+  const pagamentosConfirmados = [
+    ...pagamentos.map(p => ({
+      valor: p.valor,
+      status: p.status,
+      tipo_pagamento: (p.billing_type || '').toUpperCase(),
+      data_pagamento: p.payment_date
+    })),
+    ...assinaturas.map(a => ({
+      valor: a.price,
+      status: a.status,
+      tipo_pagamento: (a.forma_pagamento || '').toUpperCase(),
+      data_pagamento: a.created_at
+    }))
+  ].filter(p => p.status === 'CONFIRMED');
+
+  const faturamentoTotal = pagamentosConfirmados.reduce((acc, p) => acc + Number(p.valor), 0);
   const comissao = faturamentoTotal * 0.4;
 
   const handleAdicionar = async (e: React.FormEvent) => {

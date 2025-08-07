@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 const supabase = createClient();
-
+const TRATO_ID = "244c0543-7108-4892-9eac-48186ad1d5e7";
 function getMesAtual() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -29,12 +29,7 @@ export default function LancamentoServicoPage() {
       setLoading(true);
       const mesAtual = getMesAtual();
       const { data: servicos } = await supabase.from("servicos").select("*");
-      // Buscar barbeiros apenas da unidade Trato de Barbados
-      const { data: barbeiros } = await supabase
-        .from("profissionais")
-        .select("*")
-        .eq("funcao", "barbeiro")
-        .eq("unidade_id", "244c0543-7108-4892-9eac-48186ad1d5e7");
+      const { data: barbeiros } = await supabase.from("profissionais").select("*").eq("funcao", "barbeiro").eq("unidade_id", TRATO_ID);
       const { data: realizados } = await supabase
         .from("servicos_realizados")
         .select("*, servico:servico_id(*), barbeiro:barbeiro_id(*)")

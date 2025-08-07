@@ -46,7 +46,7 @@ export default function ClientesTable({ filtros, reload }: { filtros: any, reloa
   }
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-4 md:p-8 transition-colors duration-300">
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-2 md:p-8 transition-colors duration-300">
       {loading ? (
         <div className="flex justify-center items-center h-32">
           <Spinner label="Carregando clientes..." />
@@ -56,7 +56,7 @@ export default function ClientesTable({ filtros, reload }: { filtros: any, reloa
       ) : (
         <>
           <div className="overflow-x-auto">
-            <Table aria-label="Tabela de clientes" removeWrapper className="min-w-[700px]">
+            <Table aria-label="Tabela de clientes" removeWrapper className="min-w-[700px] md:table hidden">
               <TableHeader>
                 <TableColumn>Nome</TableColumn>
                 <TableColumn>Email</TableColumn>
@@ -102,6 +102,34 @@ export default function ClientesTable({ filtros, reload }: { filtros: any, reloa
                 ))}
               </TableBody>
             </Table>
+            {/* Versão mobile: cards */}
+            <div className="md:hidden flex flex-col gap-4">
+              {clientesPagina.map((cliente) => (
+                <div key={cliente.id} className="rounded-xl border p-4 shadow bg-white dark:bg-zinc-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-lg text-zinc-800 dark:text-zinc-100">{cliente.nome || 'Sem nome'}</span>
+                    <span className={
+                      cliente.tipo === "assinante"
+                        ? "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        : "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700"
+                    }>
+                      {cliente.tipo === "assinante" ? "Assinante" : "Avulso"}
+                    </span>
+                  </div>
+                  <div className="text-sm text-zinc-600 dark:text-zinc-300"><b>Email:</b> {cliente.email}</div>
+                  <div className="text-sm text-zinc-600 dark:text-zinc-300"><b>Telefone:</b> {cliente.telefone}</div>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      onClick={() => handleEditarCliente(cliente)}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-700 transition-colors"
+                      title="Editar cliente"
+                    >
+                      <span className="text-lg">✏️</span> Editar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex justify-end mt-4">
             <Pagination

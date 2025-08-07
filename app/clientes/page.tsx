@@ -11,7 +11,7 @@ export default function ClientesPage() {
   const [reload, setReload] = useState(0);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-2 sm:p-4 md:p-6 w-full max-w-full md:max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Gerenciar Clientes</h1>
         <Button

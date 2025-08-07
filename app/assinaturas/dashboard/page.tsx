@@ -62,7 +62,7 @@ export default function DashboardAssinaturas() {
       status: a.status,
       data_pagamento: a.created_at,
       tipo_pagamento: (a.forma_pagamento || '').toUpperCase(),
-      origem: 'dinheiro',
+      origem: ['DINHEIRO', 'PIX'].includes((a.forma_pagamento || '').toUpperCase()) ? (a.forma_pagamento || '').toLowerCase() : 'dinheiro',
     }))
   ];
 
@@ -102,7 +102,7 @@ export default function DashboardAssinaturas() {
 
   // KPIs do mês vigente
   const assinaturasAtivas = pagamentosMesVigente.filter(
-    p => p.status === 'CONFIRMED' && (p.tipo_pagamento === 'CREDIT_CARD' || p.tipo_pagamento === 'PIX')
+    p => p.status === 'CONFIRMED' && (p.tipo_pagamento === 'CREDIT_CARD' || p.tipo_pagamento === 'PIX' || p.tipo_pagamento === 'DINHEIRO')
   );
   const faturamento = pagamentosMesVigente.filter(p => p.status === 'CONFIRMED').reduce((acc, p) => acc + Number(p.valor), 0);
   const inadimplentes = pagamentosMesVigente.filter(p => p.status !== 'CONFIRMED');

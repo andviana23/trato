@@ -142,91 +142,38 @@ export default function AssinantesTable({ assinantes, loading = false, onUpdate 
         </Tabs>
       </div>
       {/* Tabela */}
-      <Table aria-label="Tabela de Assinantes" removeWrapper className="min-w-[800px]">
-        <TableHeader>
-          <TableColumn aria-label="Nome">NOME</TableColumn>
-          <TableColumn aria-label="Plano">PLANO</TableColumn>
-          <TableColumn aria-label="Valor">VALOR</TableColumn>
-          <TableColumn aria-label="Fonte">FONTE</TableColumn>
-          <TableColumn aria-label="Status">STATUS</TableColumn>
-          <TableColumn aria-label="Próximo Vencimento">PRÓX. VENCIMENTO</TableColumn>
-          <TableColumn className="font-bold bg-gray-50 text-gray-700">DATA DE PAGAMENTO</TableColumn>
-          <TableColumn aria-label="Ações">AÇÕES</TableColumn>
-        </TableHeader>
-        <TableBody 
-          emptyContent={"Nenhum assinante encontrado."}
-          isLoading={loading}
-          loadingContent={<div className="text-center py-4">Carregando...</div>}
-        >
-          {assinantesPaginados.map((assinante) => {
-            const diasParaVencer = getDiasParaVencer(assinante.nextDueDate);
-            const isVencido = diasParaVencer !== null && diasParaVencer < 0;
-            const isProximoVencer = diasParaVencer !== null && diasParaVencer >= 0 && diasParaVencer <= 7;
-            const dataPagamento = assinante.paymentDate || assinante.lastPaymentDate;
-            return (
-              <TableRow 
-                key={assinante.id} 
-                className={`transition-colors ${getLinhaClass(assinante)}`}
-              >
-                <TableCell className="font-medium text-zinc-800 dark:text-zinc-100">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-gray-600">
-                          {assinante.customerName?.charAt(0)?.toUpperCase() || '?'}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{assinante.customerName}</span>
-                        {isVencido && <ExclamationTriangleIcon className="w-4 h-4 text-red-500" />}
-                        {isProximoVencer && <ClockIcon className="w-4 h-4 text-orange-500" />}
-                      </div>
-                      <p className="text-sm text-gray-500">{assinante.telefone || 'Não informado'}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-zinc-600 dark:text-zinc-300">
-                  <span className="text-xs break-all">{assinante.description || 'Não informado'}</span>
-                </TableCell>
-                <TableCell className="text-blue-700 dark:text-blue-400 font-bold text-lg">
-                  <span className="bg-blue-100 dark:bg-blue-900 rounded px-2 py-1">R$ {Number(assinante.value ?? 0).toFixed(2)}</span>
-                </TableCell>
-                <TableCell>
-                  <BadgeTipoAssinatura tipo={assinante.source} />
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    size="sm"
-                    variant="solid"
-                    color={getStatusTabela(assinante).color}
-                    className={`px-2 py-1 text-xs font-semibold ${getStatusTabela(assinante).color === 'success' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400' : getStatusTabela(assinante).color === 'danger' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400' : getStatusTabela(assinante).color === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-400'}`}
-                  >
-                    {getStatusTabela(assinante).label}
-                  </Chip>
-                </TableCell>
-                <TableCell className="text-zinc-600 dark:text-zinc-300">
-                  <span className="font-medium text-green-700 dark:text-green-400">{formatarData(assinante.nextDueDate)}</span>
-                </TableCell>
-                <TableCell className="text-zinc-600 dark:text-zinc-300">
-                  <span className="font-medium text-green-700 dark:text-green-400">{formatarData(dataPagamento)}</span>
-                </TableCell>
-                <TableCell>
-                  <button
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-800 transition-colors"
-                    title="Ver Detalhes"
-                    onClick={() => handleVerDetalhes(assinante)}
-                  >
-                    <MagnifyingGlassIcon className="w-4 h-4" />
-                    Ver Detalhes
-                  </button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead>
+          <tr>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome do Cliente</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status do Pagamento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data do Pagamento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Próx. Vencimento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Pagamento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {assinantesPaginados.map((assinante) => (
+            <tr key={assinante.id} className="hover:bg-gray-100">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{assinante.customerName}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.customerEmail}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ {assinante.value.toFixed(2)}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <span className={assinante.status === 'CONFIRMED' ? 'bg-green-100 text-green-800 px-2 py-1 rounded' : 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded'}>{assinante.status}</span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.lastPaymentDate}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.nextDueDate}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.billingType}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button onClick={() => handleVerDetalhes(assinante)} className="text-indigo-600 hover:text-indigo-900">Detalhes</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       {/* Paginação */}
       <div className="flex items-center justify-between mt-4">
         <span className="text-sm text-gray-600">

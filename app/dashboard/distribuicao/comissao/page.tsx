@@ -7,6 +7,8 @@ import { ScissorsIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/s
 import { createClient } from "@/lib/supabase/client";
 import { ComissaoResumoCard } from '../../../../components/ComissaoResumoCard';
 import { ComissaoBarbeiroCard } from '../../../../components/ComissaoBarbeiroCard';
+import { usePagamentosAsaas } from '@/app/assinaturas/assinantes/hooks/usePagamentosAsaas';
+import { getAssinaturas } from '@/lib/services/subscriptions';
 import dayjs from "dayjs";
 
 const supabase = createClient();
@@ -20,11 +22,34 @@ export default function ComissaoPage() {
   const [barbeiros, setBarbeiros] = useState<any[]>([]);
   const [realizados, setRealizados] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
-  const [faturamento, setFaturamento] = useState(0);
+  const [assinaturas, setAssinaturas] = useState<any[]>([]);
+  const [mesSelecionado, setMesSelecionado] = useState(dayjs().format("YYYY-MM"));
+  const { pagamentos } = usePagamentosAsaas({
+    dataInicio: dayjs(mesSelecionado).startOf('month').format('YYYY-MM-DD'),
+    dataFim: dayjs(mesSelecionado).endOf('month').format('YYYY-MM-DD')
+  });
+  useEffect(() => { getAssinaturas().then(setAssinaturas); }, [mesSelecionado]);
+
+  const pagamentosConfirmados = [
+    ...pagamentos.map(p => ({
+      valor: p.valor,
+      status: p.status,
+      tipo_pagamento: (p.billing_type || '').toUpperCase(),
+      data_pagamento: p.payment_date
+    })),
+    ...assinaturas.map(a => ({
+      valor: a.price,
+      status: a.status,
+      tipo_pagamento: (a.forma_pagamento || '').toUpperCase(),
+      data_pagamento: a.created_at
+    }))
+  ].filter(p => p.status === 'CONFIRMED');
+
+  const faturamento = pagamentosConfirmados.reduce((acc, p) => acc + Number(p.valor), 0);
+  const comissaoTotal = faturamento * 0.4;
   const [loading, setLoading] = useState(true);
   const [barbeiroDetalhe, setBarbeiroDetalhe] = useState<any | null>(null);
   const [comissoesAvulsas, setComissoesAvulsas] = useState<any[]>([]);
-  const [mesSelecionado, setMesSelecionado] = useState(dayjs().format("YYYY-MM"));
   const [metas, setMetas] = useState<any[]>([]);
   const [faixasPorMeta, setFaixasPorMeta] = useState<Record<string, any[]>>({});
 
@@ -78,19 +103,14 @@ export default function ComissaoPage() {
       }
       setMetas(metasData || []);
       setFaixasPorMeta(faixasObj);
-      const totalFaturamento = fat && fat.length > 0 ? fat.reduce((acc, f) => acc + Number(f.valor), 0) : 0;
       setBarbeiros(barbeiros || []);
       setRealizados(realizados || []);
       setServicos(servicos || []);
-      setFaturamento(totalFaturamento);
       setComissoesAvulsas(comissoesAvulsas || []);
       setLoading(false);
     }
     fetchAll();
   }, [mesSelecionado]);
-
-  // Comissão total do mês (40% do faturamento da unidade)
-  const comissaoTotal = faturamento * 0.4;
 
   function getResumoBarbeiro(barbeiro: any) {
     const feitos = realizados.filter(r => r.barbeiro_id === barbeiro.id);

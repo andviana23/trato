@@ -36,4 +36,14 @@ export async function updateAssinaturaStatus(id: string, status: string) {
     .update({ status })
     .eq('id', id);
   if (error) throw error;
+}
+
+// Deletar uma assinatura pelo id
+export async function deletarAssinatura(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('assinaturas')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 } 

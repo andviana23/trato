@@ -170,283 +170,16 @@ Sistema completo para gestão de barbearias, com funcionalidades de assinaturas,
 
 ## 🔧 Correções e Melhorias Recentes
 
-### 🚨 Correções Críticas Implementadas
+### Última Atualização
 
-Esta seção documenta as correções críticas realizadas no sistema **Lista da Vez** para resolver problemas de estrutura HTML, tipos de dados e propagação de eventos.
+- **Atualização Automática de Assinaturas Externas:** Agora, ao confirmar um pagamento externo (dinheiro ou PIX), a lista de assinantes é atualizada automaticamente, sem a necessidade de clicar em "Atualizar Dados".
 
-#### 1. **Correção de Estrutura HTML (CRÍTICO)**
+### Melhorias Anteriores
 
-**Problema:** Erro de hidratação causado por `<div>` dentro de `<tbody>`
-
-```html
-<!-- ❌ ESTRUTURA INCORRETA -->
-<tbody>
-  <div>
-    <!-- ERRO: div dentro de tbody -->
-    <tr>
-      ...
-    </tr>
-  </div>
-</tbody>
-```
-
-**Solução Implementada:**
-
-```html
-<!-- ✅ ESTRUTURA CORRETA -->
-<div className="overflow-x-auto">
-  <DndContext sensors="{sensors}" collisionDetection="{closestCenter}">
-    <table className="min-w-full">
-      <thead>
-        ...
-      </thead>
-      <SortableContext items="{items}">
-        <tbody className="bg-white divide-y divide-gray-200">
-          {/* Linhas da tabela - SEM divs extras */}
-        </tbody>
-      </SortableContext>
-    </table>
-  </DndContext>
-</div>
-```
-
-**Resultado:** HTML válido, sem erros de hidratação e acessibilidade correta.
-
-#### 2. **Correção de Tipos de Dados do Banco (CRÍTICO)**
-
-**Problema:** Erro 400 - `invalid input syntax for type integer: "true"`
-
-**Causa:** Campo `passou_vez` é `integer` mas estava recebendo `boolean true`
-
-**Solução Implementada:**
-
-```javascript
-// ❌ ANTES - enviando boolean para campo integer
-const updateData = {
-  passou_vez: true, // Erro: string "true" para campo integer
-};
-
-// ✅ DEPOIS - incrementando contador numérico
-const updateData = {
-  passou_vez: parseInt(String(barbeiro.passou_vez || 0)) + 1, // Correto: número
-  total_services: parseInt(String(barbeiro.total_services || 0)) + 1,
-  daily_services: parseInt(String(barbeiro.daily_services || 0)) + 1,
-};
-```
-
-**Melhorias Adicionais:**
-
-- Logs detalhados antes de cada operação PATCH
-- Validação de tipos com `parseInt()` e `Boolean()`
-- Tratamento de valores nulos com fallback `|| 0`
-
-#### 3. **Correção de Propagação de Eventos (CRÍTICO)**
-
-**Problema:** Botão "+1" executava duas ações simultaneamente (incremento + passar vez)
-
-**Causa:** Propagação de eventos entre elementos pai e filho
-
-**Solução Implementada:**
-
-```javascript
-// ✅ Event handling correto com stopPropagation
-const handleAtendimento = async (
-  event: React.MouseEvent,
-  barbeiroId: string,
-  refetch: () => void
-) => {
-  event.preventDefault(); // Previne comportamento padrão
-  event.stopPropagation(); // CRÍTICO: Para a propagação do evento
-
-  console.log("🔢 [+1] Botão clicado para:", barbeiroId);
-  // Lógica do incremento...
-};
-
-const handlePassarVez = async (
-  event: React.MouseEvent,
-  barbeiroId: string,
-  refetch: () => void
-) => {
-  event.preventDefault();
-  event.stopPropagation();
-
-  console.log("➡️ [PASSAR] Botão clicado para:", barbeiroId);
-  // Lógica de passar vez...
-};
-```
-
-**Handlers Específicos:**
-
-```javascript
-// Handlers separados para cada botão
-const handleIncrementClick = (event: React.MouseEvent) => {
-  console.log("🔢 Botão +1 clicado - iniciando handler");
-  handleAtendimento(event, item.id, refetch);
-};
-
-const handlePassClick = (event: React.MouseEvent) => {
-  console.log("➡️ Botão Passar clicado - iniciando handler");
-  handlePassarVez(event, item.id, refetch);
-};
-```
-
-#### 4. **Correção de Importações e Cliente Supabase**
-
-**Problema:** `'supabase' is not exported from '@/lib/supabase/client'`
-
-**Solução:**
-
-```javascript
-// ❌ ANTES - importação incorreta
-import { supabase } from "@/lib/supabase/client";
-
-// ✅ DEPOIS - importação correta
-import { createClient } from "@/lib/supabase/client";
-const supabase = createClient();
-```
-
-#### 5. **Redesign da Interface com Tailwind CSS**
-
-**Problema:** Dependência problemática do HeroUI causando erros de build
-
-**Solução:** Substituição completa por HTML + Tailwind CSS
-
-```javascript
-// ❌ ANTES - componentes HeroUI
-import { Card, Table, Button, Switch } from "@heroui/react";
-
-// ✅ DEPOIS - HTML + Tailwind
-<div className="bg-white rounded-lg shadow-md border">
-  <table className="min-w-full divide-y divide-gray-200">
-    <button className="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700">
-      +1
-    </button>
-  </table>
-</div>;
-```
-
-### 🎨 Melhorias de UX/UI
-
-#### **Design Moderno e Responsivo**
-
-- Cards com gradientes e bordas coloridas
-- Chips coloridos para status e contadores
-- Botões com estados hover e focus
-- Layout responsivo para mobile e desktop
-
-#### **Sistema de Logs Avançado**
-
-```javascript
-// Logs com emojis para fácil identificação
-console.log("🔄 Processando..."); // Operações em andamento
-console.log("✅ Sucesso!"); // Operações bem-sucedidas
-console.log("❌ Erro:"); // Erros específicos
-console.log("💥 Erro crítico:"); // Erros gerais
-```
-
-#### **Estados de Loading e Feedback**
-
-- Botões desabilitados durante operações
-- Toast notifications para feedback do usuário
-- Skeleton loading para carregamento inicial
-- Estados visuais para elementos interativos
-
-### 🧪 Validação e Testes
-
-#### **Checklist de Validação Implementado:**
-
-- ✅ HTML válido sem erros de hidratação
-- ✅ Tipos de dados corretos em todas as operações
-- ✅ Botões funcionando independentemente
-- ✅ Console com logs informativos
-- ✅ Drag & drop funcionando corretamente
-- ✅ Interface responsiva em todos os dispositivos
-
-#### **Testes Recomendados:**
-
-1. **Abrir DevTools (F12)** → Console deve estar limpo
-2. **Testar botão "+1"** → Deve executar apenas incremento
-3. **Testar "Passar a Vez"** → Deve executar apenas passar vez
-4. **Verificar drag & drop** → Deve reorganizar sem conflitos
-5. **Testar responsividade** → Interface deve adaptar-se a diferentes telas
-
-### 📊 Resultados das Correções
-
-#### **Antes das Correções:**
-
-- ❌ Erros de hidratação HTML
-- ❌ Erro 400: `invalid input syntax for type integer: "true"`
-- ❌ Botão "+1" executava ações duplas
-- ❌ Dependências problemáticas do HeroUI
-- ❌ Console com múltiplos erros
-
-#### **Depois das Correções:**
-
-- ✅ HTML válido e estrutura correta
-- ✅ Tipos de dados corretos em todas as operações
-- ✅ Botões funcionando independentemente
-- ✅ Interface moderna com Tailwind CSS
-- ✅ Console limpo com logs informativos
-- ✅ Zero erros de hidratação ou banco de dados
-
-### 🔍 Arquivos Modificados
-
-#### **Principais Arquivos Alterados:**
-
-- `app/lista-da-vez/page.tsx` - Correções principais do sistema
-- `hooks/useBarberQueue.ts` - Hook para gestão da fila
-- `lib/supabase/client.ts` - Cliente Supabase configurado
-
-#### **Estrutura de Dados Corrigida:**
-
-```sql
--- Tabela barber_queue com tipos corretos
-CREATE TABLE barber_queue (
-  id UUID PRIMARY KEY,
-  profissional_id UUID REFERENCES profissionais(id),
-  queue_position INTEGER,           -- Posição na fila
-  daily_services INTEGER DEFAULT 0, -- Atendimentos do dia
-  total_services INTEGER DEFAULT 0, -- Total de atendimentos
-  passou_vez INTEGER DEFAULT 0,     -- Contador de vezes que passou
-  is_active BOOLEAN DEFAULT true,   -- Status ativo/inativo
-  last_service_date DATE,          -- Data do último atendimento
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
----
-
-## 📁 Estrutura do Projeto
-
-```
-saas-barbearia-nextjs/
-├── app/                # Rotas, páginas e APIs (Next.js App Router)
-│   ├── api/            # Endpoints de backend (assinaturas, pagamentos, dashboard)
-│   ├── auth/           # Páginas de autenticação (login, cadastro, recuperação)
-│   ├── dashboard/      # Dashboard principal, clientes, relatórios, financeiro
-│   ├── assinaturas/    # Gestão de assinaturas, planos, assinantes
-│   ├── lista-da-vez/   # Fila de atendimento inteligente
-│   └── ...             # Outras rotas (clientes, cadastros)
-├── components/         # Componentes reutilizáveis de UI
-├── hooks/              # Hooks customizados
-│   └── useBarberQueue.ts # Hook para gestão da fila de atendimento
-├── lib/                # Serviços, contextos globais, tipos e utilitários
-├── public/             # Assets públicos (imagens, favicon, screenshots)
-├── styles/             # Estilos globais (Tailwind, CSS)
-├── package.json        # Dependências e scripts
-├── tailwind.config.ts  # Configuração do Tailwind CSS
-├── tsconfig.json       # Configuração do TypeScript
-└── README.md           # Documentação principal
-```
-
-**Principais diretórios:**
-
-- `app/`: Rotas, páginas e APIs (estrutura moderna do Next.js)
-- `components/`: Componentes de interface reutilizáveis
-- `hooks/`: Hooks customizados para lógica de negócio
-- `lib/`: Serviços de integração, contextos, tipos e utilitários
-- `public/`: Imagens, favicon e arquivos estáticos
+- **Redesign de UX/UI:** A página de Assinantes foi redesenhada para melhorar a experiência do usuário, tornando-a mais intuitiva e visualmente atraente.
+- **Informações em Tempo Real:** Agora, a página exibe informações em tempo real do ASAAS, incluindo o total de clientes ativos e pagamentos confirmados no mês.
+- **Cards de Métricas:** Foram adicionados cards de métricas que mostram dados importantes, como o número de clientes ativos e pagamentos confirmados.
+- **Modal de Clientes Pagos:** Ao clicar no card de "Pagamentos Confirmados no Mês", um modal é exibido com a lista de clientes pagos no mês vigente.
 
 ---
 
@@ -567,45 +300,32 @@ Consulte o arquivo LICENSE para mais detalhes.
 
 ## 📝 Changelog
 
+### v1.3.1 - Atualização Automática de Assinaturas Externas (2024-12-XX)
+
+- **Atualização Automática de Assinaturas Externas:** Agora, ao confirmar um pagamento externo (dinheiro ou PIX), a lista de assinantes é atualizada automaticamente, sem a necessidade de clicar em "Atualizar Dados".
+
 ### v1.3.0 - Fila Inteligente e Filtros Avançados (2024-12-XX)
 
-#### ✨ Novas Funcionalidades
+- **Fila de Atendimento (Lista da Vez)**
 
-**Fila de Atendimento (Lista da Vez)**
+  - Reorganização automática por número de atendimentos
+  - Sistema de drag and drop para reordenação manual
+  - Controle de status dos barbeiros (ativo/inativo)
+  - Registro de atendimentos com contadores diários e totais
+  - Função "passar a vez" para mover barbeiros para o final
+  - Zerar lista com reset completo dos contadores
+  - Interface intuitiva com feedback visual de status
 
-- ✅ **Reorganização automática** por número de atendimentos
-- ✅ **Sistema de drag and drop** para reordenação manual
-- ✅ **Controle de status** dos barbeiros (ativo/inativo)
-- ✅ **Registro de atendimentos** com contadores diários e totais
-- ✅ **Função "passar a vez"** para mover barbeiros para o final
-- ✅ **Zerar lista** com reset completo dos contadores
-- ✅ **Interface intuitiva** com feedback visual de status
-
-**Sistema de Filtros para Assinantes**
-
-- ✅ **Busca em tempo real** por nome, email ou telefone
-- ✅ **Filtro por tipo de pagamento** (ASAAS Trato, ASAAS Andrey, Externo)
-- ✅ **Filtro por status de vencimento**:
-  - Próximos de vencer (≤ 7 dias)
-  - Vencidos
-  - Novos assinantes (≤ 30 dias)
-  - Ativos
-- ✅ **Ordenação flexível** por múltiplos critérios
-- ✅ **Interface responsiva** com chips visuais dos filtros ativos
-
-#### 🔧 Melhorias Técnicas
-
-- **Hook useBarberQueue**: Gerenciamento completo da fila de atendimento
-- **Componente FiltrosAssinantes**: Sistema de filtros reutilizável
-- **Drag and Drop**: Implementação com @dnd-kit para reordenação manual
-- **Performance**: Otimizações na busca e filtragem de dados
-- **UX/UI**: Melhorias na interface e feedback visual
-
-#### 🐛 Correções
-
-- Corrigido problema de botões não funcionando na fila de atendimento
-- Melhorado tratamento de erros no sistema de filtros
-- Ajustada lógica de reorganização automática da fila
+- **Sistema de Filtros para Assinantes**
+  - Busca em tempo real por nome, email ou telefone
+  - Filtro por tipo de pagamento (ASAAS Trato, ASAAS Andrey, Externo)
+  - Filtro por status de vencimento:
+    - Próximos de vencer (≤ 7 dias)
+    - Vencidos
+    - Novos assinantes (≤ 30 dias)
+    - Ativos
+  - Ordenação flexível por múltiplos critérios
+  - Interface responsiva com chips visuais dos filtros ativos
 
 ### v1.2.0 - Integração com Pagamentos Externos
 
@@ -627,71 +347,13 @@ Consulte o arquivo LICENSE para mais detalhes.
 
 > Para dúvidas, sugestões ou bugs, abra uma issue ou entre em contato!
 
-# Log de Desenvolvimento - Sistema de Barbearia SaaS
-
-Este documento registra o progresso e os problemas encontrados durante o desenvolvimento.
-
-## 📅 Data: 26/07/2024
-
-### ✅ Onde Paramos
-
-A implementação da página de gerenciamento da **Lista da Vez** (`/lista-da-vez`) está em andamento. O objetivo é criar uma interface para que o administrador ou recepcionista possa gerenciar a fila de barbeiros em tempo real.
-
-**Funcionalidades Implementadas:**
-
-- **Visualização da Fila:** A fila de barbeiros é exibida em uma tabela.
-- **Reordenação Drag-and-Drop:** A ordem dos barbeiros na fila pode ser alterada arrastando e soltando.
-- **Ações por Barbeiro:**
-  - `+1 Atendido`: Incrementa o contador de serviços do barbeiro.
-  - `Passar a Vez`: Registra que o barbeiro passou a vez.
-  - `Ativar/Inativar`: Controla se um barbeiro está na fila para atendimento.
-- **Ações Gerais da Fila:**
-  - `Reorganizar por Atendimentos`: Reordena a fila com base no número de atendimentos diários.
-  - `Zerar Lista`: Limpa os contadores de atendimento do dia.
-
-### 🚨 Erro Atual a ser Corrigido
-
-Ao acessar a página `/lista-da-vez`, a aplicação quebra e exibe o seguinte erro em tempo de execução:
-
-**Erro:** `Error: type.getCollectionNode is not a function`
-
-Este erro impede a renderização de qualquer componente na página, bloqueando totalmente o teste e o desenvolvimento da funcionalidade. A imagem do erro foi capturada e está disponível no histórico da conversa.
-
-### 🛠️ O que já foi tentado
-
-1.  **Correção de Importação:** A suspeita inicial era que os componentes da biblioteca UI estavam sendo importados de um pacote incorreto (`@heroui/react`). A importação no arquivo `saas-barbearia-nextjs/app/lista-da-vez/page.tsx` foi corrigida para usar `@nextui-org/react`.
-2.  **Limpeza de Cache:** O cache do Next.js (diretório `.next`) foi removido.
-3.  **Reinicialização do Servidor:** O servidor de desenvolvimento foi reiniciado após as alterações.
-
-Apesar dessas ações, o erro persiste, indicando que a causa raiz é outra.
-
-### 🚀 Próximos Passos Sugeridos para Amanhã
-
-1.  **Verificar o `NextUIProvider`:** A causa mais provável é a falta do `NextUIProvider` envolvendo a aplicação. Verifique o arquivo `saas-barbearia-nextjs/app/layout.tsx` para garantir que o provider está configurado e envolvendo o `{children}`.
-
-2.  **Analisar o `tailwind.config.js`:** Confirme se o arquivo `tailwind.config.js` está corretamente configurado para o NextUI, importando e incluindo o plugin `nextui()` na array `plugins`.
-
-3.  **Conflito de Dependências:** Investigue o `package.json`. A versão do React é a `^19.0.0`, que é muito recente. Pode haver uma incompatibilidade entre o React 19 e o `@nextui-org/react` ou uma de suas dependências (como `framer-motion`). Considere fazer o downgrade do React para a versão 18 estável.
-
-4.  **Isolar o Componente:** Crie uma página de teste simples e renderize apenas um componente do NextUI (ex: `<Button>`). Se o erro ocorrer, o problema é na configuração global do projeto. Caso contrário, o problema está em um dos componentes mais complexos usados na página `lista-da-vez` (como `Table` ou `Dropdown`).
-
 ---
 
-**Foco para amanhã:** Resolver o erro `getCollectionNode` para desbloquear o desenvolvimento da funcionalidade da fila.
+## Próximos Passos
 
-### Melhorias na Página de Assinantes e Dashboard de Assinaturas
+### Criar Acesso para Barbeiros Usarem pelo Celular
 
-#### Melhorias na Página de Assinantes
-
-- **Redesign de UX/UI:** A página de Assinantes foi redesenhada para melhorar a experiência do usuário, tornando-a mais intuitiva e visualmente atraente.
-- **Informações em Tempo Real:** Agora, a página exibe informações em tempo real do ASAAS, incluindo o total de clientes ativos e pagamentos confirmados no mês.
-- **Cards de Métricas:** Foram adicionados cards de métricas que mostram dados importantes, como o número de clientes ativos e pagamentos confirmados.
-- **Modal de Clientes Pagos:** Ao clicar no card de "Pagamentos Confirmados no Mês", um modal é exibido com a lista de clientes pagos no mês vigente.
-
-#### Melhorias no Dashboard de Assinaturas
-
-- **Layout Simplificado:** O dashboard foi redesenhado para apresentar informações reais de forma mais clara e direta.
-- **Atualizações de Dados:** Os dados exibidos no dashboard são atualizados em tempo real, garantindo que as informações sejam sempre precisas.
-- **Boas Práticas de UI/UX:** A interface foi ajustada para seguir boas práticas de design, melhorando a usabilidade e a estética.
+- Desenvolver uma interface mobile-friendly para que os barbeiros possam acessar o sistema diretamente de seus dispositivos móveis.
+- Focar em funcionalidades essenciais para o dia a dia dos barbeiros, como visualização de agenda, confirmação de atendimentos e comunicação com a administração.
 
 ---
