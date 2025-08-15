@@ -6,16 +6,35 @@ const supabase = createClient();
 
 const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=365E78&color=fff';
 
+export type Professional = {
+  id: string;
+  nome?: string;
+  telefone?: string;
+  email?: string;
+  avatar_url?: string;
+  user_id?: string;
+};
+
+export type QueueItem = {
+  id: string; // profissional_id
+  queue_position: number;
+  daily_services: number;
+  total_services: number;
+  is_active: boolean;
+  last_service_date: string | null;
+  passou_vez: number;
+  barber: Professional;
+};
+
 export const useBarberQueue = () => {
-  const [queue, setQueue] = useState<any[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Buscar dados da fila com informações dos barbeiros
-  const fetchProfessionals = async () => {
+  const fetchProfessionals = async (): Promise<void> => {
     setLoading(true);
     try {
       console.log('[BarberQueue] Iniciando busca da fila');
-      
       // Buscar dados da fila junto com informações dos barbeiros
       const { data: filaData, error: errorFila } = await supabase
         .from('barber_queue')
@@ -54,31 +73,31 @@ export const useBarberQueue = () => {
       }
 
       // Filtrar apenas registros onde o profissional é barbeiro
-      const barbeirosNaFila = filaData.filter(item => 
-        item.profissionais?.funcao === 'barbeiro'
+      const barbeirosNaFila = (filaData as Array<any>).filter(
+        (item) => item.profissionais?.funcao === 'barbeiro'
       );
 
       // Transformar os dados no formato esperado pela UI
-      const processedData = barbeirosNaFila.map(item => ({
-        id: item.profissional_id,
-        queue_position: item.queue_position,
-        daily_services: item.daily_services || 0,
-        total_services: item.total_services || 0,
-        is_active: item.is_active,
-        last_service_date: item.last_service_date,
-        passou_vez: item.passou_vez || 0,
+      const processedData: QueueItem[] = barbeirosNaFila.map((item) => ({
+        id: item.profissional_id as string,
+        queue_position: Number(item.queue_position),
+        daily_services: Number(item.daily_services || 0),
+        total_services: Number(item.total_services || 0),
+        is_active: Boolean(item.is_active),
+        last_service_date: (item.last_service_date as string) || null,
+        passou_vez: Number(item.passou_vez || 0),
         barber: {
-          id: item.profissionais?.id,
+          id: item.profissionais?.id as string,
           nome: item.profissionais?.nome || 'Nome não informado',
           telefone: item.profissionais?.telefone || 'Telefone não informado',
-          email: item.profissionais?.email,
-          avatar_url: item.profissionais?.avatar_url || DEFAULT_AVATAR
-        }
+          email: item.profissionais?.email || undefined,
+          avatar_url: (item.profissionais?.avatar_url as string) || DEFAULT_AVATAR,
+          user_id: item.profissionais?.user_id as string,
+        },
       }));
-      
+
       console.log('[BarberQueue] Dados processados:', processedData);
       setQueue(processedData);
-
     } catch (error) {
       console.error('[BarberQueue] Erro ao carregar fila:', error);
       toast.error('Erro ao carregar fila: ' + (error as Error).message);
@@ -88,7 +107,7 @@ export const useBarberQueue = () => {
   };
 
   // Função para reorganizar a fila (fila indiana)
-  const reorganizarFila = async () => {
+  const reorganizarFila = async (): Promise<void> => {
     console.log('[BarberQueue] Reorganizando fila...');
     try {
       // Buscar todos os barbeiros ativos
@@ -103,7 +122,8 @@ export const useBarberQueue = () => {
           is_active,
           passou_vez,
           profissionais!inner (
-            funcao
+            funcao,
+            nome
           )
         `)
         .eq('is_active', true)
@@ -118,24 +138,17 @@ export const useBarberQueue = () => {
       }
 
       // Ordenar por: is_active (ativos primeiro), total_services (menor primeiro), passou_vez (menor primeiro)
-      const novaOrdem = barbeirosAtivos.sort((a, b) => {
-        // Primeiro: ativos primeiro
+      const novaOrdem = (barbeirosAtivos as Array<any>).sort((a, b) => {
         if (a.is_active !== b.is_active) return b.is_active ? 1 : -1;
-        
-        // Segundo: menor número de atendimentos primeiro (fila indiana)
         if (a.total_services !== b.total_services) return a.total_services - b.total_services;
-        
-        // Terceiro: menor número de "passou vez" primeiro
         if ((a.passou_vez || 0) !== (b.passou_vez || 0)) return (a.passou_vez || 0) - (b.passou_vez || 0);
-        
-        // Quarto: posição atual em caso de empate
         return a.queue_position - b.queue_position;
       });
 
-      console.log('[BarberQueue] Nova ordem:', novaOrdem.map(b => ({ 
-        nome: b.profissionais?.nome, 
-        total_services: b.total_services, 
-        passou_vez: b.passou_vez 
+      console.log('[BarberQueue] Nova ordem:', novaOrdem.map((b) => ({
+        nome: b.profissionais?.nome,
+        total_services: b.total_services,
+        passou_vez: b.passou_vez,
       })));
 
       // Atualizar posições no banco
@@ -143,7 +156,7 @@ export const useBarberQueue = () => {
         await supabase
           .from('barber_queue')
           .update({ queue_position: i + 1 })
-          .eq('id', novaOrdem[i].id);
+          .eq('id', novaOrdem[i].id as string);
       }
 
       console.log('[BarberQueue] Fila reorganizada com sucesso');
@@ -154,10 +167,9 @@ export const useBarberQueue = () => {
   };
 
   // 1. Botão "+1" (Atendeu)
-  const handleAtendimento = async (professionalId: string) => {
+  const handleAtendimento = async (professionalId: string): Promise<void> => {
     console.log('[BarberQueue] Atendimento registrado para:', professionalId);
     try {
-      // Primeiro, buscar os valores atuais
       const { data: currentData, error: fetchError } = await supabase
         .from('barber_queue')
         .select('daily_services, total_services')
@@ -166,24 +178,19 @@ export const useBarberQueue = () => {
 
       if (fetchError) throw fetchError;
 
-      // Incrementar contadores
       const { error } = await supabase
         .from('barber_queue')
         .update({
           daily_services: (currentData?.daily_services || 0) + 1,
           total_services: (currentData?.total_services || 0) + 1,
-          last_service_date: new Date().toISOString().split('T')[0]
+          last_service_date: new Date().toISOString().split('T')[0],
         })
         .eq('profissional_id', professionalId);
 
       if (error) throw error;
-      
+
       toast.success('Atendimento registrado!');
-      
-      // Reorganizar fila após atendimento
       await reorganizarFila();
-      
-      // Atualizar dados na interface
       await fetchProfessionals();
     } catch (error) {
       toast.error('Erro ao registrar atendimento');
@@ -192,10 +199,9 @@ export const useBarberQueue = () => {
   };
 
   // 2. Botão "Passar" (Passou a vez)
-  const handlePassarVez = async (professionalId: string) => {
+  const handlePassarVez = async (professionalId: string): Promise<void> => {
     console.log('[BarberQueue] Passou a vez para:', professionalId);
     try {
-      // Primeiro, buscar os valores atuais
       const { data: currentData, error: fetchError } = await supabase
         .from('barber_queue')
         .select('daily_services, total_services, passou_vez')
@@ -204,24 +210,19 @@ export const useBarberQueue = () => {
 
       if (fetchError) throw fetchError;
 
-      // Incrementar contadores + passou_vez
       const { error } = await supabase
         .from('barber_queue')
         .update({
           daily_services: (currentData?.daily_services || 0) + 1,
           total_services: (currentData?.total_services || 0) + 1,
-          passou_vez: (currentData?.passou_vez || 0) + 1
+          passou_vez: (currentData?.passou_vez || 0) + 1,
         })
         .eq('profissional_id', professionalId);
 
       if (error) throw error;
-      
+
       toast.success('Profissional passou a vez!');
-      
-      // Reorganizar fila após passar vez
       await reorganizarFila();
-      
-      // Atualizar dados na interface
       await fetchProfessionals();
     } catch (error) {
       toast.error('Erro ao passar a vez');
@@ -230,7 +231,7 @@ export const useBarberQueue = () => {
   };
 
   // 3. Toggle "Ativo/Inativo"
-  const handleToggleAtivo = async (professionalId: string, novoStatus: boolean) => {
+  const handleToggleAtivo = async (professionalId: string, novoStatus: boolean): Promise<void> => {
     console.log('[BarberQueue] Alterando status para:', { professionalId, novoStatus });
     try {
       const { error } = await supabase
@@ -239,15 +240,13 @@ export const useBarberQueue = () => {
         .eq('profissional_id', professionalId);
 
       if (error) throw error;
-      
+
       toast.success(`Profissional ${novoStatus ? 'ativado' : 'desativado'}`);
-      
-      // Reorganizar fila se ativou (para incluir na fila)
+
       if (novoStatus) {
         await reorganizarFila();
       }
-      
-      // Atualizar dados na interface
+
       await fetchProfessionals();
     } catch (error) {
       toast.error('Erro ao alterar status');
@@ -256,7 +255,7 @@ export const useBarberQueue = () => {
   };
 
   // 4. Botão "Reorganizar por Atendimentos"
-  const reorganizarPorAtendimentos = async () => {
+  const reorganizarPorAtendimentos = async (): Promise<void> => {
     console.log('[BarberQueue] Reorganizando por atendimentos');
     try {
       await reorganizarFila();
@@ -269,27 +268,22 @@ export const useBarberQueue = () => {
   };
 
   // 5. Botão "Zerar Lista"
-  const zerarLista = async () => {
+  const zerarLista = async (): Promise<void> => {
     console.log('[BarberQueue] Zerando lista');
     try {
-      // Zerar todos os contadores
       const { error } = await supabase
         .from('barber_queue')
-        .update({ 
+        .update({
           daily_services: 0,
           total_services: 0,
-          passou_vez: 0
+          passou_vez: 0,
         })
         .eq('is_active', true);
 
       if (error) throw error;
 
       toast.success('Lista zerada!');
-      
-      // Reorganizar posições (1, 2, 3, 4, 5...)
       await reorganizarFila();
-      
-      // Atualizar dados na interface
       await fetchProfessionals();
     } catch (error) {
       toast.error('Erro ao zerar lista');
@@ -297,14 +291,8 @@ export const useBarberQueue = () => {
     }
   };
 
-  // Funções legadas para compatibilidade (mantidas para não quebrar código existente)
-  const addService = handleAtendimento;
-  const skipTurn = handlePassarVez;
-  const toggleBarberStatus = handleToggleAtivo;
-  const reorganizeByServices = reorganizarPorAtendimentos;
-  const resetDailyServices = zerarLista;
-
-  const moveBarberPosition = async (professionalId: string, newPosition: number) => {
+  // Função para mover posição
+  const moveBarberPosition = async (professionalId: string, newPosition: number): Promise<void> => {
     console.log('[BarberQueue] Movendo profissional:', { professionalId, newPosition });
     try {
       const { error } = await supabase
@@ -323,7 +311,7 @@ export const useBarberQueue = () => {
   };
 
   // Função para atualizar a ordem de toda a fila
-  const updateQueueOrder = async (newQueue: any[]) => {
+  const updateQueueOrder = async (newQueue: Array<Pick<QueueItem, 'id'>>): Promise<void> => {
     console.log('[BarberQueue] Atualizando a ordem completa da fila...');
     try {
       const updates = newQueue.map((item, index) => ({
@@ -342,11 +330,10 @@ export const useBarberQueue = () => {
       }
 
       console.log('[BarberQueue] Ordem da fila atualizada com sucesso no banco.');
-      await fetchProfessionals(); // Revalida os dados locais
-
+      await fetchProfessionals();
     } catch (error) {
-       console.error('[BarberQueue] Erro em updateQueueOrder:', error);
-       throw error;
+      console.error('[BarberQueue] Erro em updateQueueOrder:', error);
+      throw error;
     }
   };
 
@@ -365,13 +352,13 @@ export const useBarberQueue = () => {
     reorganizarPorAtendimentos,
     zerarLista,
     // Funções legadas para compatibilidade
-    addService,
-    skipTurn,
-    toggleBarberStatus,
+    addService: handleAtendimento,
+    skipTurn: handlePassarVez,
+    toggleBarberStatus: handleToggleAtivo,
     moveBarberPosition,
     refetch: fetchProfessionals,
-    resetDailyServices,
-    reorganizeByServices,
+    resetDailyServices: zerarLista,
+    reorganizeByServices: reorganizarPorAtendimentos,
     updateQueueOrder,
-  };
+  } as const;
 }; 

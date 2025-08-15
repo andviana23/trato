@@ -15,8 +15,8 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
 
   // Função para gerar breadcrumbs baseado na rota
   const generateBreadcrumbs = () => {
-    const paths = pathname.split('/').filter(Boolean);
-    const breadcrumbs = [
+    const paths = (pathname || '').split('/').filter(Boolean);
+    const breadcrumbs: { name: string; href: string; icon?: any }[] = [
       { name: 'Home', href: '/dashboard', icon: HomeIcon }
     ];
 
@@ -26,11 +26,7 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
       
       currentPath += `/${path}`;
       const name = path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ');
-      breadcrumbs.push({
-        name,
-        href: currentPath,
-        icon: null
-      });
+      breadcrumbs.push({ name, href: currentPath });
     });
 
     return breadcrumbs;
@@ -41,7 +37,7 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Breadcrumbs */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-2">
+      <div className="bg-white border-b border-gray-200 px-6 py-2">
         <nav className="flex items-center space-x-2 text-xs opacity-80">
           {breadcrumbs.map((breadcrumb, index) => (
             <div key={breadcrumb.href} className="flex items-center">
@@ -68,7 +64,7 @@ export default function MainContainer({ children, isCollapsed }: MainContainerPr
       </div>
 
       {/* Conteúdo principal com scroll e layout clean */}
-      <main className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+      <main className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-5xl mx-auto px-6 py-8">
           {children}
         </div>

@@ -1,56 +1,61 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+"use client";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
+import React from "react";
+import { Button as ChakraButton, type ButtonProps as ChakraButtonProps } from "@chakra-ui/react";
+
+type LegacyVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+type LegacySize = "default" | "sm" | "lg" | "icon";
+
+export type ButtonProps = Omit<ChakraButtonProps, "variant" | "size"> & {
+  variant?: LegacyVariant;
+  size?: LegacySize;
+  asChild?: boolean;
+};
+
+function mapVariant(variant?: LegacyVariant): ChakraButtonProps["variant"] {
+  switch (variant) {
+    case "destructive":
+      return "solid";
+    case "outline":
+      return "outline";
+    case "secondary":
+      return "subtle";
+    case "ghost":
+      return "ghost";
+    case "link":
+      return "plain";
+    case "default":
+    default:
+      return "solid";
   }
-)
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
+function mapSize(size?: LegacySize): ChakraButtonProps["size"] {
+  switch (size) {
+    case "sm":
+      return "sm";
+    case "lg":
+      return "lg";
+    case "icon":
+      return "sm";
+    case "default":
+    default:
+      return "md";
   }
-)
-Button.displayName = "Button"
+}
 
-export { Button, buttonVariants } 
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant, size, asChild: _asChild, colorPalette, ...rest }, ref) => {
+    const chakraVariant = mapVariant(variant);
+    const chakraSize = mapSize(size);
+    const palette = variant === "destructive" ? (colorPalette ?? "red") : colorPalette;
+    return (
+      <ChakraButton ref={ref} variant={chakraVariant} size={chakraSize} colorPalette={palette} {...rest} />
+    );
+  }
+);
+Button.displayName = "ChakraCompatButton";
+
+// Backward export to avoid breaking imports
+export const buttonVariants = {} as const;
+

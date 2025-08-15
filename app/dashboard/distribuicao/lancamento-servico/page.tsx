@@ -1,13 +1,13 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Avatar } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Avatar } from "@/components/ui/chakra-adapters";
 import { PlusIcon, UserIcon, WrenchScrewdriverIcon, InformationCircleIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 const supabase = createClient();
-const TRATO_ID = "244c0543-7108-4892-9eac-48186ad1d5e7";
+const TRATO_ID = process.env.NEXT_PUBLIC_TRATO_UNIDADE_ID || "244c0543-7108-4892-9eac-48186ad1d5e7";
 function getMesAtual() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -105,33 +105,33 @@ export default function LancamentoServicoPage() {
     <div className="container mx-auto px-4 py-6">
       {/* Cards de totais */}
       <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="shadow-lg border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-          <CardHeader className="flex items-center gap-3 pb-0">
+        <Card.Root className="shadow-lg border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
+          <Card.Header className="flex items-center gap-3 pb-0">
             <ChartBarIcon className="w-7 h-7 text-blue-500" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">Total de Serviços no Mês</span>
-          </CardHeader>
-          <CardBody className="pt-2">
+          </Card.Header>
+          <Card.Body className="pt-2">
             <span className="text-4xl font-extrabold text-blue-700 dark:text-blue-400">{totalServicosMes}</span>
-          </CardBody>
-        </Card>
-        <Card className="shadow-lg border border-green-100 bg-gradient-to-br from-green-50 to-white">
-          <CardHeader className="flex items-center gap-3 pb-0">
+          </Card.Body>
+        </Card.Root>
+        <Card.Root className="shadow-lg border border-green-100 bg-gradient-to-br from-green-50 to-white">
+          <Card.Header className="flex items-center gap-3 pb-0">
             <InformationCircleIcon className="w-7 h-7 text-green-500" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">Média de Serviços por Dia</span>
-          </CardHeader>
-          <CardBody className="pt-2">
+          </Card.Header>
+          <Card.Body className="pt-2">
             <span className="text-4xl font-extrabold text-green-700 dark:text-green-400">{mediaPorDia}</span>
-          </CardBody>
-        </Card>
-        <Card className="shadow-lg border border-purple-100 bg-gradient-to-br from-purple-50 to-white">
-          <CardHeader className="flex items-center gap-3 pb-0">
+          </Card.Body>
+        </Card.Root>
+        <Card.Root className="shadow-lg border border-purple-100 bg-gradient-to-br from-purple-50 to-white">
+          <Card.Header className="flex items-center gap-3 pb-0">
             <WrenchScrewdriverIcon className="w-7 h-7 text-purple-500" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">Minutos Totais Trabalhados</span>
-          </CardHeader>
-          <CardBody className="pt-2">
+          </Card.Header>
+          <Card.Body className="pt-2">
             <span className="text-4xl font-extrabold text-purple-700 dark:text-purple-400">{totalMinutosMes} min</span>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
         <div className="flex items-end justify-center">
           <Button color="primary" startContent={<PlusIcon className="w-5 h-5" />} onClick={openNovo} className="w-full md:w-auto text-base font-semibold shadow-lg h-14">
             Adicionar Serviço para Barbeiro
@@ -139,11 +139,11 @@ export default function LancamentoServicoPage() {
         </div>
       </div>
       {/* Tabela de barbeiros */}
-      <Card className="shadow-lg mb-8 border border-gray-100">
-        <CardHeader className="bg-gray-50 dark:bg-gray-900 rounded-t-lg">
+      <Card.Root className="shadow-lg mb-8 border border-gray-100">
+        <Card.Header className="bg-gray-50 dark:bg-gray-900 rounded-t-lg">
           <span className="text-lg font-semibold text-gray-900 dark:text-white">Serviços por Barbeiro (Mês Atual)</span>
-        </CardHeader>
-        <CardBody className="p-0">
+        </Card.Header>
+        <Card.Body className="p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
               <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
@@ -166,7 +166,7 @@ export default function LancamentoServicoPage() {
                     return (
                       <tr key={b.id} className={idx % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800"}>
                         <td className="px-4 py-3 whitespace-nowrap flex items-center gap-2">
-                          <Avatar src={b.avatar_url} name={b.nome} size="sm" />
+                          <img src={b.avatar_url || ''} alt={b.nome} className="w-6 h-6 rounded-full" />
                           <span className="font-medium text-gray-900 dark:text-white">{b.nome}</span>
                         </td>
                         <td className="px-4 py-3 text-center font-semibold">{resumo.total}</td>
@@ -187,89 +187,56 @@ export default function LancamentoServicoPage() {
               </tbody>
             </table>
           </div>
-        </CardBody>
-      </Card>
+        </Card.Body>
+      </Card.Root>
       {/* Modal de lançamento manual */}
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} size="md">
+      <Modal isOpen={modalOpen} onOpenChange={(open:boolean)=>!open&&setModalOpen(false)} size="md">
         <ModalContent>
           <ModalHeader>Lançar Serviço Realizado</ModalHeader>
           <ModalBody>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Barbeiro <span className="text-red-500">*</span></label>
-                <Select
-                  label="Selecione o barbeiro"
-                  selectedKeys={form.barbeiro_id ? [form.barbeiro_id] : []}
-                  onChange={e => setForm(f => ({ ...f, barbeiro_id: e.target.value }))}
-                  isRequired
-                >
+                <select className="border rounded px-3 py-2 w-full" value={form.barbeiro_id} onChange={e=>setForm(f=>({...f, barbeiro_id: e.target.value}))} required>
+                  <option value="">Selecione...</option>
                   {barbeiros.map(b => (
-                    <SelectItem key={b.id} value={b.id} textValue={b.nome}>
-                      <div className="flex items-center gap-2">
-                        <Avatar src={b.avatar_url} name={b.nome} size="sm" />
-                        <span>{b.nome}</span>
-                      </div>
-                    </SelectItem>
+                    <option key={b.id} value={b.id}>{b.nome}</option>
                   ))}
-                </Select>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Serviço <span className="text-red-500">*</span></label>
-                <Select
-                  label="Selecione o serviço"
-                  selectedKeys={form.servico_id ? [form.servico_id] : []}
-                  onChange={e => setForm(f => ({ ...f, servico_id: e.target.value }))}
-                  isRequired
-                >
-                  {servicos.map(s => (
-                    <SelectItem key={s.id} value={s.id} textValue={s.nome}>
-                      {s.nome}
-                    </SelectItem>
-                  ))}
-                </Select>
+                <select className="border rounded px-3 py-2 w-full" value={form.servico_id} onChange={e=>setForm(f=>({...f, servico_id: e.target.value}))} required>
+                  <option value="">Selecione...</option>
+                  {servicos.map(s => (<option key={s.id} value={s.id}>{s.nome}</option>))}
+                </select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Data <span className="text-red-500">*</span></label>
-                  <Input
-                    label="Data"
-                    type="date"
-                    value={form.data}
-                    onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
-                    isRequired
-                  />
+                  <Input type="date" value={form.data} onChange={e=>setForm(f=>({...f, data: e.target.value}))} aria-required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Horário</label>
-                  <Input
-                    label="Horário"
-                    type="time"
-                    value={form.hora}
-                    onChange={e => setForm(f => ({ ...f, hora: e.target.value }))}
-                  />
+                  <Input type="time" value={form.hora} onChange={e=>setForm(f=>({...f, hora: e.target.value}))} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Quantidade de Serviços <span className="text-red-500">*</span></label>
-                <Input
-                  label="Quantidade de Serviços"
-                  type="number"
-                  min={1}
-                  value={String(form.quantidade)}
-                  onChange={e => setForm(f => ({ ...f, quantidade: Number(e.target.value) }))}
-                  isRequired
-                  description="Informe quantos serviços iguais deseja lançar para o barbeiro nesta data e horário."
-                />
+                 <Input type="number" min={1} value={String(form.quantidade)} onChange={e=>setForm(f=>({...f, quantidade: Number(e.target.value)}))} aria-required />
               </div>
               {erro && <div className="text-red-600 text-sm mt-2">{erro}</div>}
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button color="primary" isLoading={saving} onClick={salvarLancamento}>Adicionar</Button>
+            <Button variant="ghost" onClick={()=>setModalOpen(false)}>Cancelar</Button>
+            <Button color="primary" loading={saving} onClick={salvarLancamento}>Adicionar</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
     </div>
   );
 } 
+
+
+

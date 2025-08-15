@@ -1,113 +1,131 @@
 "use client";
 
-import React, { useState } from "react";
-import { useAuth } from '@/lib/contexts/AuthContext';
-import Image from 'next/image';
-import { LockClosedIcon } from '@heroicons/react/24/solid';
+import React, { useEffect, useMemo, useState } from "react";
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useUnit } from "@/src/contexts/UnitContext";
 
-// =================== FORMULÁRIO DE LOGIN ===================
-function LoginForm() {
-  const { signIn } = useAuth();
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [isVisible, setIsVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+type Unidade = { id: string; nome: string };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setError(undefined);
-    try {
-      const result = await signIn(formData.email, formData.password);
-      if (result.success) {
-        window.location.href = '/dashboard';
-      } else if (result.error) {
-        setError(result.error);
-      }
-    } catch {
-      setError('Erro ao fazer login');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-300">E-mail ou Telefone</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="E-mail ou Telefone"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          disabled={isSubmitting}
-          className="w-full px-4 py-2 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none"
-        />
-      </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-300">Sua senha</label>
-        <div className="relative">
-          <input
-            id="password"
-            name="password"
-            type={isVisible ? 'text' : 'password'}
-            placeholder="Sua senha"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            disabled={isSubmitting}
-            className="w-full px-4 py-2 rounded-md bg-gray-700 text-white pr-10 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => setIsVisible(!isVisible)}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-yellow-500 hover:text-white"
-            tabIndex={-1}
-            aria-label={isVisible ? 'Ocultar senha' : 'Mostrar senha'}
-          >
-            <LockClosedIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-      {error && (
-        <div className="text-sm text-red-500">{error}</div>
-      )}
-      <button
-        type="submit"
-        className="w-full py-2 bg-yellow-500 text-black font-semibold rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'Entrando...' : 'Entrar'}
-      </button>
-      <div className="flex justify-between text-sm text-gray-300">
-        <a href="/auth/forgot-password" className="hover:underline">Esqueci minha senha</a>
-        <a href="/auth/sign-up" className="hover:underline">Não possui uma conta? Faça seu cadastro</a>
-      </div>
-    </form>
-  );
-}
-
-// =================== PÁGINA DE LOGIN ===================
 export default function LoginPage() {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const { setUnit } = useUnit();
+  const { signIn } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [unidadeId, setUnidadeId] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.from("unidades").select("id,nome").order("nome");
+        const norm = ((data as { id: string | number; nome: string | null }[] | null) ?? [])
+          .map((u) => ({ id: String(u.id), nome: u.nome ?? "" }))
+          .filter((u) => u.id);
+        setUnidades(norm);
+        const last = typeof window !== "undefined" ? localStorage.getItem("tb.unidade_id") : null;
+        if (last && norm.some((u) => u.id === last)) setUnidadeId(last);
+        else if (norm.length > 0) setUnidadeId(norm[0].id);
+      } catch {
+        setUnidades([]);
+      }
+    })();
+  }, [supabase]);
+
+  const canSubmit = Boolean(unidadeId) && /.+@.+\..+/.test(email) && senha.trim().length >= 6 && !loading;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setLoading(true);
+    try {
+      const result = await signIn(email, senha);
+      if (!result.success) throw new Error(result.error || "Falha no login");
+
+      const unidade = unidades.find((u) => u.id === unidadeId);
+      const nome = unidade?.nome?.toLowerCase() ?? "";
+      const slug = nome.includes("barber") ? "barberbeer" : "trato";
+      try { document.cookie = `tb.unidade=${encodeURIComponent(slug)}; Path=/; Max-Age=${60*60*24*30}; SameSite=Lax`; } catch {}
+      setUnit(unidadeId, unidade?.nome ?? null);
+      toast.success("Login realizado");
+      router.replace("/dashboard");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha no login");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundImage: 'url(/path/to/background.jpg)', backgroundSize: 'cover' }}>
-      <div className="bg-gray-800 bg-opacity-75 p-8 rounded-lg shadow-lg max-w-md w-full">
-        <div className="text-center mb-6">
-          <Image src="/path/to/logo.png" alt="Logo" width={150} height={50} className="mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white">Acesse sua conta</h2>
-          <p className="text-gray-300">Gerencie sua barbearia de forma fácil e rápida</p>
-        </div>
-        <LoginForm />
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
+      {/* Lado visual */}
+      <div className="hidden md:block bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600" />
+      {/* Formulário */}
+      <div className="flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl">Entrar</CardTitle>
+              {mounted && (
+                <Button variant="ghost" size="sm" onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')} aria-label="Alternar tema">
+                  {resolvedTheme === 'dark' ? '🌙' : '☀️'}
+                </Button>
+              )}
+            </div>
+            <CardDescription>Use suas credenciais para acessar</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <label className="text-sm">Unidade</label>
+                <Select value={unidadeId} onValueChange={setUnidadeId}>
+                  <SelectTrigger className="w-full mt-1">
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unidades.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm">Email</label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className="mt-1" />
+              </div>
+              <div>
+                <label className="text-sm">Senha</label>
+                <div className="relative mt-1">
+                  <Input type={showPwd ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} />
+                  <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-sm" onClick={() => setShowPwd((v) => !v)} aria-label="Alternar visibilidade da senha">{showPwd ? 'Ocultar' : 'Mostrar'}</button>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">Mínimo de 6 caracteres</div>
+              </div>
+              <Button type="submit" className="w-full" disabled={!canSubmit} aria-busy={loading}>Entrar</Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex justify-end">
+            <a className="text-sm underline" href="/help">Precisa de ajuda?</a>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
 }
+ 

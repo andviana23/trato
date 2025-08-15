@@ -29,7 +29,7 @@ interface ToastProviderProps {
   children: React.ReactNode;
 }
 
-export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
+export const Toaster: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const toast = useCallback((options: Omit<Toast, 'id'>) => {

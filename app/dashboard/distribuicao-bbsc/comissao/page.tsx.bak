@@ -1,0 +1,481 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardBody, CardHeader, Button, Avatar, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip, Tooltip, Select, SelectItem, Input } from "@/components/ui/chakra-adapters";
+import { CurrencyDollarIcon, UserIcon, InformationCircleIcon, ChartBarIcon, PlusIcon, ClockIcon, HashtagIcon } from "@heroicons/react/24/outline";
+import { ScissorsIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/solid';
+import { createClient } from "@/lib/supabase/client";
+import { Bar } from 'react-chartjs-2';
+import { Chart, BarElement, CategoryScale, LinearScale, Tooltip as ChartTooltip, Legend } from 'chart.js';
+Chart.register(BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
+import { ComissaoResumoCard } from '../../../../components/ComissaoResumoCard';
+import { ComissaoBarbeiroCard } from '../../../../components/ComissaoBarbeiroCard';
+
+const supabase = createClient();
+
+function getMesAtual() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export default function ComissaoPage() {
+  const [barbeiros, setBarbeiros] = useState<any[]>([]);
+  const [realizados, setRealizados] = useState<any[]>([]);
+  const [servicos, setServicos] = useState<any[]>([]);
+  const [faturamento, setFaturamento] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [barbeiroDetalhe, setBarbeiroDetalhe] = useState<any | null>(null);
+  const [comissoesAvulsas, setComissoesAvulsas] = useState<any[]>([]);
+  const [totalAvulso, setTotalAvulso] = useState(0);
+  const [modalAvulsoOpen, setModalAvulsoOpen] = useState(false);
+  const [unidades, setUnidades] = useState<any[]>([]);
+  const [unidadeAvulso, setUnidadeAvulso] = useState("");
+  const [profissionaisAvulso, setProfissionaisAvulso] = useState<any[]>([]);
+  const [profissionalAvulso, setProfissionalAvulso] = useState("");
+  const [servicosAvulsos, setServicosAvulsos] = useState<any[]>([]);
+  const [servicoAvulso, setServicoAvulso] = useState("");
+  const [valorAvulso, setValorAvulso] = useState("");
+  const [quantidadeAvulso, setQuantidadeAvulso] = useState("");
+  const [erroAvulso, setErroAvulso] = useState("");
+  const [savingAvulso, setSavingAvulso] = useState(false);
+  const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
+  const [profissionalConsulta, setProfissionalConsulta] = useState("");
+  const [dataConsulta, setDataConsulta] = useState("");
+  const [comissoesConsulta, setComissoesConsulta] = useState<any[]>([]);
+  const [modalListaOpen, setModalListaOpen] = useState(false);
+  const [profissionaisTodos, setProfissionaisTodos] = useState<any[]>([]);
+  const [loadingConsulta, setLoadingConsulta] = useState(false);
+  const [modalComparativoOpen, setModalComparativoOpen] = useState(false);
+  const [barbeiroComparativo, setBarbeiroComparativo] = useState<any | null>(null);
+
+  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { if (unidadeAvulso) { fetchProfissionaisAvulso(); fetchServicosAvulsos(); } }, [unidadeAvulso]);
+  useEffect(() => { fetchProfissionaisTodos(); }, []);
+
+  async function fetchAll() {
+    setLoading(true);
+    const mesAtual = getMesAtual();
+    // Buscar barbeiros apenas da unidade BarberBeer
+    const { data: barbeiros } = await supabase
+      .from("profissionais")
+      .select("*")
+      .eq("funcao", "barbeiro")
+      .eq("unidade_id", "87884040-cafc-4625-857b-6e0402ede7d7");
+    // Buscar serviços realizados no mês
+    const { data: realizados } = await supabase
+      .from("servicos_realizados")
+      .select("*, servico:servico_id(*)")
+      .gte("data_hora", `${mesAtual}-01`)
+      .lte("data_hora", `${mesAtual}-31`);
+    // Buscar serviços (para minutos)
+    const { data: servicos } = await supabase.from("servicos").select("*");
+    // Buscar faturamento do mês da unidade
+    const { data: fat } = await supabase
+      .from("faturamento_assinatura")
+      .select("valor")
+      .eq("mes_referencia", mesAtual)
+      .eq("unidade", "BarberBeer"); // <-- filtro por unidade
+    // Buscar comissões avulsas do mês
+    const { data: comissoesAvulsas } = await supabase
+      .from("comissoes_avulsas")
+      .select("*, servicos_avulsos(tempo_minutos, nome)")
+      .gte("data_lancamento", `${mesAtual}-01`)
+      .lte("data_lancamento", `${mesAtual}-31`);
+    const totalFaturamento = fat && fat.length > 0 ? fat.reduce((acc, f) => acc + Number(f.valor), 0) : 0;
+    const totalAvulso = (comissoesAvulsas || []).reduce((acc, c) => acc + (Number(c.valor_comissao) * Number(c.quantidade)), 0);
+    setBarbeiros(barbeiros || []);
+    setRealizados(realizados || []);
+    setServicos(servicos || []);
+    setFaturamento(totalFaturamento);
+    setComissoesAvulsas(comissoesAvulsas || []);
+    setTotalAvulso(totalAvulso);
+    setLoading(false);
+  }
+
+  async function fetchUnidadesAvulso() {
+    const { data } = await supabase.from("unidades").select("id, nome").order("nome");
+    setUnidades(data || []);
+    if (data && data.length > 0 && !unidadeAvulso) setUnidadeAvulso(data[0].id);
+  }
+  async function fetchProfissionaisAvulso() {
+    const { data } = await supabase.from("profissionais").select("id, nome").eq("unidade_id", unidadeAvulso).order("nome");
+    setProfissionaisAvulso(data || []);
+    if (data && data.length > 0) setProfissionalAvulso(data[0].id);
+  }
+  async function fetchServicosAvulsos() {
+    const { data } = await supabase.from("servicos_avulsos").select("id, nome").eq("unidade_id", unidadeAvulso);
+    setServicosAvulsos(data || []);
+    if (data && data.length > 0) setServicoAvulso(data[0].id);
+  }
+
+  async function salvarComissaoAvulsa() {
+    setSavingAvulso(true);
+    setErroAvulso("");
+    if (!unidadeAvulso || !profissionalAvulso || !servicoAvulso || !valorAvulso || !quantidadeAvulso) {
+      setErroAvulso("Preencha todos os campos obrigatórios.");
+      setSavingAvulso(false);
+      return;
+    }
+    await supabase.from("comissoes_avulsas").insert({
+      unidade_id: unidadeAvulso,
+      profissional_id: profissionalAvulso,
+      servico_avulso_id: servicoAvulso,
+      valor_comissao: Number(valorAvulso),
+      quantidade: Number(quantidadeAvulso),
+      data_lancamento: new Date().toISOString()
+    });
+    setModalAvulsoOpen(false);
+    setSavingAvulso(false);
+    setValorAvulso("");
+    setQuantidadeAvulso("");
+    fetchAll();
+  }
+
+  async function buscarComissoesConsulta() {
+    setLoadingConsulta(true);
+    const { data } = await supabase.from("comissoes_avulsas").select("*, servicos_avulsos(nome, tempo_minutos)")
+      .eq("profissional_id", profissionalConsulta)
+      .gte("data_lancamento", `${dataConsulta}T00:00:00`)
+      .lte("data_lancamento", `${dataConsulta}T23:59:59`);
+    setComissoesConsulta(data || []);
+    setLoadingConsulta(false);
+    setModalConsultaOpen(false);
+    setModalListaOpen(true);
+  }
+  async function excluirComissaoAvulsa(id: string) {
+    await supabase.from("comissoes_avulsas").delete().eq("id", id);
+    setComissoesConsulta(comissoesConsulta.filter(c => c.id !== id));
+    fetchAll();
+  }
+
+  async function fetchProfissionaisTodos() {
+    const { data } = await supabase.from("profissionais").select("id, nome").order("nome");
+    setProfissionaisTodos(data || []);
+    if (data && data.length > 0) setProfissionalConsulta(data[0].id);
+  }
+
+  // Comissão total do mês (40% do faturamento da unidade)
+  // A comissão é calculada automaticamente como 40% do faturamento total do mês da unidade.
+  const comissaoTotal = faturamento * 0.4;
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-10">
+      {/* Header/Breadcrumb */}
+      <div className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <span className="font-semibold text-amber-700">Dashboard</span>
+            <span className="mx-1">/</span>
+            <span className="font-semibold text-amber-700">Distribuição BBSC</span>
+            <span className="mx-1">/</span>
+            <span className="font-bold text-gray-900">Comissão - BarberBeer</span>
+          </div>
+          <div className="flex gap-2 mt-2 md:mt-0">
+            <Button color="primary" onClick={() => setModalAvulsoOpen(true)} className="font-semibold">Adicionar Comissão Avulsa</Button>
+            <Button color="secondary" variant="bordered" onClick={() => setModalConsultaOpen(true)} className="font-semibold">Ver Comissão Avulsa</Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Totais */}
+      <div className="max-w-7xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ComissaoResumoCard
+          icon={<CurrencyDollarIcon className="w-7 h-7 text-green-600" />}
+          title="Faturamento Total do Mês"
+          value={faturamento}
+          valueColorClass="text-green-700"
+          gradientClass="bg-gradient-to-br from-green-100 to-white"
+        />
+        <ComissaoResumoCard
+          icon={<ChartBarIcon className="w-7 h-7 text-amber-500" />}
+          title="Comissão Total do Mês (40%)"
+          value={comissaoTotal}
+          valueColorClass="text-amber-700"
+          gradientClass="bg-gradient-to-br from-amber-100 to-white"
+        />
+      </div>
+
+      {/* Grid de barbeiros */}
+      <div className="max-w-7xl mx-auto px-4 mt-10">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Barbeiros BarberBeer</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {barbeiros.length === 0 ? (
+            <Card.Root className="shadow-md rounded-2xl col-span-full">
+              <Card.Body className="text-center text-gray-400 py-12">Nenhum barbeiro cadastrado.</Card.Body>
+            </Card.Root>
+          ) : (
+            barbeiros.map((b) => {
+              const feitos = realizados.filter(r => r.barbeiro_id === b.id);
+              const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
+              const totalMinutosMes = barbeiros.reduce((acc, b2) => {
+                const feitos2 = realizados.filter(r => r.barbeiro_id === b2.id);
+                return acc + feitos2.reduce((a, r) => a + (r.servico?.tempo_minutos || 0), 0);
+              }, 0);
+              const percentual = totalMinutosMes > 0 ? minutos / totalMinutosMes : 0;
+              const comissaoAssinatura = totalMinutosMes > 0 ? comissaoTotal * (minutos / totalMinutosMes) : 0;
+              const avulsas = comissoesAvulsas.filter(c => c.profissional_id === b.id);
+              const comissaoAvulsa = avulsas.reduce((acc, c) => acc + (Number(c.valor_comissao) * Number(c.quantidade)), 0);
+              const comissaoTotalBarbeiro = comissaoAssinatura + comissaoAvulsa;
+              const ticketMedio = feitos.length > 0 ? comissaoTotalBarbeiro / feitos.length : 0;
+              const tipos = { corte: 0, barba: 0, "corte e barba": 0, acabamento: 0 };
+              feitos.forEach(r => {
+                const nome = r.servico?.nome?.toLowerCase() || "";
+                if (nome.includes("barba") && nome.includes("corte")) tipos["corte e barba"]++;
+                else if (nome.includes("barba")) tipos.barba++;
+                else if (nome.includes("corte")) tipos.corte++;
+                else if (nome.includes("acabamento")) tipos.acabamento++;
+              });
+              const tipoServicoIcone = {
+                corte: <ScissorsIcon className="w-5 h-5 text-blue-500 inline-block mr-1" />,
+                barba: <SparklesIcon className="w-5 h-5 text-green-500 inline-block mr-1" />,
+                "corte e barba": <UserGroupIcon className="w-5 h-5 text-purple-500 inline-block mr-1" />,
+                acabamento: <InformationCircleIcon className="w-5 h-5 text-gray-400 inline-block mr-1" />,
+              };
+              return (
+                <ComissaoBarbeiroCard
+                  key={b.id}
+                  nome={b.nome}
+                  avatarUrl={b.avatar_url}
+                  minutos={minutos}
+                  percentual={percentual}
+                  comissao={comissaoTotalBarbeiro}
+                  ticketMedio={ticketMedio}
+                  tipos={tipos}
+                  tipoServicoIcone={tipoServicoIcone}
+                  onClick={() => setBarbeiroDetalhe(b)}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Modal de Detalhes do Barbeiro */}
+      <Modal isOpen={!!barbeiroDetalhe} onClose={() => setBarbeiroDetalhe(null)} size="xl" isDismissable closeButton className="z-[9999]">
+        <ModalContent className="!p-0">
+          <ModalHeader className="text-center text-2xl font-bold text-gray-900 pb-0 pt-6">Detalhes da Comissão de {barbeiroDetalhe?.nome || 'N/A'}</ModalHeader>
+          <ModalBody className="px-2 md:px-12 pb-4 pt-2">
+            {barbeiroDetalhe && (() => {
+              const feitos = realizados.filter(r => r.barbeiro_id === barbeiroDetalhe.id);
+              const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
+              const totalServicos = feitos.length;
+              const totalMinutosMes = barbeiros.reduce((acc, b2) => {
+                const feitos2 = realizados.filter(r => r.barbeiro_id === b2.id);
+                return acc + feitos2.reduce((a, r) => a + (r.servico?.tempo_minutos || 0), 0);
+              }, 0);
+              const comissaoAssinatura = totalMinutosMes > 0 ? comissaoTotal * (minutos / totalMinutosMes) : 0;
+              const valorMinuto = minutos > 0 ? comissaoAssinatura / minutos : null;
+              const valorHora = valorMinuto !== null ? valorMinuto * 60 : null;
+              // Avulsa
+              const avulsas = comissoesAvulsas.filter(c => c.profissional_id === barbeiroDetalhe.id);
+              console.log('avulsas detalhadas', avulsas);
+              const minutosAvulsa = avulsas.reduce((acc, c) => acc + (c.servicos_avulsos?.tempo_minutos ? Number(c.servicos_avulsos.tempo_minutos) * Number(c.quantidade) : 0), 0);
+              const totalAvulsa = avulsas.reduce((acc, c) => acc + (Number(c.valor_comissao) * Number(c.quantidade)), 0);
+              const quantidadeAvulsa = avulsas.reduce((acc, c) => acc + Number(c.quantidade), 0);
+              const valorMinutoAvulsa = minutosAvulsa > 0 ? totalAvulsa / minutosAvulsa : null;
+              const valorHoraAvulsa = valorMinutoAvulsa !== null ? valorMinutoAvulsa * 60 : null;
+              return (
+                <div className="flex flex-col items-center justify-center w-full">
+                  <div className="w-full max-w-4xl flex flex-col md:flex-row gap-8 justify-center items-stretch">
+                    {/* Comissão Assinatura */}
+                    <div className="flex-1 bg-blue-50 rounded-2xl shadow-md p-8 flex flex-col border border-blue-100 min-w-[260px] max-w-full mb-4 md:mb-0">
+                      <div className="flex items-center gap-2 mb-6 justify-center">
+                        <CurrencyDollarIcon className="w-5 h-5 text-blue-500" />
+                        <span className="font-semibold text-blue-700 text-lg">Comissão de Assinatura</span>
+                      </div>
+                      <div className="text-center mb-8">
+                        <span className="text-4xl font-extrabold text-blue-700 block">R$ {comissaoAssinatura.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex flex-col gap-4 w-full">
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><ClockIcon className="w-4 h-4 text-blue-400" />Minutos</span>
+                          <span className="font-bold">{minutos}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><CurrencyDollarIcon className="w-4 h-4 text-blue-400" />Valor/min</span>
+                          <span className="font-bold">{valorMinuto !== null ? `R$ ${valorMinuto.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><CurrencyDollarIcon className="w-4 h-4 text-blue-400" />Valor/hora</span>
+                          <span className="font-bold">{valorHora !== null ? `R$ ${valorHora.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><HashtagIcon className="w-4 h-4 text-blue-400" />Serviços</span>
+                          <span className="font-bold">{totalServicos}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between mt-2 pt-2 border-t border-blue-100 whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><SparklesIcon className="w-4 h-4 text-blue-400" />Ticket médio</span>
+                          <span className="font-bold">{totalServicos > 0 ? `R$ ${(comissaoAssinatura / totalServicos).toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Comissão Avulsa */}
+                    <div className="flex-1 bg-green-50 rounded-2xl shadow-md p-8 flex flex-col border border-green-100 min-w-[260px] max-w-full mb-4 md:mb-0">
+                      <div className="flex items-center gap-2 mb-6 justify-center">
+                        <CurrencyDollarIcon className="w-5 h-5 text-green-500" />
+                        <span className="font-semibold text-green-700 text-lg">Comissão Avulsa</span>
+                      </div>
+                      <div className="text-center mb-8">
+                        <span className="text-4xl font-extrabold text-green-700 block">R$ {totalAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex flex-col gap-4 w-full">
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><ClockIcon className="w-4 h-4 text-green-400" />Minutos</span>
+                          <span className="font-bold">{minutosAvulsa}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><CurrencyDollarIcon className="w-4 h-4 text-green-400" />Valor/min</span>
+                          <span className="font-bold">{valorMinutoAvulsa !== null ? `R$ ${valorMinutoAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><CurrencyDollarIcon className="w-4 h-4 text-green-400" />Valor/hora</span>
+                          <span className="font-bold">{valorHoraAvulsa !== null ? `R$ ${valorHoraAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><HashtagIcon className="w-4 h-4 text-green-400" />Serviços</span>
+                          <span className="font-bold">{quantidadeAvulsa}</span>
+                        </div>
+                        <div className="flex flex-row items-center justify-between mt-2 pt-2 border-t border-green-100 whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-gray-700"><SparklesIcon className="w-4 h-4 text-green-400" />Ticket médio</span>
+                          <span className="font-bold">{quantidadeAvulsa > 0 ? `R$ ${(totalAvulsa / quantidadeAvulsa).toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </ModalBody>
+          <ModalFooter className="sticky bottom-0 bg-white z-10 border-t border-gray-100 px-6 py-4 flex justify-end">
+            <Button variant="light" onClick={() => setBarbeiroDetalhe(null)} className="font-semibold px-8 py-3 rounded-lg shadow-md text-base">Fechar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal Comissão Avulsa */}
+      <Modal isOpen={modalAvulsoOpen} onClose={() => setModalAvulsoOpen(false)} size="md">
+        <ModalContent>
+          <ModalHeader>Adicionar Comissão Avulso</ModalHeader>
+          <ModalBody>
+            <Select
+              label="Unidade da Barbearia"
+              selectedKeys={unidadeAvulso ? [unidadeAvulso] : []}
+              onChange={e => setUnidadeAvulso(e.target.value)}
+              isRequired
+              className="mb-2"
+            >
+              {unidades.map((u: any) => (
+                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+              ))}
+            </Select>
+            <Select
+              label="Profissional"
+              selectedKeys={profissionalAvulso ? [profissionalAvulso] : []}
+              onChange={e => setProfissionalAvulso(e.target.value)}
+              isRequired
+              className="mb-2"
+            >
+              {profissionaisAvulso.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </Select>
+            <Select
+              label="Serviço Realizado"
+              selectedKeys={servicoAvulso ? [servicoAvulso] : []}
+              onChange={e => setServicoAvulso(e.target.value)}
+              isRequired
+              className="mb-2"
+            >
+              {servicosAvulsos.map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+              ))}
+            </Select>
+            <Input label="Valor da Comissão (R$)" type="number" value={valorAvulso} onChange={e => setValorAvulso(e.target.value)} isRequired min={0} step={0.01} className="mb-2" />
+            <Input label="Número de Vezes Realizado" type="number" value={quantidadeAvulso} onChange={e => setQuantidadeAvulso(e.target.value)} isRequired min={1} className="mb-2" />
+            {erroAvulso && <div className="text-red-600 text-sm mt-2">{erroAvulso}</div>}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onClick={() => setModalAvulsoOpen(false)}>Cancelar</Button>
+            <Button color="primary" isLoading={savingAvulso} onClick={salvarComissaoAvulsa}>Cadastrar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal Consulta Profissional/Data */}
+      <Modal isOpen={modalConsultaOpen} onClose={() => setModalConsultaOpen(false)} size="sm">
+        <ModalContent>
+          <ModalHeader>Consultar Comissões Avulsas</ModalHeader>
+          <ModalBody>
+            <Select
+              label="Profissional"
+              selectedKeys={profissionalConsulta ? [profissionalConsulta] : []}
+              onChange={e => setProfissionalConsulta(e.target.value)}
+              isRequired
+              className="mb-2"
+            >
+              {profissionaisTodos.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </Select>
+            <Input
+              label="Data"
+              type="date"
+              value={dataConsulta}
+              onChange={e => setDataConsulta(e.target.value)}
+              isRequired
+              className="mb-2"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onClick={() => setModalConsultaOpen(false)}>Cancelar</Button>
+            <Button color="primary" isLoading={loadingConsulta} onClick={buscarComissoesConsulta} disabled={!profissionalConsulta || !dataConsulta}>Buscar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      {/* Modal Lista Comissões Avulsas */}
+      <Modal isOpen={modalListaOpen} onClose={() => setModalListaOpen(false)} size="4xl">
+        <ModalContent>
+          <ModalHeader>Comissões Avulsas do Profissional</ModalHeader>
+          <ModalBody>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase">Serviço</th>
+                    <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Valor Comissão</th>
+                    <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Quantidade</th>
+                    <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Minutos Serviço</th>
+                    <th className="px-4 py-3 text-center font-bold text-gray-600 uppercase">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comissoesConsulta.length === 0 ? (
+                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">Nenhuma comissão avulsa encontrada.</td></tr>
+                  ) : (
+                    comissoesConsulta.map((c: any) => (
+                      <tr key={c.id} className="bg-white">
+                        <td className="px-4 py-3">{c.servicos_avulsos?.nome || '-'}</td>
+                        <td className="px-4 py-3 text-center">R$ {Number(c.valor_comissao).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                        <td className="px-4 py-3 text-center">{c.quantidade}</td>
+                        <td className="px-4 py-3 text-center">{c.servicos_avulsos?.tempo_minutos || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <Button color="danger" size="sm" variant="flat" onClick={() => excluirComissaoAvulsa(c.id)}>Excluir</Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onClick={() => setModalListaOpen(false)}>Fechar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+} 
+
+
+

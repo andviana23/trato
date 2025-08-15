@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, Card } from "@chakra-ui/react";
 
 export default function MetasBarberBeerSimples() {
   const [loading, setLoading] = useState(false);
@@ -21,18 +20,18 @@ export default function MetasBarberBeerSimples() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Metas BarberBeer - Versão Simplificada</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">Esta é uma versão de teste para verificar se há problemas na implementação.</p>
-          <Button onClick={handleTest} disabled={loading}>
+    <div>
+      <Card.Root>
+        <Card.Header>
+          <Card.Title>Metas BarberBeer - Versão Simplificada</Card.Title>
+        </Card.Header>
+        <Card.Body>
+          <p>Esta é uma versão de teste para verificar se há problemas na implementação.</p>
+          <Button mt={4} onClick={handleTest} loading={loading}>
             {loading ? "Testando..." : "Testar Funcionalidade"}
           </Button>
-        </CardContent>
-      </Card>
+        </Card.Body>
+      </Card.Root>
     </div>
   );
 } 

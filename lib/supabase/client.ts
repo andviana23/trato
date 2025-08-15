@@ -20,9 +20,7 @@ if (!url || !key) {
 }
 
 export function createClient() {
-  // eslint-disable-next-line no-console
-  console.log("[Supabase] Criando cliente Supabase");
-  return createBrowserClient(url, key);
+  return createBrowserClient(url as string, key as string);
 }
 
-export const supabase = createSupabaseClient(url, key);
+export const supabase = createSupabaseClient(url as string, key as string);

@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@/components/ui/chakra-adapters";
 import { PlusIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import LayoutCadastros from "../../../components/LayoutCadastros";
 import { createClient } from "@/lib/supabase/client";
@@ -73,7 +73,7 @@ export default function ServicosAvulsosPage() {
               className="min-w-[180px]"
             >
               {unidades.map((u: any) => (
-                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+                <SelectItem value={u.id} value={u.id}>{u.nome}</SelectItem>
               ))}
             </Select>
           </div>
@@ -81,27 +81,27 @@ export default function ServicosAvulsosPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {servicos.length === 0 ? (
-            <Card className="shadow-md col-span-full">
-              <CardBody className="text-center text-gray-400 py-12">Nenhum serviço avulso cadastrado para esta unidade.</CardBody>
-            </Card>
+            <Card.Root className="shadow-md col-span-full">
+              <Card.Body className="text-center text-gray-400 py-12">Nenhum serviço avulso cadastrado para esta unidade.</Card.Body>
+            </Card.Root>
           ) : (
             servicos.map((servico: any) => (
-              <Card key={servico.id} className="hover:shadow-lg transition-shadow shadow-lg">
-                <CardHeader className="pb-3">
+              <Card.Root key={servico.id} className="hover:shadow-lg transition-shadow shadow-lg">
+                <Card.Header className="pb-3">
                   <div className="flex items-center gap-3 w-full">
                     <WrenchScrewdriverIcon className="w-6 h-6 text-blue-600" />
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white">{servico.nome}</h3>
                     </div>
                   </div>
-                </CardHeader>
-                <CardBody className="pt-0">
+                </Card.Header>
+                <Card.Body className="pt-0">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-700">Tempo: <span className="font-semibold">{servico.tempo_minutos} min</span></span>
                     <span className="text-sm text-gray-700">Valor: <span className="font-semibold">R$ {Number(servico.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></span>
                   </div>
-                </CardBody>
-              </Card>
+                </Card.Body>
+              </Card.Root>
             ))
           )}
         </div>
@@ -119,7 +119,7 @@ export default function ServicosAvulsosPage() {
               className="mb-2"
             >
               {unidades.map((u: any) => (
-                <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+                <SelectItem value={u.id} value={u.id}>{u.nome}</SelectItem>
               ))}
             </Select>
             <Input label="Nome do Serviço" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} isRequired className="mb-2" />
@@ -136,3 +136,5 @@ export default function ServicosAvulsosPage() {
     </LayoutCadastros>
   );
 } 
+
+

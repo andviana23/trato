@@ -181,7 +181,7 @@ async function salvarBonificacao(barbeiroId: string, mes: string, ano: string, v
 }
 
 // Buscar metas de um barbeiro
-export async function buscarMetasBarbeiro(barbeiroId: string, unidade: 'barberbeer' | 'trato') {
+export async function buscarMetaBarbeiro(barbeiroId: string, unidade: 'barberbeer' | 'trato') {
   const tabelaMetas = unidade === 'barberbeer' ? 'metas_barberbeer' : 'metas_trato';
   
   try {

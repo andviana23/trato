@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@chakra-ui/react";
 import { Input } from "@/components/ui/input";
-import { Select } from "@nextui-org/react";
+import { Select } from "@/components/ui/chakra-adapters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircleIcon, XCircleIcon, PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -296,10 +296,10 @@ export default function MetasBarberBeer() {
       </div>
 
       {/* Tabela de Metas */}
-      <Card>
-        <CardHeader>
+      <Card.Root>
+        <Card.Header>
           <CardTitle>Metas Cadastradas</CardTitle>
-        </CardHeader>
+        </Card.Header>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">
@@ -324,7 +324,7 @@ export default function MetasBarberBeer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {metas.map((meta) => (
+                  {metas.map((e) => (
                     <tr key={meta.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{meta.barbeiro_nome}</td>
                       <td className="py-3 px-4">{getNomeMes(meta.mes)}/{meta.ano}</td>
@@ -374,7 +374,7 @@ export default function MetasBarberBeer() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card.Root>
 
       {/* Modal */}
       {modalOpen && (
@@ -390,13 +390,13 @@ export default function MetasBarberBeer() {
                 <label className="block text-sm font-medium mb-1">Barbeiro *</label>
                 <Select
                   value={form.barbeiro_id}
-                  onValueChange={(value) => setForm({ ...form, barbeiro_id: value })}
+                  onValueChange={(e) => setForm({ ...form, barbeiro_id: value })}
                 >
                   <Select.Trigger>
                     <Select.Value placeholder="Selecione o barbeiro" />
                   </Select.Trigger>
                   <Select.Content>
-                    {barbeiros.map((barbeiro) => (
+                    {barbeiros.map((e) => (
                       <Select.Item key={barbeiro.id} value={barbeiro.id}>
                         {barbeiro.nome}
                       </Select.Item>
@@ -411,13 +411,13 @@ export default function MetasBarberBeer() {
                   <label className="block text-sm font-medium mb-1">Mês *</label>
                   <Select
                     value={form.mes}
-                    onValueChange={(value) => setForm({ ...form, mes: value })}
+                    onValueChange={(e) => setForm({ ...form, mes: value })}
                   >
                     <Select.Trigger>
                       <Select.Value placeholder="Mês" />
                     </Select.Trigger>
                     <Select.Content>
-                      {MESES.map((mes) => (
+                      {MESES.map((e) => (
                         <Select.Item key={mes.value} value={mes.value}>
                           {mes.label}
                         </Select.Item>
@@ -429,13 +429,13 @@ export default function MetasBarberBeer() {
                   <label className="block text-sm font-medium mb-1">Ano *</label>
                   <Select
                     value={form.ano}
-                    onValueChange={(value) => setForm({ ...form, ano: value })}
+                    onValueChange={(e) => setForm({ ...form, ano: value })}
                   >
                     <Select.Trigger>
                       <Select.Value placeholder="Ano" />
                     </Select.Trigger>
                     <Select.Content>
-                      {ANOS.map((ano) => (
+                      {ANOS.map((e) => (
                         <Select.Item key={ano} value={ano}>
                           {ano}
                         </Select.Item>
@@ -546,3 +546,6 @@ export default function MetasBarberBeer() {
     </div>
   );
 } 
+
+
+

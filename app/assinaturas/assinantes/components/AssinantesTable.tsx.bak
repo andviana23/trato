@@ -1,0 +1,203 @@
+﻿"use client";
+
+import { Tab, Tabs } from '@chakra-ui/react';
+import Pagination from '@/components/Pagination';
+import AssinanteDetalhesModal from './AssinanteDetalhesModal';
+import BadgeTipoAssinatura from './BadgeTipoAssinatura';
+import { useState } from 'react';
+import { 
+  ExclamationTriangleIcon, 
+  ClockIcon,
+  MagnifyingGlassIcon
+} from '@heroicons/react/24/outline';
+import React from 'react';
+
+interface Assinante {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  value: number;
+  lastPaymentDate: string;
+  nextDueDate: string;
+  status: string;
+  billingType: string;
+  description?: string;
+  source: 'ASAAS_TRATO' | 'EXTERNAL';
+  created_at?: string;
+  telefone?: string;
+  paymentDate?: string;
+}
+
+interface AssinantesTableProps {
+  assinantes: Assinante[];
+  loading?: boolean;
+  onUpdate?: () => void;
+}
+
+export default function AssinantesTable({ assinantes, loading = false, onUpdate }: AssinantesTableProps) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [assinanteSelecionado, setAssinanteSelecionado] = useState<Assinante | null>(null);
+  const [aba, setAba] = useState<'ATIVAS' | 'CANCELADAS'>('ATIVAS');
+  const [pagina, setPagina] = useState(1);
+  const itensPorPagina = 10;
+
+  // Filtrar por aba
+  const assinantesFiltrados = assinantes.filter(a => {
+    if (aba === 'ATIVAS') return a.status === 'ATIVO' || a.status === 'ACTIVE';
+    if (aba === 'CANCELADAS') return a.status === 'CANCELADA' || a.status === 'CANCELLED' || a.status === 'INATIVO' || a.status === 'INACTIVE';
+    return true;
+  });
+
+  // Paginação
+  const totalPaginas = Math.ceil(assinantesFiltrados.length / itensPorPagina);
+  const assinantesPaginados = assinantesFiltrados.slice((pagina - 1) * itensPorPagina, pagina * itensPorPagina);
+
+  // Resetar página ao trocar de aba
+  React.useEffect(() => { setPagina(1); }, [aba, assinantesFiltrados.length]);
+
+  const handleVerDetalhes = (assinante: Assinante) => {
+    setAssinanteSelecionado(assinante);
+    setModalOpen(true);
+  };
+
+  const handleFecharModal = () => {
+    setModalOpen(false);
+    setAssinanteSelecionado(null);
+  };
+
+  const handleCancelarAssinatura = (assinante: Assinante) => {
+    // TODO: Implementar chamada de API para cancelar assinatura
+    console.log('Cancelar assinatura:', assinante);
+    setModalOpen(false);
+  };
+
+  const handleConfirmarPagamento = (assinante: Assinante) => {
+    // TODO: Implementar chamada de API para confirmar pagamento externo
+    console.log('Confirmar pagamento externo:', assinante);
+    setModalOpen(false);
+  };
+
+  // Função para calcular dias até vencimento
+  const getDiasParaVencer = (dataVencimento: string) => {
+    if (!dataVencimento) return null;
+    const hoje = new Date();
+    const vencimento = new Date(dataVencimento);
+    return Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // Função para formatar data
+  const formatarData = (data: string) => {
+    if (!data || data === 'Não informado') return 'Não informado';
+    try {
+      return new Date(data).toLocaleDateString('pt-BR');
+    } catch {
+      return data;
+    }
+  };
+
+  // Função para obter classe de linha baseada no vencimento
+  const getLinhaClass = (assinante: Assinante) => {
+    const diasParaVencer = getDiasParaVencer(assinante.nextDueDate);
+    if (diasParaVencer === null) return '';
+    if (diasParaVencer < 0) return 'bg-red-50 hover:bg-red-100';
+    if (diasParaVencer <= 7) return 'bg-orange-50 hover:bg-orange-100';
+    return 'hover:bg-gray-50';
+  };
+
+  // Função para decidir status visual na tabela
+  const getStatusTabela = (assinante: any) => {
+    const status = (assinante.status || '').toUpperCase();
+    const vencimento = assinante.nextDueDate;
+    const diasParaVencer = getDiasParaVencer(vencimento);
+    // Se cancelada/cancelled e vencimento futuro, mostrar como Ativo
+    if ((status === 'CANCELADA' || status === 'CANCELLED') && diasParaVencer !== null && diasParaVencer >= 0) {
+      return { color: 'success', label: 'Ativo' };
+    }
+    // Se status for INACTIVE mas vencimento futuro, mostrar como Ativo
+    if ((status === 'INACTIVE' || status === 'INATIVO') && diasParaVencer !== null && diasParaVencer >= 0) {
+      return { color: 'success', label: 'Ativo' };
+    }
+    if (status === 'ATIVO' || status === 'ACTIVE') {
+      return { color: 'success', label: 'Ativo' };
+    }
+    if (status === 'PENDENTE' || status === 'PENDING') {
+      return { color: 'warning', label: 'Pendente' };
+    }
+    if (status === 'ATRASADO' || status === 'OVERDUE') {
+      return { color: 'danger', label: 'Atrasado' };
+    }
+    // Só mostrar cancelada se já passou do vencimento (não deveria aparecer na lista)
+    if ((status === 'CANCELADA' || status === 'CANCELLED' || status === 'INACTIVE' || status === 'INATIVO') && diasParaVencer !== null && diasParaVencer < 0) {
+      return { color: 'danger', label: 'Cancelada' };
+    }
+    return { color: 'default', label: status };
+  };
+
+  return (
+    <div className="p-4 md:p-8">
+      {/* Abas */}
+      <div className="mb-4 flex gap-2">
+        <Tabs selectedKey={aba} onSelectionChange={key => setAba(key as 'ATIVAS' | 'CANCELADAS')}>
+          <Tab key="ATIVAS" title={<span>Ativas</span>} />
+          <Tab key="CANCELADAS" title={<span>Canceladas</span>} />
+        </Tabs>
+      </div>
+      {/* Tabela */}
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead>
+          <tr>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome do Cliente</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status do Pagamento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data do Pagamento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Próx. Vencimento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Pagamento</th>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {assinantesPaginados.map((assinante) => (
+            <tr key={assinante.id} className="hover:bg-gray-100">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{assinante.customerName}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.customerEmail}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ {assinante.value.toFixed(2)}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <span className={assinante.status === 'CONFIRMED' ? 'bg-green-100 text-green-800 px-2 py-1 rounded' : 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded'}>{assinante.status}</span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.lastPaymentDate}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.nextDueDate}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assinante.billingType}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button onClick={() => handleVerDetalhes(assinante)} className="text-indigo-600 hover:text-indigo-900">Detalhes</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Paginação */}
+      <div className="flex items-center justify-between mt-4">
+        <span className="text-sm text-gray-600">
+          Mostrando {assinantesPaginados.length > 0 ? ((pagina - 1) * itensPorPagina + 1) : 0} até {((pagina - 1) * itensPorPagina) + assinantesPaginados.length} de {assinantesFiltrados.length} registros
+        </span>
+        <Pagination
+          total={totalPaginas}
+          page={pagina}
+          onChange={setPagina}
+          showControls
+          className=""
+        />
+      </div>
+      {/* Modal de Detalhes */}
+      <AssinanteDetalhesModal
+        open={modalOpen}
+        onClose={handleFecharModal}
+        assinante={assinanteSelecionado}
+        onCancelar={handleCancelarAssinatura}
+        onConfirmarPagamento={handleConfirmarPagamento}
+        onUpdate={onUpdate}
+      />
+    </div>
+  );
+} 
+

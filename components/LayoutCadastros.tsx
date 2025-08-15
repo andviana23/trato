@@ -1,4 +1,4 @@
-import { Breadcrumbs, BreadcrumbItem } from "@nextui-org/react";
+// Removido @nextui-org/react que não está instalado
 
 export default function LayoutCadastros({ children, titulo }: { children: React.ReactNode, titulo: string }) {
   return (

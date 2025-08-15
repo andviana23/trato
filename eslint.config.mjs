@@ -11,6 +11,24 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@chakra-ui/react",
+              message: "Use shadcn/ui + Radix + Tailwind",
+            },
+            { name: "@chakra-ui/next-js", message: "Removido" },
+            { name: "@emotion/react", message: "Removido" },
+            { name: "@emotion/styled", message: "Removido" },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

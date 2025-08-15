@@ -1,44 +1,48 @@
-"use client";
-import { useState } from 'react';
-import { Button, Card, CardBody, CardHeader, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Switch, Badge } from '@nextui-org/react';
-import { useBarberQueue } from '@/hooks/useBarberQueue';
-import { toast } from 'react-hot-toast';
+﻿"use client";
+import { useState } from "react";
+import {
+  Button,
+  Card,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Badge,
+} from "@/components/ui/chakra-adapters";
+import { useBarberQueue } from "@/hooks/useBarberQueue";
 
 export default function BarberQueueTest() {
-  const { 
-    queue, 
-    loading, 
-    handleAtendimento, 
-    handlePassarVez, 
-    handleToggleAtivo, 
-    reorganizarPorAtendimentos, 
+  const {
+    queue,
+    loading,
+    handleAtendimento,
+    handlePassarVez,
+    handleToggleAtivo,
+    reorganizarPorAtendimentos,
     zerarLista,
-    refetch 
+    refetch,
   } = useBarberQueue();
 
   const [testResults, setTestResults] = useState<string[]>([]);
-
   const addTestResult = (result: string) => {
-    setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${result}`]);
+    setTestResults((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${result}`]);
   };
 
   const testAtendimento = async () => {
     if (queue.length === 0) {
-      addTestResult('❌ Nenhum barbeiro na fila para testar');
+      addTestResult("❌ Nenhum barbeiro na fila para testar");
       return;
     }
-
     const firstBarber = queue[0];
     const initialServices = firstBarber.total_services;
-    
     try {
       await handleAtendimento(firstBarber.id);
       addTestResult(`✅ Atendimento registrado para ${firstBarber.barber?.nome}`);
-      
-      // Verificar se os contadores foram incrementados
       setTimeout(async () => {
         await refetch();
-        const updatedBarber = queue.find(b => b.id === firstBarber.id);
+        const updatedBarber = queue.find((b) => b.id === firstBarber.id);
         if (updatedBarber && updatedBarber.total_services > initialServices) {
           addTestResult(`✅ Contadores incrementados corretamente`);
         } else {
@@ -52,21 +56,17 @@ export default function BarberQueueTest() {
 
   const testPassarVez = async () => {
     if (queue.length === 0) {
-      addTestResult('❌ Nenhum barbeiro na fila para testar');
+      addTestResult("❌ Nenhum barbeiro na fila para testar");
       return;
     }
-
     const firstBarber = queue[0];
     const initialPassouVez = firstBarber.passou_vez || 0;
-    
     try {
       await handlePassarVez(firstBarber.id);
       addTestResult(`✅ Passou a vez registrado para ${firstBarber.barber?.nome}`);
-      
-      // Verificar se passou_vez foi incrementado
       setTimeout(async () => {
         await refetch();
-        const updatedBarber = queue.find(b => b.id === firstBarber.id);
+        const updatedBarber = queue.find((b) => b.id === firstBarber.id);
         if (updatedBarber && (updatedBarber.passou_vez || 0) > initialPassouVez) {
           addTestResult(`✅ Passou vez incrementado corretamente`);
         } else {
@@ -80,21 +80,17 @@ export default function BarberQueueTest() {
 
   const testToggleAtivo = async () => {
     if (queue.length === 0) {
-      addTestResult('❌ Nenhum barbeiro na fila para testar');
+      addTestResult("❌ Nenhum barbeiro na fila para testar");
       return;
     }
-
     const firstBarber = queue[0];
     const newStatus = !firstBarber.is_active;
-    
     try {
       await handleToggleAtivo(firstBarber.id, newStatus);
-      addTestResult(`✅ Status alterado para ${newStatus ? 'ativo' : 'inativo'}`);
-      
-      // Verificar se o status foi alterado
+      addTestResult(`✅ Status alterado para ${newStatus ? "ativo" : "inativo"}`);
       setTimeout(async () => {
         await refetch();
-        const updatedBarber = queue.find(b => b.id === firstBarber.id);
+        const updatedBarber = queue.find((b) => b.id === firstBarber.id);
         if (updatedBarber && updatedBarber.is_active === newStatus) {
           addTestResult(`✅ Status alterado corretamente`);
         } else {
@@ -124,65 +120,42 @@ export default function BarberQueueTest() {
     }
   };
 
-  const clearTestResults = () => {
-    setTestResults([]);
-  };
+  const clearTestResults = () => setTestResults([]);
 
   return (
     <div className="p-6 space-y-6">
-      <Card>
-        <CardHeader>
+      <Card.Root>
+        <Card.Header>
           <h2 className="text-xl font-bold">Teste da Fila de Barbeiros</h2>
-        </CardHeader>
-        <CardBody>
+        </Card.Header>
+        <Card.Body>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <Button 
-              color="success" 
-              onPress={testAtendimento}
-              isDisabled={loading || queue.length === 0}
-            >
+            <Button colorScheme="green" onClick={testAtendimento} disabled={loading || queue.length === 0}>
               Testar +1
             </Button>
-            <Button 
-              color="warning" 
-              onPress={testPassarVez}
-              isDisabled={loading || queue.length === 0}
-            >
+            <Button colorScheme="orange" onClick={testPassarVez} disabled={loading || queue.length === 0}>
               Testar Passar
             </Button>
-            <Button 
-              color="primary" 
-              onPress={testToggleAtivo}
-              isDisabled={loading || queue.length === 0}
-            >
+            <Button colorScheme="blue" onClick={testToggleAtivo} disabled={loading || queue.length === 0}>
               Testar Toggle
             </Button>
-            <Button 
-              color="secondary" 
-              onPress={testReorganizar}
-              isDisabled={loading}
-            >
+            <Button colorScheme="purple" onClick={testReorganizar} disabled={loading}>
               Testar Reorganizar
             </Button>
-            <Button 
-              color="danger" 
-              onPress={testZerarLista}
-              isDisabled={loading}
-            >
+            <Button colorScheme="red" onClick={testZerarLista} disabled={loading}>
               Testar Zerar
             </Button>
           </div>
 
           <div className="flex gap-2 mb-4">
-            <Button size="sm" variant="flat" onPress={refetch}>
+            <Button size="sm" variant="ghost" onClick={refetch}>
               Atualizar Dados
             </Button>
-            <Button size="sm" variant="flat" color="danger" onPress={clearTestResults}>
+            <Button size="sm" variant="ghost" colorScheme="red" onClick={clearTestResults}>
               Limpar Logs
             </Button>
           </div>
 
-          {/* Status atual da fila */}
           <div className="mb-4">
             <h3 className="text-lg font-semibold mb-2">Status Atual da Fila</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -191,9 +164,7 @@ export default function BarberQueueTest() {
                 <div className="text-sm text-blue-600">Total na Fila</div>
               </div>
               <div className="bg-green-50 p-3 rounded">
-                <div className="text-2xl font-bold text-green-600">
-                  {queue.filter(b => b.is_active).length}
-                </div>
+                <div className="text-2xl font-bold text-green-600">{queue.filter((b) => b.is_active).length}</div>
                 <div className="text-sm text-green-600">Ativos</div>
               </div>
               <div className="bg-orange-50 p-3 rounded">
@@ -211,7 +182,6 @@ export default function BarberQueueTest() {
             </div>
           </div>
 
-          {/* Tabela de teste */}
           <Table aria-label="Fila atual para teste">
             <TableHeader>
               <TableColumn>POS</TableColumn>
@@ -221,22 +191,28 @@ export default function BarberQueueTest() {
               <TableColumn>PASSOU</TableColumn>
               <TableColumn>STATUS</TableColumn>
             </TableHeader>
-            <TableBody emptyContent={loading ? "Carregando..." : "Nenhum barbeiro na fila"}>
+            <TableBody>
               {queue.map((item, idx) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.queue_position}º</TableCell>
                   <TableCell>{item.barber?.nome}</TableCell>
                   <TableCell>
-                    <Badge color="success" variant="flat">{item.daily_services}</Badge>
+                    <StatBadge kind="success"  variant="subtle">
+                      {item.daily_services}
+                    </StatBadge>
                   </TableCell>
                   <TableCell>
-                    <Badge color="primary" variant="flat">{item.total_services}</Badge>
+                    <StatBadge kind="brand"  variant="subtle">
+                      {item.total_services}
+                    </StatBadge>
                   </TableCell>
                   <TableCell>
-                    <Badge color="warning" variant="flat">{item.passou_vez || 0}</Badge>
+                    <StatBadge kind="accent"  variant="subtle">
+                      {item.passou_vez || 0}
+                    </StatBadge>
                   </TableCell>
                   <TableCell>
-                    <Badge color={item.is_active ? "success" : "default"} variant="flat">
+                    <Badge colorScheme={item.is_active ? "green" : undefined} variant="subtle">
                       {item.is_active ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
@@ -244,15 +220,17 @@ export default function BarberQueueTest() {
               ))}
             </TableBody>
           </Table>
-        </CardBody>
-      </Card>
+          {queue.length === 0 && !loading && (
+            <div className="text-sm text-gray-500 mt-2">Nenhum barbeiro na fila</div>
+          )}
+        </Card.Body>
+      </Card.Root>
 
-      {/* Logs de teste */}
-      <Card>
-        <CardHeader>
+      <Card.Root>
+        <Card.Header>
           <h3 className="text-lg font-bold">Logs de Teste</h3>
-        </CardHeader>
-        <CardBody>
+        </Card.Header>
+        <Card.Body>
           <div className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
             {testResults.length === 0 ? (
               <p className="text-gray-500">Nenhum teste executado ainda</p>
@@ -266,8 +244,8 @@ export default function BarberQueueTest() {
               </div>
             )}
           </div>
-        </CardBody>
-      </Card>
+        </Card.Body>
+      </Card.Root>
     </div>
   );
-} 
+}

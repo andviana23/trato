@@ -1,11 +1,13 @@
-"use client"
+﻿"use client"
 
 import { useState } from 'react';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from '@nextui-org/react';
-import { Card, CardBody, Chip } from '@nextui-org/react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { DashboardData } from '@/lib/types/dashboard'
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 interface Props {
   data: DashboardData | null
@@ -14,12 +16,6 @@ interface Props {
 
 export default function InadimplentesCard({ data, loading }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const getStatusColor = (count: number) => {
-    if (count === 0) return 'success'
-    if (count <= 3) return 'warning'
-    return 'danger'
-  }
 
   const getStatusText = (count: number) => {
     if (count === 0) return 'Sem inadimplentes'
@@ -39,7 +35,7 @@ export default function InadimplentesCard({ data, loading }: Props) {
       } else {
         toast.error('Erro ao cancelar assinatura');
       }
-    } catch (error) {
+    } catch {
       toast.error('Erro ao cancelar assinatura');
     }
   };
@@ -47,7 +43,7 @@ export default function InadimplentesCard({ data, loading }: Props) {
   return (
     <>
       <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white" onClick={() => setIsModalOpen(true)}>
-        <CardBody className="p-6">
+        <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-red-100 text-sm font-medium">Inadimplentes</p>
@@ -55,13 +51,9 @@ export default function InadimplentesCard({ data, loading }: Props) {
                 <p className="text-3xl font-bold">
                   {loading ? '...' : data?.overdueCount || 0}
                 </p>
-                <Chip
-                  color={getStatusColor(data?.overdueCount || 0)}
-                  variant="flat"
-                  className="text-white"
-                >
+                <Badge className="text-white bg-white/20">
                   {getStatusText(data?.overdueCount || 0)}
-                </Chip>
+                </Badge>
               </div>
               <p className="text-red-200 text-sm mt-2">
                 Assinantes com pagamentos atrasados
@@ -71,13 +63,15 @@ export default function InadimplentesCard({ data, loading }: Props) {
               <ExclamationTriangleIcon className="w-6 h-6" />
             </div>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <ModalContent>
-          <ModalHeader>Inadimplentes</ModalHeader>
-          <ModalBody>
+      <Dialog open={isModalOpen} onOpenChange={(open:boolean)=>!open&&setIsModalOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Inadimplentes</DialogTitle>
+          </DialogHeader>
+          <div>
             {data?.overdueCount > 0 ? (
               <ul>
                 {data.revenueTimeline?.map((item, index) => (
@@ -92,12 +86,14 @@ export default function InadimplentesCard({ data, loading }: Props) {
             ) : (
               <p>Sem inadimplentes no momento.</p>
             )}
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={() => setIsModalOpen(false)}>Fechar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 } 
+
+

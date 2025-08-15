@@ -1,204 +1,98 @@
 "use client";
 
-import { useAuth, useRequireAuth } from '@/lib/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
-import { Card, CardBody, CardHeader, Avatar, Chip } from "@nextui-org/react";
-import { UserIcon, BuildingOfficeIcon, CalendarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { useAuth, useRequireAuth } from "@/lib/contexts/AuthContext";
+import { useMemo } from "react";
+// Remove Chakra UI e usa Tailwind
+import { UserIcon, BuildingOfficeIcon, CalendarIcon, CurrencyDollarIcon } from "@heroicons/react/24/outline";
 
 export default function DashboardPage() {
   useRequireAuth();
   const { user, profile, loading } = useAuth();
-  const router = useRouter();
 
-  // Memoize datas formatadas para evitar hydration mismatch
-  const dataCadastro = useMemo(() => {
-    if (!user?.created_at) return '';
-    return new Date(user.created_at).toLocaleDateString('pt-BR');
-  }, [user?.created_at]);
+  const dataCadastro = useMemo(() => (user?.created_at ? new Date(user.created_at).toLocaleDateString("pt-BR") : ""), [user?.created_at]);
+  const ultimoAcesso = useMemo(
+    () => (user?.last_sign_in_at || user?.created_at ? new Date(user.last_sign_in_at || user.created_at!).toLocaleDateString("pt-BR") : ""),
+    [user?.last_sign_in_at, user?.created_at]
+  );
 
-  const ultimoAcesso = useMemo(() => {
-    if (!user?.last_sign_in_at && !user?.created_at) return '';
-    return new Date(user.last_sign_in_at || user.created_at).toLocaleDateString('pt-BR');
-  }, [user?.last_sign_in_at, user?.created_at]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-barbershop-light to-white dark:from-barbershop-dark dark:to-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  if (loading || !user) return <div className="p-8">Carregando…</div>;
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'barbershop_owner':
-        return 'Proprietário';
-      case 'professional':
-        return 'Profissional';
-      case 'client':
-        return 'Cliente';
-      case 'admin':
-        return 'Administrador';
-      case 'recepcionista':
-        return 'Recepcionista';
+      case "barbershop_owner":
+        return "Proprietário";
+      case "professional":
+        return "Profissional";
+      case "client":
+        return "Cliente";
+      case "admin":
+        return "Administrador";
+      case "recepcionista":
+        return "Recepcionista";
       default:
         return role;
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'barbershop_owner':
-        return 'primary';
-      case 'professional':
-        return 'secondary';
-      case 'client':
-        return 'default';
-      case 'admin':
-        return 'warning';
-      case 'recepcionista':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
+  const Stat = ({ icon, label, value, bg }: { icon: JSX.Element; label: string; value: string | number; bg: string }) => (
+    <div className={`rounded-lg shadow-md p-6 text-white`} style={{ backgroundColor: bg }}>
+      <div className="flex items-center gap-4">
+        {icon}
+        <div>
+          <div className="text-sm opacity-90">{label}</div>
+          <div className="text-2xl font-bold">{value}</div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <>
-      {/* Welcome Section */}
+    <div className="max-w-6xl mx-auto py-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Bem-vindo, {profile?.name || 'Usuário'}!
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Gerencie sua barbearia de forma eficiente e profissional
-        </p>
+        <h1 className="text-2xl font-bold mb-1">Bem-vindo, {profile?.name || "Usuário"}!</h1>
+        <p className="text-muted-foreground">Gerencie sua barbearia de forma eficiente e profissional</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <UserIcon className="h-8 w-8" />
-              <div className="ml-4">
-                <p className="text-sm opacity-90">Clientes Hoje</p>
-                <p className="text-2xl font-bold">12</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <CalendarIcon className="h-8 w-8" />
-              <div className="ml-4">
-                <p className="text-sm opacity-90">Agendamentos</p>
-                <p className="text-2xl font-bold">8</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <BuildingOfficeIcon className="h-8 w-8" />
-              <div className="ml-4">
-                <p className="text-sm opacity-90">Profissionais</p>
-                <p className="text-2xl font-bold">3</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <CurrencyDollarIcon className="h-8 w-8" />
-              <div className="ml-4">
-                <p className="text-sm opacity-90">Receita Hoje</p>
-                <p className="text-2xl font-bold">R$ 450</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+        <Stat icon={<UserIcon className="h-8 w-8" />} label="Clientes Hoje" value={12} bg="#2563eb" />
+        <Stat icon={<CalendarIcon className="h-8 w-8" />} label="Agendamentos" value={8} bg="#16a34a" />
+        <Stat icon={<BuildingOfficeIcon className="h-8 w-8" />} label="Profissionais" value={3} bg="#7c3aed" />
+        <Stat icon={<CurrencyDollarIcon className="h-8 w-8" />} label="Receita Hoje" value="R$ 450" bg="#ea580c" />
       </div>
 
-      {/* User Info Card */}
-      <Card className="shadow-xl border-0">
-        <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Informações do Usuário
-          </h2>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
-                </label>
-                <p className="text-gray-900 dark:text-white">{user.email}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome
-                </label>
-                <p className="text-gray-900 dark:text-white">
-                  {profile?.name || 'Não informado'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Telefone
-                </label>
-                <p className="text-gray-900 dark:text-white">
-                  {profile?.phone || 'Não informado'}
-                </p>
-              </div>
+      <div className="border rounded-lg p-6">
+        <h2 className="text-lg font-semibold mb-4">Informações do Usuário</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Email</div>
+              <div>{user.email}</div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Função
-                </label>
-                <Chip
-                  color={getRoleColor(profile?.role || 'client')}
-                  variant="flat"
-                >
-                  {getRoleLabel(profile?.role || 'client')}
-                </Chip>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Data de Cadastro
-                </label>
-                <p className="text-gray-900 dark:text-white">
-                  {dataCadastro}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Último Acesso
-                </label>
-                <p className="text-gray-900 dark:text-white">
-                  {ultimoAcesso}
-                </p>
-              </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Nome</div>
+              <div>{profile?.name || "Não informado"}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Telefone</div>
+              <div>{profile?.phone || "Não informado"}</div>
             </div>
           </div>
-        </CardBody>
-      </Card>
-    </>
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Função</div>
+              <div>{getRoleLabel(profile?.role || "client")}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Data de Cadastro</div>
+              <div>{dataCadastro}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Último Acesso</div>
+              <div>{ultimoAcesso}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
-} 
+}

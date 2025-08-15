@@ -1,5 +1,5 @@
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import AppShell from '@/components/layout/AppShell';
 
 export default function ListaDaVezLayout({ children }: { children: React.ReactNode }) {
-  return <DashboardLayout>{children}</DashboardLayout>;
-} 
+  return <AppShell>{children}</AppShell>;
+}

@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@/components/ui/chakra-adapters";
 import { PlusIcon, TrashIcon, UserIcon, ClockIcon, CurrencyDollarIcon, HashtagIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { createClient } from "@/lib/supabase/client";
 import dayjs from "dayjs";
@@ -148,18 +148,17 @@ export default function ComissaoAvulsaPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-6 tracking-tight">Profissionais</h2>
           <div className="flex flex-col gap-5">
             {comissoesPorProfissional.length === 0 ? (
-              <Card className="shadow-md rounded-2xl">
-                <CardBody className="text-center text-gray-400 py-8">Nenhum profissional encontrado.</CardBody>
-              </Card>
+              <Card.Root className="shadow-md rounded-2xl">
+                <Card.Body className="text-center text-gray-400 py-8">Nenhum profissional encontrado.</Card.Body>
+              </Card.Root>
             ) : (
               comissoesPorProfissional.map((p) => (
-                <Card
+              <Card.Root
                   key={p.id}
-                  isPressable
-                  onPress={() => setProfissionalSelecionado(p.id)}
+                  onClick={() => setProfissionalSelecionado(p.id)}
                   className={`rounded-2xl shadow-md border-2 transition-all duration-200 ${profissionalSelecionado === p.id || (!profissionalSelecionado && p === comissoesPorProfissional[0]) ? "border-blue-600 bg-blue-50 scale-[1.03]" : "border-gray-100 bg-white hover:scale-[1.01] hover:shadow-lg"} cursor-pointer group`}
                 >
-                  <CardHeader className="flex items-center gap-3 pb-0">
+                  <Card.Header className="flex items-center gap-3 pb-0">
                     <div className={`rounded-full bg-blue-100 p-2 flex items-center justify-center ${profissionalSelecionado === p.id ? "ring-2 ring-blue-400" : ""}`}>
                       <UserIcon className="w-7 h-7 text-blue-400" />
                     </div>
@@ -168,8 +167,8 @@ export default function ComissaoAvulsaPage() {
                       <span className="text-xs text-gray-500 mt-1">Total: <span className="font-bold text-blue-700">R$ {p.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></span>
                       <span className="text-xs text-gray-500 mt-1">Minutos: <span className="font-bold text-blue-700">{p.tempoTotal}</span></span>
                     </div>
-                  </CardHeader>
-                </Card>
+                  </Card.Header>
+                </Card.Root>
               ))
             )}
           </div>
@@ -225,63 +224,44 @@ export default function ComissaoAvulsaPage() {
         </div>
       </div>
       {/* Modal Lançar Comissão Avulsa */}
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} size="md">
+      <Modal isOpen={modalOpen} onOpenChange={(open:boolean)=>!open&&setModalOpen(false)} size="md">
         <ModalContent>
           <ModalHeader>Lançar Comissão Avulsa</ModalHeader>
           <ModalBody>
             {step === 1 && (
-              <Select
-                label="Barbearia"
-                selectedKeys={form.unidade_id ? [form.unidade_id] : []}
-                onChange={e => handleUnidadeChange(e.target.value)}
-                isRequired
-                className="mb-2"
-              >
-                {unidades.map((u: any) => (
-                  <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
-                ))}
-              </Select>
+              <select className="border rounded px-3 py-2 w-full mb-2" value={form.unidade_id} onChange={(e)=>handleUnidadeChange(e.target.value)} required>
+                {unidades.map((u:any)=>(<option key={u.id} value={u.id}>{u.nome}</option>))}
+              </select>
             )}
             {step === 2 && (
-              <Select
-                label="Profissional"
-                selectedKeys={form.profissional_id ? [form.profissional_id] : []}
-                onChange={e => handleProfissionalChange(e.target.value)}
-                isRequired
-                className="mb-2"
-              >
-                {profissionais.map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                ))}
-              </Select>
+              <select className="border rounded px-3 py-2 w-full mb-2" value={form.profissional_id} onChange={(e)=>handleProfissionalChange(e.target.value)} required>
+                {profissionais.map((p:any)=>(<option key={p.id} value={p.id}>{p.nome}</option>))}
+              </select>
             )}
             {step === 3 && (
               <>
-                <Select
-                  label="Serviço"
-                  selectedKeys={form.servico_avulso_id ? [form.servico_avulso_id] : []}
-                  onChange={e => setForm(f => ({ ...f, servico_avulso_id: e.target.value }))}
-                  isRequired
-                  className="mb-2"
-                >
-                  {servicos.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </Select>
-                <Input label="Valor da Comissão (R$)" type="number" value={form.valor_comissao} onChange={e => setForm(f => ({ ...f, valor_comissao: e.target.value }))} isRequired min={0} step={0.01} className="mb-2" />
-                <Input label="Quantidade de vezes realizado" type="number" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} isRequired min={1} className="mb-2" />
+                <select className="border rounded px-3 py-2 w-full mb-2" value={form.servico_avulso_id} onChange={(e)=>setForm(f=>({...f, servico_avulso_id: e.target.value}))} required>
+                  {servicos.map((s:any)=>(<option key={s.id} value={s.id}>{s.nome}</option>))}
+                </select>
+                <Input type="number" value={form.valor_comissao} onChange={e=>setForm(f=>({...f, valor_comissao: e.target.value}))} aria-required min={0} step={0.01} className="mb-2" placeholder="Valor da Comissão (R$)" />
+                <Input type="number" value={form.quantidade} onChange={e=>setForm(f=>({...f, quantidade: e.target.value}))} aria-required min={1} className="mb-2" placeholder="Quantidade" />
                 {erro && <div className="text-red-600 text-sm mt-2">{erro}</div>}
               </>
             )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            {step > 1 && <Button variant="light" onClick={() => setStep(step - 1)}>Voltar</Button>}
+            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            {step > 1 && <Button variant="ghost" onClick={() => setStep(step - 1)}>Voltar</Button>}
             {step < 3 && <Button color="primary" onClick={() => setStep(step + 1)} disabled={step === 1 && !form.unidade_id || step === 2 && !form.profissional_id}>Avançar</Button>}
-            {step === 3 && <Button color="primary" isLoading={saving} onClick={salvarComissao}>Cadastrar</Button>}
+            {step === 3 && <Button color="primary" loading={saving} onClick={salvarComissao}>Cadastrar</Button>}
           </ModalFooter>
         </ModalContent>
       </Modal>
     </div>
   );
 } 
+
+
+
+
+

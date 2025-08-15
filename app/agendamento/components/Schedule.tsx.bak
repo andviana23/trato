@@ -1,0 +1,120 @@
+﻿"use client";
+
+import React, { useMemo, useState } from "react";
+import { Calendar, Views, type Components, type EventPropGetter } from "react-big-calendar";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import { localizer } from "../lib/localizer";
+import type { Agendamento, Profissional } from "../types";
+import ScheduleEvent from "./ScheduleEvent";
+import ScheduleToolbar from "./ScheduleToolbar";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem, Input } from "@/components/ui/chakra-adapters";
+
+type Props = { data?: Date; profissionais: Profissional[]; eventos: Agendamento[] };
+
+export default function Schedule({ data, profissionais, eventos }: Props) {
+  const defaultDate = data ?? new Date();
+  const [open, setOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [selectedStart, setSelectedStart] = useState<Date | null>(null);
+  const [cliente, setCliente] = useState("");
+  const [servico, setServico] = useState("");
+  const TRATO_ID = "244c0543-7108-4892-9eac-48186ad1d5e7"; // Unidade Trato de Barbados
+
+  const resources = useMemo(
+    () => profissionais.map((p) => ({ resourceId: p.id, resourceTitle: p.nome })),
+    [profissionais]
+  );
+
+  const min = new Date(defaultDate);
+  min.setHours(5, 0, 0, 0);
+  const max = new Date(defaultDate);
+  max.setHours(22, 0, 0, 0);
+
+  const components: Components = {
+    event: ScheduleEvent as any,
+    toolbar: (props: any) => (
+      <ScheduleToolbar
+        label={props.label}
+        view={props.view}
+        views={Object.keys(props.views || {})}
+        onNavigate={props.onNavigate}
+        onView={props.onView}
+        onNew={() => {
+          setSelectedStart(new Date());
+          setSelectedResource(profissionais[0]?.id || null);
+          setOpen(true);
+        }}
+      />
+    ),
+  };
+
+  const eventPropGetter: EventPropGetter<Agendamento> = (event) => {
+    const base =
+      event.tipo === "bloqueio"
+        ? { backgroundColor: "rgb(71 85 105)", borderColor: "rgb(51 65 85)" }
+        : event.tipo === "indisponivel"
+        ? { backgroundColor: "rgb(209 213 219)", color: "#111827", borderColor: "rgb(156 163 175)" }
+        : { backgroundColor: "rgb(37 99 235)", borderColor: "rgb(29 78 216)" };
+
+    return { style: { ...base, borderWidth: 1, borderStyle: "solid", borderRadius: 8, padding: 0 } };
+  };
+
+  return (
+    <div className="rounded-xl border bg-white p-3 shadow-sm">
+      <Calendar
+        localizer={localizer}
+        events={eventos}
+        resources={resources}
+        resourceIdAccessor="resourceId"
+        resourceTitleAccessor="resourceTitle"
+        defaultDate={defaultDate}
+        views={[Views.DAY, Views.WEEK]}
+        defaultView={Views.DAY}
+        step={15}
+        timeslots={1}
+        min={min}
+        max={max}
+        toolbar
+        popup={false}
+        selectable
+        resizable={false}
+        components={components}
+        eventPropGetter={eventPropGetter}
+        culture="pt-BR"
+        scrollToTime={min}
+        className="rbc-tailwind"
+        onSelectSlot={(slot) => {
+          setSelectedStart(slot.start as Date);
+          setSelectedResource((slot.resourceId as string) ?? profissionais[0]?.id ?? null);
+          setOpen(true);
+        }}
+      />
+
+      {/* Modal Novo Agendamento */}
+      <Modal isOpen={open} onClose={() => setOpen(false)} backdrop="blur">
+        <ModalContent>
+          <ModalHeader>Novo Agendamento</ModalHeader>
+          <ModalBody>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input label="Data/Hora" value={selectedStart ? selectedStart.toLocaleString("pt-BR") : ""} isReadOnly />
+              <Select label="Profissional" selectedKeys={selectedResource ? [selectedResource] : []} onChange={(e) => setSelectedResource(e.target.value)}>
+                {profissionais.map((p) => (
+                  <SelectItem key={p.id}>{p.nome}</SelectItem>
+                ))}
+              </Select>
+              <Input label="Cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} />
+              <Input label="Serviço" value={servico} onChange={(e) => setServico(e.target.value)} />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setOpen(false)}>Cancelar</Button>
+            <Button color="primary" onPress={() => setOpen(false)}>Salvar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+}
+
+
+

@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardBody, Progress } from '@nextui-org/react'
+import { Card, CardContent } from '@/components/ui/card'
 import { CurrencyDollarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline'
 import { DashboardData } from '@/lib/types/dashboard'
 
@@ -29,16 +29,11 @@ export default function FaturamentoCard({ data, loading }: Props) {
     return 'danger'
   }
 
-  const getStatusIcon = () => {
-    const percentage = calculatePercentage()
-    if (percentage >= 100) return <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
-    if (percentage >= 75) return <ArrowTrendingUpIcon className="w-5 h-5 text-yellow-500" />
-    return <ArrowTrendingDownIcon className="w-5 h-5 text-red-500" />
-  }
+  // Mantido simples: usamos somente a barra de progresso
 
   return (
     <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-      <CardBody className="p-6">
+      <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <p className="text-green-100 text-sm font-medium">Faturamento Mensal</p>
@@ -53,11 +48,12 @@ export default function FaturamentoCard({ data, loading }: Props) {
                     {calculatePercentage().toFixed(1)}%
                   </span>
                 </div>
-                <Progress 
-                  value={calculatePercentage()} 
-                  color={getStatusColor()}
-                  className="h-2"
-                />
+                <div className="h-2 w-full rounded bg-white/30 overflow-hidden">
+                  <div
+                    className={`h-full ${getStatusColor() === 'success' ? 'bg-green-300' : getStatusColor() === 'warning' ? 'bg-yellow-300' : 'bg-red-300'}`}
+                    style={{ width: `${calculatePercentage()}%` }}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -65,7 +61,7 @@ export default function FaturamentoCard({ data, loading }: Props) {
             <CurrencyDollarIcon className="w-6 h-6" />
           </div>
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   )
 } 

@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Card, Button, Input, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Autocomplete, AutocompleteItem } from '@nextui-org/react';
+import { Card, Button, Input, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Autocomplete, AutocompleteItem } from '@/components/ui/chakra-adapters';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import CardProfissionalHeroUI from './components/CardProfissionalHeroUI';
-import { buscarMetasBarbeiro } from '@/utils/metasUtils';
 import dayjs from 'dayjs';
 
 // Tipos auxiliares
@@ -41,13 +40,10 @@ export default function ProdutosDistribuicao() {
   const [barbeiroSelecionado, setBarbeiroSelecionado] = useState<string>('');
   const [quantidadeProduto, setQuantidadeProduto] = useState<string>('1');
   const [itensComanda, setItensComanda] = useState<ItemComanda[]>([]);
-  // Novo estado para todas as metas do mês/ano atual
-  const [metasMes, setMetasMes] = useState<Record<string, { quantidade: number }[]>>(
-    {}
-  );
+  // Agora corrigido: metasMes
+  const [metasMes, setMetasMes] = useState<Record<string, { quantidade: number }[]>>({});
   const produtoInputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar barbeiros, produtos e clientes ao trocar unidade
   useEffect(() => {
     fetchDadosModal();
     fetchVendas();
@@ -63,19 +59,17 @@ export default function ProdutosDistribuicao() {
   // Buscar todas as metas do mês/ano atual ao trocar unidade ou barbeiros
   useEffect(() => {
     async function fetchMetasMes() {
-      // Buscar todas as faixas de metas de produtos da unidade selecionada
-      const { data: metasData } = await supabase
+      const { data: metaData } = await supabase
         .from('metas_trato_faixas')
         .select('barbeiro_id, quantidade, tipo')
         .eq('tipo', 'produtos')
         .in('barbeiro_id', barbeiros.map(b => b.id));
-      // Mapear para cada barbeiro um array de faixas/metas
-      const metas: Record<string, { quantidade: number }[]> = {};
-      (metasData || []).forEach((m: any) => {
-        if (!metas[m.barbeiro_id]) metas[m.barbeiro_id] = [];
-        metas[m.barbeiro_id].push({ quantidade: m.quantidade });
+      const meta: Record<string, { quantidade: number }[]> = {};
+      (metaData || []).forEach((m: any) => {
+        if (!meta[m.barbeiro_id]) meta[m.barbeiro_id] = [];
+        meta[m.barbeiro_id].push({ quantidade: m.quantidade });
       });
-      setMetasMes(metas);
+      setMetasMes(meta); // CORRIGIDO!
     }
     if (unidadeSelecionada.label === 'Trato de Barbados') fetchMetasMes();
     else setMetasMes({});
@@ -100,7 +94,6 @@ export default function ProdutosDistribuicao() {
     setLoading(false);
   };
 
-  // Busca TODOS os clientes, sem filtrar por unidade!
   const fetchDadosModal = async () => {
     const { data: clientesData } = await supabase.from('clientes').select('id, nome');
     setClientes(clientesData || []);
@@ -175,14 +168,13 @@ export default function ProdutosDistribuicao() {
   });
 
   return (
-    // ================= AJUSTE: Container mais largo, sem max-w-2xl ======================
     <div className="w-full max-w-6xl mx-auto py-8 px-2">
       <div className="flex flex-wrap gap-2 mb-6 items-center">
         <span className="font-semibold text-gray-700 mr-2">Unidade:</span>
         {UNIDADES.map((u) => (
           <Button
             key={u.label}
-            variant={unidadeSelecionada.label === u.label ? "solid" : "bordered"}
+            variant={unidadeSelecionada.label === u.label ? "solid" : "outline"}
             className={
               unidadeSelecionada.label === u.label
                 ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
@@ -195,14 +187,12 @@ export default function ProdutosDistribuicao() {
         ))}
       </div>
       <h1 className="text-2xl font-bold mb-6 text-gray-900">Registro de Vendas de Produtos</h1>
-      {/* ================= AJUSTE: Card Fundo 1 mais largo ================= */}
-      <Card className="w-full p-8 mb-8">
+      <Card.Root className="w-full p-8 mb-8">
         <div className="flex justify-end mb-4">
-          <Button color="primary" onPress={abrirModal} className="flex items-center gap-2">
+          <Button color="primary" onClick={abrirModal} className="flex items-center gap-2">
             <PlusIcon className="w-5 h-5" /> Adicionar Produtos
           </Button>
         </div>
-        {/* ================= AJUSTE: Cards profissionais em grid ================= */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 justify-center items-stretch mt-8">
           {barbeiros.map(b => (
             <CardProfissionalHeroUI
@@ -210,55 +200,44 @@ export default function ProdutosDistribuicao() {
               nome={b.nome}
               avatarUrl={b.avatar_url}
               produtosVendidos={produtosVendidosPorBarbeiro[b.id] || 0}
-              metas={metasMes[b.id] || []}
+              metas={(metasMes[b.id] || []).slice(0, 3)}
               barbeiroId={b.id}
               unidadeId={unidadeSelecionada.id}
             />
           ))}
         </div>
-      </Card>
-      {/* Modal continua igual */}
-      <Modal isOpen={modalOpen} onClose={fecharModal} size="3xl">
+      </Card.Root>
+      <Modal isOpen={modalOpen} onOpenChange={(open:boolean)=>!open&&fecharModal()} size="xl">
         <ModalContent>
           <ModalHeader>Adicionar Produtos - Comanda</ModalHeader>
           <ModalBody>
             <div className="flex flex-col gap-6">
               <Autocomplete
-                label="Cliente"
                 placeholder="Selecione ou busque o cliente..."
                 selectedKey={clienteSelecionado}
-                onSelectionChange={key => setClienteSelecionado(key ? String(key) : '')}
+                onSelectionChange={(key:any) => setClienteSelecionado(key ? String(key) : '')}
                 className="w-full"
               >
                 {clientes.map(c => (
-                  <AutocompleteItem key={c.id}>{c.nome}</AutocompleteItem>
+                  <AutocompleteItem key={c.id} item={{ id: c.id, label: c.nome }}>{c.nome}</AutocompleteItem>
                 ))}
               </Autocomplete>
               <div className="flex flex-col md:flex-row gap-4 items-end">
                 <Autocomplete
-                  label="Produto"
                   placeholder="Escolha o produto"
                   selectedKey={produtoSelecionado}
-                  onSelectionChange={key => setProdutoSelecionado(key ? String(key) : '')}
+                  onSelectionChange={(key:any) => setProdutoSelecionado(key ? String(key) : '')}
                   className="w-full md:w-1/3"
                 >
                   {produtos.map(p => (
-                    <AutocompleteItem key={p.id}>{p.nome}</AutocompleteItem>
+                    <AutocompleteItem key={p.id} item={{ id: p.id, label: p.nome }}>{p.nome}</AutocompleteItem>
                   ))}
                 </Autocomplete>
-                <Select
-                  label="Barbeiro"
-                  placeholder="Escolha o barbeiro"
-                  selectedKeys={barbeiroSelecionado ? [barbeiroSelecionado] : []}
-                  onSelectionChange={keys => setBarbeiroSelecionado(Array.from(keys)[0] ? String(Array.from(keys)[0]) : '')}
-                  className="w-full md:w-1/3"
-                >
-                  {barbeiros.map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
-                  ))}
-                </Select>
+                <select className="border rounded px-3 py-2 w-full md:w-1/3" value={barbeiroSelecionado} onChange={(e)=>setBarbeiroSelecionado(e.target.value)}>
+                  <option value="">Escolha o barbeiro</option>
+                  {barbeiros.map(b => (<option key={b.id} value={b.id}>{b.nome}</option>))}
+                </select>
                 <Input
-                  label="Qtd"
                   type="number"
                   min={1}
                   value={quantidadeProduto}
@@ -266,7 +245,7 @@ export default function ProdutosDistribuicao() {
                   className="w-24"
                   placeholder="1"
                 />
-                <Button color="success" onPress={adicionarItemComanda} disabled={!canAdd} className="h-12 flex items-center gap-2">
+                <Button color="success" onClick={adicionarItemComanda} disabled={!canAdd} className="h-12 flex items-center gap-2">
                   <PlusIcon className="w-5 h-5" /> Adicionar
                 </Button>
               </div>
@@ -291,7 +270,7 @@ export default function ProdutosDistribuicao() {
                           <td className="text-center font-medium">{item.produto.nome}</td>
                           <td className="text-center">{item.barbeiro.nome}</td>
                           <td className="text-center">{item.quantidade}</td>
-                          <td className="text-center"><Button color="danger" size="sm" onPress={() => removerItemComanda(idx)}>Remover</Button></td>
+                          <td className="text-center"><Button color="danger" size="sm" onClick={() => removerItemComanda(idx)}>Remover</Button></td>
                         </tr>
                       ))
                     )}
@@ -301,11 +280,15 @@ export default function ProdutosDistribuicao() {
             </div>
           </ModalBody>
           <ModalFooter className="flex justify-between items-center">
-            <Button color="danger" variant="light" onPress={fecharModal}>Cancelar</Button>
-            <Button color="primary" onPress={finalizarComanda} disabled={!canFinish}>Finalizar Comanda</Button>
+            <Button color="danger" variant="ghost" onClick={fecharModal}>Cancelar</Button>
+            <Button color="primary" onClick={finalizarComanda} disabled={!canFinish}>Finalizar Comanda</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
     </div>
   );
 }
+
+
+
+

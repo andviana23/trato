@@ -39,4 +39,14 @@ export async function listarClientes(busca: string): Promise<Cliente[]> {
   const { data, error } = await query;
   if (error) throw error;
   return data as Cliente[];
-} 
+} export async function atualizarCliente(id: string, updates: Partial<Cliente>): Promise<Cliente> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("clientes")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Cliente;
+}

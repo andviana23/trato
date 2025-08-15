@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Button } from "@nextui-org/react";
+﻿import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface Plano {
   id: string;
@@ -29,7 +29,7 @@ export default function PlanosTable({ planos, onNovoPlano }: PlanosTableProps) {
     <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-4 md:p-8 transition-colors duration-300">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <h2 className="text-xl md:text-2xl font-bold text-zinc-800 dark:text-zinc-100">Planos cadastrados</h2>
-        <Button color="primary" className="font-semibold px-6 py-2" onClick={onNovoPlano}>
+        <Button className="font-semibold px-6 py-2" onClick={onNovoPlano}>
           Novo Plano
         </Button>
       </div>
@@ -53,3 +53,4 @@ export default function PlanosTable({ planos, onNovoPlano }: PlanosTableProps) {
     </div>
   );
 } 
+

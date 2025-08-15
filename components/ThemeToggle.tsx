@@ -3,7 +3,7 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
-import { Switch } from '@nextui-org/react';
+import { IconButton } from '@chakra-ui/react';
 
 export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
@@ -17,19 +17,15 @@ export default function ThemeToggle() {
     return <div className="w-10 h-6 bg-gray-200 rounded-full" />;
   }
 
+  const Icon = theme === 'dark' ? MoonIcon : SunIcon;
   return (
-    <Switch
-      isSelected={theme === 'dark'}
-      onValueChange={(isDark) => setTheme(isDark ? 'dark' : 'light')}
+    <IconButton
+      aria-label="Alternar tema"
       size="sm"
-      color="primary"
-      thumbIcon={({ isSelected }) =>
-        isSelected ? (
-          <MoonIcon className="w-3 h-3" />
-        ) : (
-          <SunIcon className="w-3 h-3" />
-        )
-      }
-    />
+      variant="ghost"
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+    >
+      <Icon className="w-5 h-5" />
+    </IconButton>
   );
 } 

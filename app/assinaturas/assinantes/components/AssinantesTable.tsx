@@ -1,14 +1,9 @@
-"use client";
+﻿"use client";
 
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip, Button, Tab, Tabs, Pagination } from '@nextui-org/react';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Pagination from '@/components/Pagination';
 import AssinanteDetalhesModal from './AssinanteDetalhesModal';
-import BadgeTipoAssinatura from './BadgeTipoAssinatura';
 import { useState } from 'react';
-import { 
-  ExclamationTriangleIcon, 
-  ClockIcon,
-  MagnifyingGlassIcon
-} from '@heroicons/react/24/outline';
 import React from 'react';
 
 interface Assinante {
@@ -76,69 +71,17 @@ export default function AssinantesTable({ assinantes, loading = false, onUpdate 
     setModalOpen(false);
   };
 
-  // Função para calcular dias até vencimento
-  const getDiasParaVencer = (dataVencimento: string) => {
-    if (!dataVencimento) return null;
-    const hoje = new Date();
-    const vencimento = new Date(dataVencimento);
-    return Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  // Função para formatar data
-  const formatarData = (data: string) => {
-    if (!data || data === 'Não informado') return 'Não informado';
-    try {
-      return new Date(data).toLocaleDateString('pt-BR');
-    } catch {
-      return data;
-    }
-  };
-
-  // Função para obter classe de linha baseada no vencimento
-  const getLinhaClass = (assinante: Assinante) => {
-    const diasParaVencer = getDiasParaVencer(assinante.nextDueDate);
-    if (diasParaVencer === null) return '';
-    if (diasParaVencer < 0) return 'bg-red-50 hover:bg-red-100';
-    if (diasParaVencer <= 7) return 'bg-orange-50 hover:bg-orange-100';
-    return 'hover:bg-gray-50';
-  };
-
-  // Função para decidir status visual na tabela
-  const getStatusTabela = (assinante: any) => {
-    const status = (assinante.status || '').toUpperCase();
-    const vencimento = assinante.nextDueDate;
-    const diasParaVencer = getDiasParaVencer(vencimento);
-    // Se cancelada/cancelled e vencimento futuro, mostrar como Ativo
-    if ((status === 'CANCELADA' || status === 'CANCELLED') && diasParaVencer !== null && diasParaVencer >= 0) {
-      return { color: 'success', label: 'Ativo' };
-    }
-    // Se status for INACTIVE mas vencimento futuro, mostrar como Ativo
-    if ((status === 'INACTIVE' || status === 'INATIVO') && diasParaVencer !== null && diasParaVencer >= 0) {
-      return { color: 'success', label: 'Ativo' };
-    }
-    if (status === 'ATIVO' || status === 'ACTIVE') {
-      return { color: 'success', label: 'Ativo' };
-    }
-    if (status === 'PENDENTE' || status === 'PENDING') {
-      return { color: 'warning', label: 'Pendente' };
-    }
-    if (status === 'ATRASADO' || status === 'OVERDUE') {
-      return { color: 'danger', label: 'Atrasado' };
-    }
-    // Só mostrar cancelada se já passou do vencimento (não deveria aparecer na lista)
-    if ((status === 'CANCELADA' || status === 'CANCELLED' || status === 'INACTIVE' || status === 'INATIVO') && diasParaVencer !== null && diasParaVencer < 0) {
-      return { color: 'danger', label: 'Cancelada' };
-    }
-    return { color: 'default', label: status };
-  };
+  // Utilitários legacy removidos para simplificar (status/estilos calculados diretamente no render)
 
   return (
     <div className="p-4 md:p-8">
       {/* Abas */}
-      <div className="mb-4 flex gap-2">
-        <Tabs selectedKey={aba} onSelectionChange={key => setAba(key as 'ATIVAS' | 'CANCELADAS')}>
-          <Tab key="ATIVAS" title={<span>Ativas</span>} />
-          <Tab key="CANCELADAS" title={<span>Canceladas</span>} />
+      <div className="mb-4">
+        <Tabs value={aba} onValueChange={(key) => setAba(key as 'ATIVAS' | 'CANCELADAS')}>
+          <TabsList>
+            <TabsTrigger value="ATIVAS">Ativas</TabsTrigger>
+            <TabsTrigger value="CANCELADAS">Canceladas</TabsTrigger>
+          </TabsList>
         </Tabs>
       </div>
       {/* Tabela */}
@@ -199,3 +142,5 @@ export default function AssinantesTable({ assinantes, loading = false, onUpdate 
     </div>
   );
 } 
+
+

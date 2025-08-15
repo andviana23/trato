@@ -1,26 +1,28 @@
-import { Card, CardHeader, CardBody } from "@nextui-org/react";
+﻿import { Card, HStack, Heading, Text } from "@chakra-ui/react";
 import { ReactNode } from "react";
 
 interface Props {
   icon: ReactNode;
   title: string;
   value: number;
-  valueColorClass: string;
-  gradientClass: string;
+  valueColorClass?: string; // ignorado, mantido por compat
+  gradientClass?: string;   // ignorado, mantido por compat
 }
 
-export function ComissaoResumoCard({ icon, title, value, valueColorClass, gradientClass }: Props) {
+export function ComissaoResumoCard({ icon, title, value }: Props) {
   return (
-    <Card className={`rounded-2xl shadow-lg border-0 ${gradientClass}`}>
-      <CardHeader className="flex items-center gap-3 pb-0">
-        {icon}
-        <span className="text-lg font-semibold text-gray-900">{title}</span>
-      </CardHeader>
-      <CardBody className="pt-2">
-        <span className={`text-4xl font-extrabold block ${valueColorClass}`}>
+    <Card.Root bg="gray.800" borderWidth="1px" borderColor="whiteAlpha.200" rounded="2xl" shadow="md">
+      <Card.Header>
+        <HStack gap={3} align="center">
+          {icon}
+          <Heading size="sm">{title}</Heading>
+        </HStack>
+      </Card.Header>
+      <Card.Body>
+        <Text fontSize="3xl" fontWeight="extrabold" color="green.300">
           R$ {value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-        </span>
-      </CardBody>
-    </Card>
+        </Text>
+      </Card.Body>
+    </Card.Root>
   );
 }

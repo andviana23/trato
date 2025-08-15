@@ -1,0 +1,1079 @@
+[
+  {
+    "file": "app\\assinaturas\\assinantes\\components\\AssinantesTable.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Tab",
+      "Tabs"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "app\\assinaturas\\assinantes\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Flex",
+      "Heading",
+      "HStack",
+      "Input",
+      "SimpleGrid",
+      "Text",
+      "Dialog",
+      "Button",
+      "Card",
+      "Container",
+      "Table",
+      "Badge"
+    ],
+    "propsDetected": [
+      "py",
+      "size",
+      "color",
+      "variant",
+      "colorScheme",
+      "bg",
+      "h",
+      "borderColor",
+      "rounded",
+      "boxShadow",
+      "w"
+    ]
+  },
+  {
+    "file": "app\\assinaturas\\layout.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Center",
+      "Spinner"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "app\\assinaturas\\planos\\components\\PlanoModal.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Dialog",
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "HStack",
+      "VStack",
+      "Text",
+      "Select",
+      "Alert"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "variant",
+      "w"
+    ]
+  },
+  {
+    "file": "app\\assinaturas\\planos\\components\\PlanoModal.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "createListCollection"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "variant",
+      "w"
+    ]
+  },
+  {
+    "file": "app\\assinaturas\\planos\\components\\PlanosTable.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": [
+      "color"
+    ]
+  },
+  {
+    "file": "app\\assinaturas\\planos\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Button",
+      "Card",
+      "Container",
+      "Heading",
+      "HStack",
+      "Text",
+      "Badge",
+      "SimpleGrid",
+      "IconButton",
+      "Alert",
+      "Spinner",
+      "Select"
+    ],
+    "propsDetected": [
+      "py",
+      "size",
+      "color",
+      "colorScheme",
+      "variant",
+      "bg",
+      "borderColor",
+      "h",
+      "rounded"
+    ]
+  },
+  {
+    "file": "app\\assinaturas\\planos\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "createListCollection"
+    ],
+    "propsDetected": [
+      "py",
+      "size",
+      "color",
+      "colorScheme",
+      "variant",
+      "bg",
+      "borderColor",
+      "h",
+      "rounded"
+    ]
+  },
+  {
+    "file": "app\\auth\\login\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Flex",
+      "Heading",
+      "Text",
+      "Input",
+      "Button",
+      "VStack",
+      "HStack",
+      "InputGroup",
+      "IconButton",
+      "Spinner",
+      "Field",
+      "Alert",
+      "Tooltip",
+      "Card",
+      "Select"
+    ],
+    "propsDetected": [
+      "w",
+      "h",
+      "bg",
+      "color",
+      "borderColor",
+      "rounded",
+      "pb",
+      "size",
+      "pt",
+      "pr",
+      "pl",
+      "variant",
+      "px"
+    ]
+  },
+  {
+    "file": "app\\auth\\login\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Checkbox"
+    ],
+    "propsDetected": [
+      "w",
+      "h",
+      "bg",
+      "color",
+      "borderColor",
+      "rounded",
+      "pb",
+      "size",
+      "pt",
+      "pr",
+      "pl",
+      "variant",
+      "px"
+    ]
+  },
+  {
+    "file": "app\\cadastros\\metas-barberbeer\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": [
+      "h",
+      "variant",
+      "size"
+    ]
+  },
+  {
+    "file": "app\\cadastros\\metas-barberbeer-simples\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button",
+      "Card"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "app\\cadastros\\metas-trato\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Flex",
+      "Heading",
+      "Text",
+      "Button",
+      "IconButton",
+      "Stack",
+      "HStack",
+      "Input",
+      "chakra"
+    ],
+    "propsDetected": [
+      "w",
+      "h",
+      "bg",
+      "px",
+      "py",
+      "size",
+      "color",
+      "colorScheme",
+      "rounded",
+      "borderColor",
+      "variant",
+      "pt"
+    ]
+  },
+  {
+    "file": "app\\cadastros\\produtos\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": [
+      "variant",
+      "h",
+      "size"
+    ]
+  },
+  {
+    "file": "app\\clientes\\components\\FiltrosClientes.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Input",
+      "Button"
+    ],
+    "propsDetected": [
+      "variant"
+    ]
+  },
+  {
+    "file": "app\\clientes\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "app\\dashboard\\configuracoes\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Card"
+    ],
+    "propsDetected": [
+      "pt"
+    ]
+  },
+  {
+    "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Container",
+      "Heading",
+      "HStack",
+      "Input",
+      "SimpleGrid",
+      "Card",
+      "Text",
+      "Box"
+    ],
+    "propsDetected": [
+      "py",
+      "size",
+      "w",
+      "h",
+      "borderColor",
+      "rounded",
+      "color",
+      "variant"
+    ]
+  },
+  {
+    "file": "app\\dashboard\\financeiro\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Card"
+    ],
+    "propsDetected": [
+      "pt"
+    ]
+  },
+  {
+    "file": "app\\dashboard\\layout.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Center",
+      "Spinner"
+    ],
+    "propsDetected": [
+      "size"
+    ]
+  },
+  {
+    "file": "app\\dashboard\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Container",
+      "Heading",
+      "Text",
+      "SimpleGrid",
+      "HStack",
+      "VStack"
+    ],
+    "propsDetected": [
+      "bg",
+      "color",
+      "boxShadow",
+      "py",
+      "size",
+      "h",
+      "borderColor"
+    ]
+  },
+  {
+    "file": "app\\dashboard\\relatorios\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Card"
+    ],
+    "propsDetected": [
+      "pt"
+    ]
+  },
+  {
+    "file": "app\\lista-da-vez\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Container",
+      "Heading",
+      "HStack",
+      "Card",
+      "Text",
+      "Button",
+      "Table",
+      "Avatar",
+      "Badge",
+      "Switch",
+      "Box",
+      "Spinner",
+      "Alert"
+    ],
+    "propsDetected": [
+      "bg",
+      "color",
+      "size",
+      "variant",
+      "py",
+      "h",
+      "borderColor",
+      "rounded"
+    ]
+  },
+  {
+    "file": "app\\providers.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "ChakraProvider"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "app\\teste-metas\\page.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button",
+      "Card"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "src\\components\\ColorModeToggle.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "IconButton"
+    ],
+    "propsDetected": [
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\AppDrawer.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "DialogRoot",
+      "DialogContent",
+      "DialogHeader",
+      "DialogBody",
+      "DialogFooter",
+      "CloseButton"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "rounded"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\AppModal.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "DialogRoot",
+      "DialogContent",
+      "DialogHeader",
+      "DialogBody",
+      "DialogFooter",
+      "CloseButton"
+    ],
+    "propsDetected": [
+      "size",
+      "bg",
+      "h",
+      "borderColor",
+      "rounded",
+      "boxShadow"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\AppTabs.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Tabs as CTabs",
+      "TabsList",
+      "TabsTrigger",
+      "TabsContent"
+    ],
+    "propsDetected": [
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\color-mode.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "ClientOnly",
+      "IconButton",
+      "Skeleton",
+      "Span"
+    ],
+    "propsDetected": [
+      "variant",
+      "size",
+      "color",
+      "colorScheme"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\ConfirmDialog.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "DialogRoot",
+      "DialogBody",
+      "DialogContent",
+      "DialogFooter",
+      "DialogHeader",
+      "Button",
+      "Text"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "rounded",
+      "boxShadow",
+      "color",
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\DataTable.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "chakra",
+      "HStack",
+      "Text",
+      "Button",
+      "Select as CkSelect"
+    ],
+    "propsDetected": [
+      "h",
+      "rounded",
+      "bg",
+      "borderColor",
+      "boxShadow",
+      "px",
+      "py",
+      "color",
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\DataTable.tsx",
+    "importSource": "@chakra-ui/icons",
+    "components": [
+      "TriangleDownIcon",
+      "TriangleUpIcon"
+    ],
+    "propsDetected": [
+      "h",
+      "rounded",
+      "bg",
+      "borderColor",
+      "boxShadow",
+      "px",
+      "py",
+      "color",
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\EmptyState.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "VStack",
+      "Text",
+      "Button"
+    ],
+    "propsDetected": [
+      "py",
+      "color",
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\FormActions.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "HStack",
+      "Button"
+    ],
+    "propsDetected": [
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\FormField.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "chakra",
+      "Input",
+      "Textarea"
+    ],
+    "propsDetected": [
+      "color"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\InlineError.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "HStack",
+      "Text",
+      "Icon"
+    ],
+    "propsDetected": [
+      "color"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\InlineError.tsx",
+    "importSource": "@chakra-ui/icons",
+    "components": [
+      "WarningTwoIcon"
+    ],
+    "propsDetected": [
+      "color"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\KpiCard.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Flex",
+      "HStack",
+      "VStack",
+      "Text",
+      "Icon"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "rounded",
+      "boxShadow",
+      "color"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\KpiGrid.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "SimpleGrid",
+      "SimpleGridProps"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "src\\components\\ui\\LoadingState.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "VStack",
+      "Skeleton",
+      "Spinner",
+      "Text"
+    ],
+    "propsDetected": [
+      "py",
+      "color",
+      "rounded"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\provider.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "ChakraProvider",
+      "defaultSystem"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "src\\components\\ui\\StatBadge.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Badge",
+      "type BadgeProps"
+    ],
+    "propsDetected": [
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\components\\ui\\toaster.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Toaster as ChakraToaster",
+      "Portal",
+      "Spinner",
+      "Stack",
+      "Toast",
+      "createToaster"
+    ],
+    "propsDetected": [
+      "h",
+      "size",
+      "color"
+    ]
+  },
+  {
+    "file": "src\\design-system\\HeaderBar.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Flex",
+      "IconButton",
+      "Input",
+      "Box",
+      "Text",
+      "Avatar"
+    ],
+    "propsDetected": [
+      "h",
+      "px",
+      "color",
+      "size",
+      "pl",
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\design-system\\Sidebar.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Flex",
+      "HStack",
+      "Icon",
+      "Input",
+      "Link as CLink",
+      "Text",
+      "VStack",
+      "IconButton",
+      "Avatar",
+      "Separator"
+    ],
+    "propsDetected": [
+      "px",
+      "py",
+      "bg",
+      "h",
+      "w",
+      "color",
+      "size",
+      "pl",
+      "pt",
+      "borderColor",
+      "variant"
+    ]
+  },
+  {
+    "file": "src\\hooks\\useAppToast.ts",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "chakra"
+    ],
+    "propsDetected": [
+      "w"
+    ]
+  },
+  {
+    "file": "src\\lib\\chakra\\Providers.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "ChakraProvider",
+      "defaultSystem"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "src\\theme\\index.ts",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "defineConfig",
+      "defineTokens",
+      "defineGlobalStyles",
+      "createSystem",
+      "defaultConfig"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\auth\\forgot-password-form.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button",
+      "Input"
+    ],
+    "propsDetected": [
+      "colorScheme",
+      "w"
+    ]
+  },
+  {
+    "file": "components\\auth\\login-form.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button",
+      "Input"
+    ],
+    "propsDetected": [
+      "size",
+      "colorScheme"
+    ]
+  },
+  {
+    "file": "components\\BonificacaoMetas.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Card",
+      "Badge"
+    ],
+    "propsDetected": [
+      "variant"
+    ]
+  },
+  {
+    "file": "components\\ComissaoBarbeiroCard.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Card",
+      "Avatar",
+      "HStack",
+      "VStack",
+      "Text",
+      "Button",
+      "Box"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "rounded",
+      "size",
+      "variant",
+      "px",
+      "py",
+      "color",
+      "w",
+      "pt"
+    ]
+  },
+  {
+    "file": "components\\ComissaoResumoCard.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Card",
+      "HStack",
+      "Heading",
+      "Text"
+    ],
+    "propsDetected": [
+      "bg",
+      "h",
+      "borderColor",
+      "rounded",
+      "w",
+      "size",
+      "color"
+    ]
+  },
+  {
+    "file": "components\\env-var-warning.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Badge",
+      "Button"
+    ],
+    "propsDetected": [
+      "variant",
+      "size"
+    ]
+  },
+  {
+    "file": "components\\forgot-password-form.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\layout\\AppShell.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Box",
+      "Flex",
+      "HStack",
+      "VStack",
+      "IconButton",
+      "Input",
+      "Text",
+      "Separator",
+      "Card",
+      "useDisclosure"
+    ],
+    "propsDetected": [
+      "borderColor",
+      "size",
+      "h",
+      "w",
+      "bg",
+      "color",
+      "px",
+      "py",
+      "pl",
+      "variant"
+    ]
+  },
+  {
+    "file": "components\\layout\\AppShell.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Menu as CkMenu",
+      "Avatar as CkAvatar"
+    ],
+    "propsDetected": [
+      "borderColor",
+      "size",
+      "h",
+      "w",
+      "bg",
+      "color",
+      "px",
+      "py",
+      "pl",
+      "variant"
+    ]
+  },
+  {
+    "file": "components\\layout\\Header.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": [
+      "h",
+      "variant",
+      "size"
+    ]
+  },
+  {
+    "file": "components\\login-form.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\logout-button.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\Pagination.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "HStack",
+      "IconButton",
+      "Button",
+      "Text"
+    ],
+    "propsDetected": [
+      "size",
+      "variant",
+      "px",
+      "colorScheme"
+    ]
+  },
+  {
+    "file": "components\\profile\\AvatarUpload.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "chakra",
+      "Button"
+    ],
+    "propsDetected": [
+      "color",
+      "h",
+      "pt",
+      "size",
+      "variant"
+    ]
+  },
+  {
+    "file": "components\\profile\\PasswordChange.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Input",
+      "Button"
+    ],
+    "propsDetected": [
+      "color"
+    ]
+  },
+  {
+    "file": "components\\profile\\ProfileDropdown.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": [
+      "color",
+      "variant"
+    ]
+  },
+  {
+    "file": "components\\sign-up-form.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\theme-switcher.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": [
+      "variant",
+      "size"
+    ]
+  },
+  {
+    "file": "components\\ThemeToggle.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "IconButton"
+    ],
+    "propsDetected": [
+      "size",
+      "variant"
+    ]
+  },
+  {
+    "file": "components\\ui\\button.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button as ChakraButton",
+      "type ButtonProps as ChakraButtonProps"
+    ],
+    "propsDetected": [
+      "variant",
+      "size"
+    ]
+  },
+  {
+    "file": "components\\ui\\input.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Input as ChakraInput",
+      "type InputProps as ChakraInputProps"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\ui\\theme-toggle.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Switch"
+    ],
+    "propsDetected": []
+  },
+  {
+    "file": "components\\update-password-form.tsx",
+    "importSource": "@chakra-ui/react",
+    "components": [
+      "Button"
+    ],
+    "propsDetected": []
+  }
+]

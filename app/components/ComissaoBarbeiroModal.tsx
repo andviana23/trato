@@ -1,4 +1,4 @@
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Avatar, Button } from "@nextui-org/react";
+﻿import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Avatar, Button } from "@/components/ui/chakra-adapters";
 import { ReactNode } from "react";
 
 interface Props {

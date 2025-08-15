@@ -1,0 +1,271 @@
+﻿"use client";
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardBody, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Avatar, Button, Progress } from "@/components/ui/chakra-adapters";
+import { CurrencyDollarIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { createClient } from "@/lib/supabase/client";
+import { ComissaoResumoCard } from "../../../../components/ComissaoResumoCard";
+import { ComissaoBarbeiroCard } from "../../../../components/ComissaoBarbeiroCard";
+import { usePagamentosAsaas } from "@/app/assinaturas/assinantes/hooks/usePagamentosAsaas";
+import { getAssinaturas } from "@/lib/services/subscriptions";
+import dayjs from "dayjs";
+
+const supabase = createClient();
+const TRATO_ID = "244c0543-7108-4892-9eac-48186ad1d5e7";
+
+export default function ComissaoPage() {
+  const [barbeiros, setBarbeiros] = useState<any[]>([]);
+  const [realizados, setRealizados] = useState<any[]>([]);
+  const [comissoesAvulsas, setComissoesAvulsas] = useState<any[]>([]);
+  const [faixasPorBarbeiro, setFaixasPorBarbeiro] = useState<Record<string, any[]>>({});
+  const [vendasProdutos, setVendasProdutos] = useState<any[]>([]);
+  const [mesSelecionado, setMesSelecionado] = useState(dayjs().format("YYYY-MM"));
+  const [barbeiroDetalhe, setBarbeiroDetalhe] = useState<any | null>(null);
+  const { pagamentos } = usePagamentosAsaas({
+    dataInicio: dayjs(mesSelecionado).startOf("month").format("YYYY-MM-DD"),
+    dataFim: dayjs(mesSelecionado).endOf("month").format("YYYY-MM-DD"),
+  });
+  const [assinaturas, setAssinaturas] = useState<any[]>([]);
+
+  useEffect(() => {
+    getAssinaturas().then(setAssinaturas);
+  }, [mesSelecionado]);
+
+  useEffect(() => {
+    async function fetchAll() {
+      const inicio = dayjs(mesSelecionado).startOf("month").format("YYYY-MM-DD");
+      const fim = dayjs(mesSelecionado).endOf("month").toISOString();
+      const { data: b } = await supabase
+        .from("profissionais")
+        .select("*")
+        .eq("funcao", "barbeiro")
+        .eq("unidade_id", TRATO_ID);
+      const { data: r } = await supabase
+        .from("servicos_realizados")
+        .select("*, servico:servico_id(*), barbeiro:barbeiro_id(*)")
+        .gte("data_hora", inicio)
+        .lte("data_hora", fim);
+      const { data: ca } = await supabase
+        .from("comissoes_avulsas")
+        .select("*, servicos_avulsos(tempo_minutos, nome)")
+        .eq("unidade_id", TRATO_ID)
+        .gte("data_lancamento", inicio)
+        .lte("data_lancamento", fim);
+      // Metas por barbeiro (produtos)
+      const barbeiroIds = (b || []).map((bb: any) => bb.id);
+      let faixasMap: Record<string, any[]> = {};
+      if (barbeiroIds.length > 0) {
+        const { data: faixas } = await supabase
+          .from("metas_trato_faixas")
+          .select("barbeiro_id, quantidade, tipo")
+          .eq("tipo", "produtos")
+          .in("barbeiro_id", barbeiroIds);
+        (faixas || []).forEach((f: any) => {
+          if (!faixasMap[f.barbeiro_id]) faixasMap[f.barbeiro_id] = [];
+          faixasMap[f.barbeiro_id].push({ quantidade: Number(f.quantidade || 0), tipo: f.tipo });
+        });
+      }
+      // Vendas de produtos no mês
+      const { data: vendas } = await supabase
+        .from("vendas_produtos_barbeiro")
+        .select("barbeiro_id, quantidade, data_venda, unidade_id")
+        .eq("unidade_id", TRATO_ID)
+        .gte("data_venda", inicio)
+        .lte("data_venda", fim);
+      setBarbeiros(b || []);
+      setRealizados(r || []);
+      setComissoesAvulsas(ca || []);
+      setFaixasPorBarbeiro(faixasMap);
+      setVendasProdutos(vendas || []);
+    }
+    fetchAll();
+  }, [mesSelecionado]);
+
+  const pagamentosConfirmados = useMemo(
+    () =>
+      [
+        ...pagamentos.map((p) => ({ valor: p.valor, status: p.status })),
+        ...assinaturas.map((a) => ({ valor: a.price, status: a.status })),
+      ].filter((p) => p.status === "CONFIRMED"),
+    [pagamentos, assinaturas]
+  );
+
+  const faturamento = pagamentosConfirmados.reduce((acc, p) => acc + Number(p.valor), 0);
+  const comissaoTotal = faturamento * 0.4;
+
+  const getResumoBarbeiro = (barbeiro: any) => {
+    const feitos = realizados.filter((r) => r.barbeiro_id === barbeiro.id);
+    const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
+    return { total: feitos.length, minutos };
+  };
+
+  const totalMinutosMes = barbeiros.reduce((acc, b) => acc + getResumoBarbeiro(b).minutos, 0);
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-10">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between max-w-7xl mx-auto px-4 mb-8 gap-4">
+        <h1 className="text-3xl font-extrabold text-blue-900 text-center">Comissão - Trato de Barbados</h1>
+        <input
+          type="month"
+          value={mesSelecionado}
+          onChange={(e) => setMesSelecionado(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm"
+          style={{ minWidth: 140 }}
+        />
+      </div>
+      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <ComissaoResumoCard
+          icon={<CurrencyDollarIcon className="w-9 h-9 text-green-600" />}
+          title="Faturamento Total do Mês"
+          value={faturamento}
+          valueColorClass="text-green-700"
+          gradientClass="bg-gradient-to-br from-green-50 to-white"
+        />
+        <ComissaoResumoCard
+          icon={<ChartBarIcon className="w-9 h-9 text-amber-500" />}
+          title="Comissão Total do Mês (40%)"
+          value={comissaoTotal}
+          valueColorClass="text-amber-700"
+          gradientClass="bg-gradient-to-br from-amber-100 to-white"
+        />
+      </div>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-stretch">
+        {barbeiros.length === 0 ? (
+          <Card.Root className="shadow-md rounded-2xl col-span-full">
+            <Card.Body className="text-center text-gray-400 py-12">Nenhum barbeiro cadastrado.</Card.Body>
+          </Card.Root>
+        ) : (
+          barbeiros.map((b) => {
+            const resumo = getResumoBarbeiro(b);
+            const percentual = totalMinutosMes > 0 ? resumo.minutos / totalMinutosMes : 0;
+            const comissaoAssinatura = comissaoTotal * percentual;
+            const avulsas = comissoesAvulsas.filter((c) => c.profissional_id === b.id);
+            const totalAvulsa = avulsas.reduce((acc, c) => acc + Number(c.valor_comissao) * Number(c.quantidade), 0);
+            const comissaoTotalBarbeiro = comissaoAssinatura + totalAvulsa;
+            const feitos = realizados.filter((r) => r.barbeiro_id === b.id);
+            const totalServicos = feitos.length + avulsas.reduce((acc, c) => acc + Number(c.quantidade), 0);
+            const ticketMedio = totalServicos > 0 ? comissaoTotalBarbeiro / totalServicos : 0;
+
+            return (
+              <ComissaoBarbeiroCard
+                key={b.id}
+                nome={b.nome}
+                avatarUrl={b.avatar_url}
+                minutos={resumo.minutos}
+                percentual={percentual}
+                comissao={comissaoTotalBarbeiro}
+                ticketMedio={ticketMedio}
+                tipos={{}}
+                tipoServicoIcone={{}}
+                onClick={() => setBarbeiroDetalhe(b)}
+              />
+            );
+          })
+        )}
+      </div>
+
+      {/* Modal de Detalhes do Barbeiro */}
+      <Modal isOpen={!!barbeiroDetalhe} onClose={() => setBarbeiroDetalhe(null)} size="xl" isDismissable closeButton>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <Avatar src={barbeiroDetalhe?.avatar_url} name={barbeiroDetalhe?.nome} />
+              <div className="flex flex-col">
+                <span className="text-lg font-semibold">{barbeiroDetalhe?.nome}</span>
+                <span className="text-xs text-gray-500">Detalhamento de Comissão</span>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            {barbeiroDetalhe && (() => {
+              const feitos = realizados.filter((r) => r.barbeiro_id === barbeiroDetalhe.id);
+              const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
+              const percentual = totalMinutosMes > 0 ? minutos / totalMinutosMes : 0;
+              const comissaoAssinatura = comissaoTotal * percentual;
+              const avulsas = comissoesAvulsas.filter((c) => c.profissional_id === barbeiroDetalhe.id);
+              const totalAvulsa = avulsas.reduce((acc, c) => acc + Number(c.valor_comissao) * Number(c.quantidade), 0);
+              const totalServicos = feitos.length + avulsas.reduce((acc, c) => acc + Number(c.quantidade), 0);
+              const ticketMedio = totalServicos > 0 ? (comissaoAssinatura + totalAvulsa) / totalServicos : 0;
+              // Metas de produtos
+              let faixas = (faixasPorBarbeiro[barbeiroDetalhe.id] || []).slice();
+              faixas = faixas
+                .filter((f: any) => !f.tipo || f.tipo === "produtos")
+                .sort((a: any, b: any) => (a.quantidade || 0) - (b.quantidade || 0))
+                .slice(0, 3);
+              const vendidos = vendasProdutos
+                .filter((v: any) => v.barbeiro_id === barbeiroDetalhe.id)
+                .reduce((acc: number, v: any) => acc + Number(v.quantidade || 0), 0);
+              const metasAtingidas = faixas.filter((f: any) => vendidos >= Number(f.quantidade || 0)).length;
+              const proximaMeta = faixas.find((f: any) => vendidos < Number(f.quantidade || 0));
+              const faltamProx = proximaMeta ? Math.max(0, Number(proximaMeta.quantidade) - vendidos) : 0;
+
+              return (
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-blue-50">
+                      <div className="text-xs text-blue-600">Minutos no mês</div>
+                      <div className="text-xl font-bold text-blue-800">{minutos}</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-purple-50">
+                      <div className="text-xs text-purple-600">Ticket Médio</div>
+                      <div className="text-xl font-bold text-purple-800">R$ {ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-50">
+                      <div className="text-xs text-green-600">Comissão Assinatura</div>
+                      <div className="text-xl font-bold text-green-800">R$ {comissaoAssinatura.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-amber-50">
+                      <div className="text-xs text-amber-600">Comissão Avulsa</div>
+                      <div className="text-xl font-bold text-amber-800">R$ {totalAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-100 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-gray-800">Metas de Produtos</span>
+                      <span className="text-xs text-gray-500">Vendas no mês: <strong className="text-rose-700">{vendidos}</strong></span>
+                    </div>
+                    {faixas.length === 0 ? (
+                      <div className="text-sm text-gray-400">Nenhuma meta cadastrada</div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {faixas.map((f: any, idx: number) => {
+                          const alvo = Number(f.quantidade || 0);
+                          const progresso = alvo > 0 ? Math.min(100, Math.round((vendidos / alvo) * 100)) : 0;
+                          const atingida = vendidos >= alvo;
+                          return (
+                            <div key={idx} className="w-full">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="font-medium text-gray-700">Meta {idx + 1}</span>
+                                <span className={`font-semibold ${atingida ? 'text-green-600' : 'text-gray-500'}`}>{vendidos}/{alvo}</span>
+                              </div>
+                              <Progress aria-label={`Progresso Meta ${idx + 1}`} value={progresso} className="w-full h-3" color={atingida ? 'success' : progresso >= 80 ? 'warning' : 'danger'} showValueLabel={false} />
+                              <div className="text-[11px] mt-1 text-gray-500">{atingida ? 'Concluída' : `Faltam ${Math.max(0, alvo - vendidos)} produtos`}</div>
+                            </div>
+                          );
+                        })}
+                        <div className="text-xs text-gray-600">
+                          {proximaMeta ? (
+                            <>Próx. meta: faltam <span className="font-semibold text-rose-700">{faltamProx}</span> produtos</>
+                          ) : (
+                            <span className="text-emerald-600 font-semibold">Todas as metas batidas!</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setBarbeiroDetalhe(null)}>Fechar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+}
+
+ 
+
+

@@ -1,0 +1,30 @@
+{
+  "changes": [
+    {
+      "file": "components/BarberQueueTest.tsx",
+      "description": "Badge green -> StatBadge success"
+    },
+    {
+      "file": "components/BarberQueueTest.tsx",
+      "description": "Badge brand/blue -> StatBadge brand"
+    },
+    {
+      "file": "components/BarberQueueTest.tsx",
+      "description": "Badge orange/amber -> StatBadge accent"
+    }
+  ],
+  "suggestions": [
+    {
+      "file": "app/dashboard/page.tsx",
+      "description": "Grid KPI detectado: considere usar <KpiGrid>"
+    },
+    {
+      "file": "app/assinaturas/assinantes/page.tsx",
+      "description": "Grid KPI detectado: considere usar <KpiGrid>"
+    },
+    {
+      "file": "app/assinaturas/dashboard/page.tsx",
+      "description": "Grid KPI detectado: considere usar <KpiGrid>"
+    }
+  ]
+}

@@ -1,0 +1,397 @@
+{
+  "generatedAt": "2025-08-13T12:49:10.305Z",
+  "findings": [
+    {
+      "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+      "line": 244,
+      "column": 64,
+      "snippet": "Vendas no mês: <Box as=\"span\" color=\"red.300\" fontWeight=\"semibold\">{vendidos}</Box>",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+      "line": 261,
+      "column": 82,
+      "snippet": "<Text fontWeight=\"semibold\" color={atingida ? \"green.300\" : \"whiteAlpha.700\"}>{vendidos}/{alvo}</Text>",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+      "line": 263,
+      "column": 133,
+      "snippet": "<Progress.Root value={progresso} aria-label={`Progresso Meta ${idx + 1}`} colorPalette={atingida ? \"green\" : progresso >= 80 ? \"yellow\" : \"red\"} />",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+      "line": 263,
+      "column": 172,
+      "snippet": "<Progress.Root value={progresso} aria-label={`Progresso Meta ${idx + 1}`} colorPalette={atingida ? \"green\" : progresso >= 80 ? \"yellow\" : \"red\"} />",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+      "line": 270,
+      "column": 96,
+      "snippet": "<>Próx. meta: faltam <Box as=\"span\" fontWeight=\"semibold\" color=\"red.300\">{faltamProx}</Box> produtos</>",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\dashboard\\distribuicao\\comissao\\page.tsx",
+      "line": 272,
+      "column": 53,
+      "snippet": "<Box as=\"span\" color=\"green.300\" fontWeight=\"semibold\">Todas as metas batidas!</Box>",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 202,
+      "column": 39,
+      "snippet": "<Heading size=\"lg\" color=\"purple.500\">{pagamentosExternos.length}</Heading>",
+      "reason": "Cor hardcoded detectada: \"purple\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 208,
+      "column": 39,
+      "snippet": "<Heading size=\"lg\" color=\"green.500\">{assinantesFiltrados.length}</Heading>",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 214,
+      "column": 39,
+      "snippet": "<Heading size=\"lg\" color=\"blue.500\">{assinantesFiltrados.length}</Heading>",
+      "reason": "Cor hardcoded detectada: \"blue\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 228,
+      "column": 26,
+      "snippet": "<Text color=\"gray.600\">até</Text>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 267,
+      "column": 67,
+      "snippet": "const statusPalette = a.status === 'CONFIRMED' ? 'green' : a.status === 'AGUARDANDO_PAGAMENTO' ? 'yellow' : 'red';",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 267,
+      "column": 126,
+      "snippet": "const statusPalette = a.status === 'CONFIRMED' ? 'green' : a.status === 'AGUARDANDO_PAGAMENTO' ? 'yellow' : 'red';",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 298,
+      "column": 46,
+      "snippet": "<Dialog.Content rounded=\"xl\" bg=\"white\" borderColor=\"gray.200\" borderWidth=\"1px\" color=\"gray.800\" p={6} maxW=\"md\">",
+      "reason": "Cor hardcoded detectada: \"white\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 298,
+      "column": 66,
+      "snippet": "<Dialog.Content rounded=\"xl\" bg=\"white\" borderColor=\"gray.200\" borderWidth=\"1px\" color=\"gray.800\" p={6} maxW=\"md\">",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 298,
+      "column": 101,
+      "snippet": "<Dialog.Content rounded=\"xl\" bg=\"white\" borderColor=\"gray.200\" borderWidth=\"1px\" color=\"gray.800\" p={6} maxW=\"md\">",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 307,
+      "column": 55,
+      "snippet": "<Button variant=\"solid\" colorPalette=\"red\" onClick={async () => {",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 314,
+      "column": 55,
+      "snippet": "<Button variant=\"solid\" colorPalette=\"green\" onClick={async () => {",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 332,
+      "column": 46,
+      "snippet": "<Dialog.Content rounded=\"xl\" bg=\"white\" borderColor=\"gray.200\" borderWidth=\"1px\" color=\"gray.800\" p={6} maxW=\"md\">",
+      "reason": "Cor hardcoded detectada: \"white\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 332,
+      "column": 66,
+      "snippet": "<Dialog.Content rounded=\"xl\" bg=\"white\" borderColor=\"gray.200\" borderWidth=\"1px\" color=\"gray.800\" p={6} maxW=\"md\">",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 332,
+      "column": 101,
+      "snippet": "<Dialog.Content rounded=\"xl\" bg=\"white\" borderColor=\"gray.200\" borderWidth=\"1px\" color=\"gray.800\" p={6} maxW=\"md\">",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 350,
+      "column": 57,
+      "snippet": "<Button variant=\"solid\" colorPalette=\"green\" onClick={async () => {",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\assinantes\\page.tsx",
+      "line": 356,
+      "column": 55,
+      "snippet": "<Button variant=\"solid\" colorPalette=\"red\" onClick={async () => {",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\planos\\page.tsx",
+      "line": 162,
+      "column": 21,
+      "snippet": "bg=\"gray.800\"",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\planos\\page.tsx",
+      "line": 172,
+      "column": 65,
+      "snippet": "{plano.categoria && <Badge colorPalette=\"blue\">{plano.categoria}</Badge>}",
+      "reason": "Cor hardcoded detectada: \"blue\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\planos\\page.tsx",
+      "line": 174,
+      "column": 73,
+      "snippet": "<Text fontSize=\"lg\" fontWeight=\"extrabold\" color=\"blue.300\">",
+      "reason": "Cor hardcoded detectada: \"blue\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 21,
+      "column": 41,
+      "snippet": "const FALLBACK_COLORS = ['orange.400', 'purple.500', 'green.500', 'red.600'] as const;",
+      "reason": "Cor hardcoded detectada: \"purple\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 21,
+      "column": 55,
+      "snippet": "const FALLBACK_COLORS = ['orange.400', 'purple.500', 'green.500', 'red.600'] as const;",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 21,
+      "column": 68,
+      "snippet": "const FALLBACK_COLORS = ['orange.400', 'purple.500', 'green.500', 'red.600'] as const;",
+      "reason": "Cor hardcoded detectada: \"red\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 224,
+      "column": 37,
+      "snippet": "<Heading size=\"lg\" color=\"purple.300\">{faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</Heading>",
+      "reason": "Cor hardcoded detectada: \"purple\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 228,
+      "column": 37,
+      "snippet": "<Heading size=\"lg\" color=\"green.300\">{inadimplentes.length}</Heading>",
+      "reason": "Cor hardcoded detectada: \"green\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 232,
+      "column": 37,
+      "snippet": "<Heading size=\"lg\" color=\"blue.300\">{cancelados.length}</Heading>",
+      "reason": "Cor hardcoded detectada: \"blue\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 237,
+      "column": 24,
+      "snippet": "<Card.Root bg=\"gray.800\" borderColor=\"whiteAlpha.200\" borderWidth=\"1px\" rounded=\"xl\" mb={8}>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 253,
+      "column": 75,
+      "snippet": "if (value === 'Cartao') return <span style={{ color: '#f59e42' }}>Cartão</span>;",
+      "reason": "Cor hardcoded detectada: \"#f59e42\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 254,
+      "column": 72,
+      "snippet": "if (value === 'PIX') return <span style={{ color: '#6366f1' }}>PIX</span>;",
+      "reason": "Cor hardcoded detectada: \"#6366f1\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 255,
+      "column": 77,
+      "snippet": "if (value === 'Dinheiro') return <span style={{ color: '#22c55e' }}>Dinheiro</span>;",
+      "reason": "Cor hardcoded detectada: \"#22c55e\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 258,
+      "column": 66,
+      "snippet": "<Line type=\"monotone\" dataKey=\"Cartao\" stroke=\"#f59e42\" strokeWidth={3} activeDot={{ r: 6 }} />",
+      "reason": "Cor hardcoded detectada: \"#f59e42\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 259,
+      "column": 63,
+      "snippet": "<Line type=\"monotone\" dataKey=\"PIX\" stroke=\"#6366f1\" strokeWidth={3} />",
+      "reason": "Cor hardcoded detectada: \"#6366f1\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 260,
+      "column": 68,
+      "snippet": "<Line type=\"monotone\" dataKey=\"Dinheiro\" stroke=\"#22c55e\" strokeWidth={3} />",
+      "reason": "Cor hardcoded detectada: \"#22c55e\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\assinaturas\\dashboard\\page.tsx",
+      "line": 268,
+      "column": 24,
+      "snippet": "<Card.Root bg=\"gray.800\" borderColor=\"whiteAlpha.200\" borderWidth=\"1px\" rounded=\"xl\" mb={8}>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 94,
+      "column": 51,
+      "snippet": "<Box data-page=\"metas-trato\" minH=\"100vh\" bg=\"white\" position=\"relative\" zIndex={0} style={{ isolation: 'isolate' }}>",
+      "reason": "Cor hardcoded detectada: \"white\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 99,
+      "column": 26,
+      "snippet": "<Text color=\"gray.600\">Gerencie registros na tabela metas_trato_faixas</Text>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 101,
+      "column": 32,
+      "snippet": "<Button colorScheme=\"blue\" onClick={openCreate}>Nova Faixa</Button>",
+      "reason": "Cor hardcoded detectada: \"blue\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 104,
+      "column": 62,
+      "snippet": "<Box mb={6} p={4} borderWidth=\"1px\" rounded=\"md\" bg=\"white\">",
+      "reason": "Cor hardcoded detectada: \"white\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 113,
+      "column": 48,
+      "snippet": "borderWidth=\"1px\" borderColor=\"gray.200\" rounded=\"md\" px={3} py={2}>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 122,
+      "column": 49,
+      "snippet": "<Box borderWidth=\"1px\" rounded=\"md\" bg=\"white\" overflowX=\"auto\">",
+      "reason": "Cor hardcoded detectada: \"white\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 155,
+      "column": 34,
+      "snippet": "<Text color=\"gray.500\" textAlign=\"center\">Nenhum registro encontrado.</Text>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 167,
+      "column": 26,
+      "snippet": "<Box bg=\"white\" w=\"full\" maxW=\"md\" rounded=\"lg\" shadow=\"lg\" overflow=\"hidden\">",
+      "reason": "Cor hardcoded detectada: \"white\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 184,
+      "column": 60,
+      "snippet": "borderWidth=\"1px\" borderColor=\"gray.200\" rounded=\"md\" px={3} py={2}>",
+      "reason": "Cor hardcoded detectada: \"gray\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    },
+    {
+      "file": "app\\cadastros\\metas-trato\\page.tsx",
+      "line": 200,
+      "column": 46,
+      "snippet": "<Button colorScheme=\"blue\" onClick={save}>{editing ? \"Atualizar\" : \"Salvar\"}</Button>",
+      "reason": "Cor hardcoded detectada: \"blue\"",
+      "suggestion": "Use tokens/variants: ex. colorScheme=\"brand\", bg=\"whiteAlpha.100\", borderColor=\"whiteAlpha.200\", text=\"gray.*\"."
+    }
+  ]
+}

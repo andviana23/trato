@@ -1,409 +1,274 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Avatar, Button, Tooltip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@nextui-org/react";
-import { CurrencyDollarIcon, InformationCircleIcon, ChartBarIcon, ClockIcon, HashtagIcon } from "@heroicons/react/24/outline";
-import { ScissorsIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/solid';
+﻿"use client";
+import { useEffect, useMemo, useState } from "react";
+import { Avatar, Button } from "@/components/ui/chakra-adapters";
+import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { CurrencyDollarIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { createClient } from "@/lib/supabase/client";
-import { ComissaoResumoCard } from '../../../../components/ComissaoResumoCard';
-import { ComissaoBarbeiroCard } from '../../../../components/ComissaoBarbeiroCard';
-import { usePagamentosAsaas } from '@/app/assinaturas/assinantes/hooks/usePagamentosAsaas';
-import { getAssinaturas } from '@/lib/services/subscriptions';
+import { ComissaoResumoCard } from "@/components/ComissaoResumoCard";
+import { ComissaoBarbeiroCard } from "@/components/ComissaoBarbeiroCard";
+import { usePagamentosAsaas } from "@/app/assinaturas/assinantes/hooks/usePagamentosAsaas";
+import { getAssinaturas } from "@/lib/services/subscriptions";
 import dayjs from "dayjs";
 
 const supabase = createClient();
-const TRATO_ID = "244c0543-7108-4892-9eac-48186ad1d5e7";
-const getMesAtual = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-};
+const TRATO_ID = process.env.NEXT_PUBLIC_TRATO_UNIDADE_ID || "244c0543-7108-4892-9eac-48186ad1d5e7";
+
+type Barbeiro = { id: string; nome: string; avatar_url?: string };
+type Realizado = { barbeiro_id: string; servico?: { tempo_minutos?: number } };
+type ComissaoAvulsa = { profissional_id: string; valor_comissao: number; quantidade: number };
+type Faixa = { barbeiro_id: string; quantidade: number; tipo?: string };
+type VendaProduto = { barbeiro_id: string; quantidade: number };
+
+type FaixasMap = Record<string, Array<{ quantidade: number; tipo?: string }>>;
+
+type Assinatura = { price: number; status: string };
+type PagamentoConf = { valor: number; status: string };
+
+type PagamentoHook = { valor: number; status: string };
 
 export default function ComissaoPage() {
-  const [barbeiros, setBarbeiros] = useState<any[]>([]);
-  const [realizados, setRealizados] = useState<any[]>([]);
-  const [servicos, setServicos] = useState<any[]>([]);
-  const [assinaturas, setAssinaturas] = useState<any[]>([]);
+  const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
+  const [realizados, setRealizados] = useState<Realizado[]>([]);
+  const [comissoesAvulsas, setComissoesAvulsas] = useState<ComissaoAvulsa[]>([]);
+  const [faixasPorBarbeiro, setFaixasPorBarbeiro] = useState<FaixasMap>({});
+  const [vendasProdutos, setVendasProdutos] = useState<VendaProduto[]>([]);
   const [mesSelecionado, setMesSelecionado] = useState(dayjs().format("YYYY-MM"));
+  const [barbeiroDetalhe, setBarbeiroDetalhe] = useState<Barbeiro | null>(null);
   const { pagamentos } = usePagamentosAsaas({
-    dataInicio: dayjs(mesSelecionado).startOf('month').format('YYYY-MM-DD'),
-    dataFim: dayjs(mesSelecionado).endOf('month').format('YYYY-MM-DD')
-  });
-  useEffect(() => { getAssinaturas().then(setAssinaturas); }, [mesSelecionado]);
+    dataInicio: dayjs(mesSelecionado).startOf("month").format("YYYY-MM-DD"),
+    dataFim: dayjs(mesSelecionado).endOf("month").format("YYYY-MM-DD"),
+  }) as { pagamentos: PagamentoHook[] };
+  const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
 
-  const pagamentosConfirmados = [
-    ...pagamentos.map(p => ({
-      valor: p.valor,
-      status: p.status,
-      tipo_pagamento: (p.billing_type || '').toUpperCase(),
-      data_pagamento: p.payment_date
-    })),
-    ...assinaturas.map(a => ({
-      valor: a.price,
-      status: a.status,
-      tipo_pagamento: (a.forma_pagamento || '').toUpperCase(),
-      data_pagamento: a.created_at
-    }))
-  ].filter(p => p.status === 'CONFIRMED');
-
-  const faturamento = pagamentosConfirmados.reduce((acc, p) => acc + Number(p.valor), 0);
-  const comissaoTotal = faturamento * 0.4;
-  const [loading, setLoading] = useState(true);
-  const [barbeiroDetalhe, setBarbeiroDetalhe] = useState<any | null>(null);
-  const [comissoesAvulsas, setComissoesAvulsas] = useState<any[]>([]);
-  const [metas, setMetas] = useState<any[]>([]);
-  const [faixasPorMeta, setFaixasPorMeta] = useState<Record<string, any[]>>({});
+  useEffect(() => {
+    getAssinaturas().then((a) => setAssinaturas((a as unknown as Assinatura[]) || []));
+  }, [mesSelecionado]);
 
   useEffect(() => {
     async function fetchAll() {
-      setLoading(true);
       const inicio = dayjs(mesSelecionado).startOf("month").format("YYYY-MM-DD");
       const fim = dayjs(mesSelecionado).endOf("month").toISOString();
-      // Buscar barbeiros apenas da unidade Trato de Barbados
-      const { data: barbeiros } = await supabase
+      const { data: b } = await supabase
         .from("profissionais")
         .select("*")
         .eq("funcao", "barbeiro")
         .eq("unidade_id", TRATO_ID);
-      // Buscar serviços realizados no mês
-      const { data: realizados } = await supabase
+      const { data: r } = await supabase
         .from("servicos_realizados")
         .select("*, servico:servico_id(*), barbeiro:barbeiro_id(*)")
         .gte("data_hora", inicio)
         .lte("data_hora", fim);
-      // Buscar serviços (para minutos)
-      const { data: servicos } = await supabase.from("servicos").select("*");
-      // Buscar faturamento do mês da unidade
-      const { data: fat } = await supabase
-        .from("faturamento_assinatura")
-        .select("valor")
-        .eq("mes_referencia", mesSelecionado)
-        .eq("unidade", "Trato de Barbados");
-      // Buscar comissões avulsas do mês
-      const { data: comissoesAvulsas } = await supabase
+      const { data: ca } = await supabase
         .from("comissoes_avulsas")
         .select("*, servicos_avulsos(tempo_minutos, nome)")
         .eq("unidade_id", TRATO_ID)
         .gte("data_lancamento", inicio)
         .lte("data_lancamento", fim);
-      // Buscar metas e faixas de bonificação do mês
-      const { data: metasData } = await supabase
-        .from("metas_trato")
-        .select("*")
-        .eq("mes", mesSelecionado.split('-')[1])
-        .eq("ano", mesSelecionado.split('-')[0]);
-      let faixasObj: Record<string, any[]> = {};
-      if (metasData && metasData.length > 0) {
-        for (const meta of metasData) {
-          const { data: faixas } = await supabase
-            .from("metas_trato_faixas")
-            .select("*")
-            .eq("meta_id", meta.id);
-          faixasObj[meta.id] = faixas || [];
-        }
+      // Metas por barbeiro (produtos)
+      const barbeiroIds = (b || []).map((bb: Barbeiro) => bb.id);
+      const faixasMap: FaixasMap = {};
+      if (barbeiroIds.length > 0) {
+        const { data: faixas } = await supabase
+          .from("metas_trato_faixas")
+          .select("barbeiro_id, quantidade, tipo")
+          .eq("tipo", "produtos")
+          .in("barbeiro_id", barbeiroIds);
+        (faixas as unknown as Faixa[] | null)?.forEach((f) => {
+          if (!faixasMap[f.barbeiro_id]) faixasMap[f.barbeiro_id] = [];
+          faixasMap[f.barbeiro_id].push({ quantidade: Number(f.quantidade || 0), tipo: f.tipo });
+        });
       }
-      setMetas(metasData || []);
-      setFaixasPorMeta(faixasObj);
-      setBarbeiros(barbeiros || []);
-      setRealizados(realizados || []);
-      setServicos(servicos || []);
-      setComissoesAvulsas(comissoesAvulsas || []);
-      setLoading(false);
+      // Vendas de produtos no mês
+      const { data: vendas } = await supabase
+        .from("vendas_produtos_barbeiro")
+        .select("barbeiro_id, quantidade, data_venda, unidade_id")
+        .eq("unidade_id", TRATO_ID)
+        .gte("data_venda", inicio)
+        .lte("data_venda", fim);
+      setBarbeiros((b as unknown as Barbeiro[]) || []);
+      setRealizados((r as unknown as Realizado[]) || []);
+      setComissoesAvulsas((ca as unknown as ComissaoAvulsa[]) || []);
+      setFaixasPorBarbeiro(faixasMap);
+      setVendasProdutos((vendas as unknown as VendaProduto[]) || []);
     }
     fetchAll();
   }, [mesSelecionado]);
 
-  function getResumoBarbeiro(barbeiro: any) {
-    const feitos = realizados.filter(r => r.barbeiro_id === barbeiro.id);
-    let minutos = 0;
-    feitos.forEach(r => {
-      minutos += r.servico?.tempo_minutos || 0;
-    });
-    return {
-      total: feitos.length,
-      minutos
-    };
-  }
-  const totalMinutosMes = barbeiros.reduce((acc, b) => acc + getResumoBarbeiro(b).minutos, 0);
+  const pagamentosConfirmados = useMemo(
+    () =>
+      [
+        ...pagamentos.map((p) => ({ valor: p.valor, status: p.status } as PagamentoConf)),
+        ...assinaturas.map((a) => ({ valor: a.price, status: a.status } as PagamentoConf)),
+      ].filter((p) => p.status === "CONFIRMED"),
+    [pagamentos, assinaturas]
+  );
 
-  function getDetalheServicos(barbeiro: any) {
-    const feitos = realizados.filter(r => r.barbeiro_id === barbeiro.id);
-    const tipos = { corte: 0, barba: 0, "corte e barba": 0, acabamento: 0 };
-    feitos.forEach(r => {
-      const nome = r.servico?.nome?.toLowerCase() || "";
-      if (nome.includes("barba") && nome.includes("corte")) tipos["corte e barba"]++;
-      else if (nome.includes("barba")) tipos.barba++;
-      else if (nome.includes("corte")) tipos.corte++;
-      else if (nome.includes("acabamento")) tipos.acabamento++;
-    });
-    return tipos;
-  }
-  function getValorRealPorTipo(barbeiro: any, comissao: number) {
-    const tipos = getDetalheServicos(barbeiro);
-    const totalServicos = Object.values(tipos).reduce((a, b) => a + b, 0);
-    const valores: Record<string, number> = {};
-    Object.entries(tipos).forEach(([tipo, qtd]) => {
-      valores[tipo] = totalServicos > 0 ? comissao * (qtd / totalServicos) : 0;
-    });
-    return valores;
-  }
+  const faturamento = pagamentosConfirmados.reduce((acc, p) => acc + Number(p.valor), 0);
+  const COMISSAO_PERCENT = Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENT_TRATO ?? process.env.NEXT_PUBLIC_COMMISSION_PERCENT ?? 0.4);
+  const comissaoTotal = faturamento * COMISSAO_PERCENT;
 
-  const tipoServicoIcone = {
-    corte: <ScissorsIcon className="w-5 h-5 text-blue-500 inline-block mr-1" />,
-    barba: <SparklesIcon className="w-5 h-5 text-green-500 inline-block mr-1" />,
-    "corte e barba": <UserGroupIcon className="w-5 h-5 text-purple-500 inline-block mr-1" />,
-    acabamento: <InformationCircleIcon className="w-5 h-5 text-gray-400 inline-block mr-1" />,
+  const getResumoBarbeiro = (barbeiro: Barbeiro) => {
+    const feitos = realizados.filter((r) => r.barbeiro_id === barbeiro.id);
+    const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
+    return { total: feitos.length, minutos };
   };
 
+  const totalMinutosMes = barbeiros.reduce((acc, b) => acc + getResumoBarbeiro(b).minutos, 0);
+
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between max-w-7xl mx-auto px-4 mb-8 gap-4">
-        <h1 className="text-3xl font-extrabold text-blue-900 text-center">Comissão - Trato de Barbados</h1>
-        <input
-          type="month"
-          value={mesSelecionado}
-          onChange={e => setMesSelecionado(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm"
-          style={{ minWidth: 140 }}
-        />
+    <div className="container mx-auto max-w-7xl py-8">
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <h1 className="text-2xl font-semibold">Comissão - Trato de Barbados</h1>
+        <Input type="month" value={mesSelecionado} onChange={(e) => setMesSelecionado(e.target.value)} className="w-auto" />
       </div>
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <ComissaoResumoCard
-          icon={<CurrencyDollarIcon className="w-9 h-9 text-green-600" />}
+          icon={<CurrencyDollarIcon width={28} height={28} />}
           title="Faturamento Total do Mês"
           value={faturamento}
-          valueColorClass="text-green-700"
-          gradientClass="bg-gradient-to-br from-green-50 to-white"
         />
         <ComissaoResumoCard
-          icon={<ChartBarIcon className="w-9 h-9 text-amber-500" />}
+          icon={<ChartBarIcon width={28} height={28} />}
           title="Comissão Total do Mês (40%)"
           value={comissaoTotal}
-          valueColorClass="text-amber-700"
-          gradientClass="bg-gradient-to-br from-amber-100 to-white"
         />
       </div>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-stretch">
-        {barbeiros.length === 0 ? (
-          <Card className="shadow-md rounded-2xl col-span-full">
-            <CardBody className="text-center text-gray-400 py-12">Nenhum barbeiro cadastrado.</CardBody>
-          </Card>
-        ) : (
-          barbeiros.map((b) => {
+
+      {barbeiros.length === 0 ? (
+        <Card className="border border-border rounded-xl">
+          <CardContent className="text-center py-6 text-muted-foreground">Nenhum barbeiro cadastrado.</CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-stretch">
+          {barbeiros.map((b) => {
             const resumo = getResumoBarbeiro(b);
             const percentual = totalMinutosMes > 0 ? resumo.minutos / totalMinutosMes : 0;
-            // Comissão de assinatura
             const comissaoAssinatura = comissaoTotal * percentual;
-            // Comissão avulsa do barbeiro
-            const avulsas = comissoesAvulsas.filter(c => c.profissional_id === b.id);
-            const totalAvulsa = avulsas.reduce((acc, c) => acc + (Number(c.valor_comissao) * Number(c.quantidade)), 0);
-            // Comissão total
+            const avulsas = comissoesAvulsas.filter((c) => c.profissional_id === b.id);
+            const totalAvulsa = avulsas.reduce((acc, c) => acc + Number(c.valor_comissao) * Number(c.quantidade), 0);
             const comissaoTotalBarbeiro = comissaoAssinatura + totalAvulsa;
-            // Serviços assinatura
-            const feitos = realizados.filter(r => r.barbeiro_id === b.id);
-            // Serviços avulsos
-            const avulsosServicos = avulsas;
-            // Totais por tipo
-            const tipos = ["Corte", "Barba", "Corte e barba", "Acabamento"];
-            const totaisPorTipo = {};
-            tipos.forEach(tipo => {
-              const totalAssinatura = feitos.filter(r => r.servico?.nome === tipo).length;
-              const totalAvulso = avulsosServicos.filter(c => c.servicos_avulsos?.nome === tipo).reduce((acc, c) => acc + Number(c.quantidade), 0);
-              totaisPorTipo[tipo] = totalAssinatura + totalAvulso;
-            });
-            // Total de serviços
-            const totalServicos = feitos.length + avulsosServicos.reduce((acc, c) => acc + Number(c.quantidade), 0);
-            // Ticket médio
+            const feitos = realizados.filter((r) => r.barbeiro_id === b.id);
+            const totalServicos = feitos.length + avulsas.reduce((acc, c) => acc + Number(c.quantidade), 0);
             const ticketMedio = totalServicos > 0 ? comissaoTotalBarbeiro / totalServicos : 0;
-
-            // Metas do barbeiro para o mês/ano
-            const metasBarbeiro = metas.filter(m => m.barbeiro_id === b.id);
-            const bonificacoesAtivas: { descricao: string, valor: number }[] = [];
-            metasBarbeiro.forEach(meta => {
-              const faixas = faixasPorMeta[meta.id] || [];
-              faixas.forEach((faixa: any) => {
-                if (faixa.tipo === 'produtos') {
-                  const vendidos = /* calcule o total de produtos vendidos pelo barbeiro no mês */ 0;
-                  if (vendidos >= faixa.quantidade) {
-                    bonificacoesAtivas.push({
-                      descricao: `${faixa.quantidade} produtos vendidos`,
-                      valor: faixa.bonificacao
-                    });
-                  }
-                }
-                if (faixa.tipo === 'servicos') {
-                  const realizadosServ = /* calcule o total de serviços realizados pelo barbeiro no mês */ 0;
-                  if (realizadosServ >= faixa.quantidade) {
-                    bonificacoesAtivas.push({
-                      descricao: `${faixa.quantidade} serviços realizados`,
-                      valor: faixa.bonificacao
-                    });
-                  }
-                }
-              });
-            });
 
             return (
               <ComissaoBarbeiroCard
                 key={b.id}
                 nome={b.nome}
-                avatarUrl={b.avatar_url}
+                avatarUrl={b.avatar_url || ""}
                 minutos={resumo.minutos}
                 percentual={percentual}
                 comissao={comissaoTotalBarbeiro}
                 ticketMedio={ticketMedio}
-                tipos={totaisPorTipo}
-                tipoServicoIcone={tipoServicoIcone}
+                tipos={{}}
+                tipoServicoIcone={{}}
                 onClick={() => setBarbeiroDetalhe(b)}
-                totalComissaoAvulsa={totalAvulsa}
-              >
-                {bonificacoesAtivas.length > 0 && (
-                  <div className="mt-2">
-                    <span className="font-semibold text-gray-800 flex items-center mb-1">
-                      Bonificações <span className="ml-1">🏅</span>
-                    </span>
-                    {bonificacoesAtivas.length > 0 ? (
-                      <ul className="space-y-1 mt-1">
-                        {bonificacoesAtivas.map((b, idx) => (
-                          <li key={idx} className="flex items-center gap-2">
-                            <span className="inline-block px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-bold">🎉 Batido!</span>
-                            <span className="text-gray-700">{b.descricao}</span>
-                            <span className="font-bold text-green-700">{`R$ ${Number(b.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Nenhuma bonificação batida ainda.</span>
-                    )}
-                  </div>
-                )}
-              </ComissaoBarbeiroCard>
+              />
             );
-          })
-        )}
-      </div>
-      {/* Modal de Detalhamento do Barbeiro */}
-      <Modal isOpen={!!barbeiroDetalhe} onClose={() => setBarbeiroDetalhe(null)} size="xl" isDismissable closeButton className="z-[9999]">
-        <ModalContent className="!p-0">
-          <ModalHeader className="bg-gradient-to-r from-blue-100 via-white to-green-100 flex flex-col items-center gap-2 py-7 px-4 border-b border-gray-100">
-            <Avatar src={barbeiroDetalhe?.avatar_url} name={barbeiroDetalhe?.nome} size="lg" className="shadow-lg border-2 border-white mb-2" />
-            <span className="text-2xl md:text-3xl font-extrabold text-blue-800 tracking-tight text-center drop-shadow">{barbeiroDetalhe?.nome || 'N/A'}</span>
-            {/* Valor total da comissão (assinatura + avulsa) */}
+          })}
+        </div>
+      )}
+
+      {/* Modal de Detalhes do Barbeiro */}
+      <Dialog open={!!barbeiroDetalhe} onOpenChange={(open) => { if (!open) setBarbeiroDetalhe(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Avatar src={barbeiroDetalhe?.avatar_url || ""} name={barbeiroDetalhe?.nome} />
+              <div>
+                <div className="font-semibold">{barbeiroDetalhe?.nome}</div>
+                <div className="text-xs text-muted-foreground">Detalhamento de Comissão</div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div>
             {barbeiroDetalhe && (() => {
-              // Comissão de assinatura
-              const feitos = realizados.filter(r => r.barbeiro_id === barbeiroDetalhe.id);
+              const feitos = realizados.filter((r) => r.barbeiro_id === barbeiroDetalhe.id);
               const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
-              const totalMinutosMes = barbeiros.reduce((acc, b2) => {
-                const feitos2 = realizados.filter(r => r.barbeiro_id === b2.id);
-                return acc + feitos2.reduce((a, r) => a + (r.servico?.tempo_minutos || 0), 0);
-              }, 0);
-              const comissaoAssinatura = totalMinutosMes > 0 ? comissaoTotal * (minutos / totalMinutosMes) : 0;
-              // Comissão avulsa
-              const avulsas = comissoesAvulsas.filter(c => c.profissional_id === barbeiroDetalhe.id);
-              const totalAvulsa = avulsas.reduce((acc, c) => acc + (Number(c.valor_comissao) * Number(c.quantidade)), 0);
-              const totalComissao = comissaoAssinatura + totalAvulsa;
+              const percentual = totalMinutosMes > 0 ? minutos / totalMinutosMes : 0;
+              const comissaoAssinatura = comissaoTotal * percentual;
+              const avulsas = comissoesAvulsas.filter((c) => c.profissional_id === barbeiroDetalhe.id);
+              const totalAvulsa = avulsas.reduce((acc, c) => acc + Number(c.valor_comissao) * Number(c.quantidade), 0);
+              const totalServicos = feitos.length + avulsas.reduce((acc, c) => acc + Number(c.quantidade), 0);
+              const ticketMedio = totalServicos > 0 ? (comissaoAssinatura + totalAvulsa) / totalServicos : 0;
+              // Metas de produtos
+              let faixas = (faixasPorBarbeiro[barbeiroDetalhe.id] || []).slice();
+              faixas = faixas
+                .filter((f) => !f.tipo || f.tipo === "produtos")
+                .sort((a, b) => (a.quantidade || 0) - (b.quantidade || 0))
+                .slice(0, 3);
+              const vendidos = vendasProdutos
+                .filter((v) => v.barbeiro_id === barbeiroDetalhe.id)
+                .reduce((acc: number, v) => acc + Number(v.quantidade || 0), 0);
+              const proximaMeta = faixas.find((f) => vendidos < Number(f.quantidade || 0));
+              const faltamProx = proximaMeta ? Math.max(0, Number(proximaMeta.quantidade) - vendidos) : 0;
+
               return (
-                <span className="text-green-700 font-bold text-lg">Comissão Total: R$ {totalComissao.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-              );
-            })()}
-            <span className="inline-block text-base font-medium text-gray-500 bg-white/70 rounded-full px-4 py-1 shadow-sm mt-1">Detalhamento de Comissão</span>
-          </ModalHeader>
-          <ModalBody className="bg-white px-2 md:px-8 pb-8 pt-6">
-            {barbeiroDetalhe && (() => {
-              // Comissão de assinatura
-              const feitos = realizados.filter(r => r.barbeiro_id === barbeiroDetalhe.id);
-              const minutos = feitos.reduce((acc, r) => acc + (r.servico?.tempo_minutos || 0), 0);
-              const totalServicos = feitos.length;
-              const totalMinutosMes = barbeiros.reduce((acc, b2) => {
-                const feitos2 = realizados.filter(r => r.barbeiro_id === b2.id);
-                return acc + feitos2.reduce((a, r) => a + (r.servico?.tempo_minutos || 0), 0);
-              }, 0);
-              const comissaoAssinatura = totalMinutosMes > 0 ? comissaoTotal * (minutos / totalMinutosMes) : 0;
-              const valorMinuto = minutos > 0 ? comissaoAssinatura / minutos : null;
-              const valorHora = valorMinuto !== null ? valorMinuto * 60 : null;
-              // Comissão avulsa
-              const avulsas = comissoesAvulsas.filter(c => c.profissional_id === barbeiroDetalhe.id);
-              const minutosAvulsa = avulsas.reduce((acc, c) => acc + (c.servicos_avulsos?.tempo_minutos ? Number(c.servicos_avulsos.tempo_minutos) * Number(c.quantidade) : 0), 0);
-              const totalAvulsa = avulsas.reduce((acc, c) => acc + (Number(c.valor_comissao) * Number(c.quantidade)), 0);
-              const quantidadeAvulsa = avulsas.reduce((acc, c) => acc + Number(c.quantidade), 0);
-              const valorMinutoAvulsa = minutosAvulsa > 0 ? totalAvulsa / minutosAvulsa : null;
-              const valorHoraAvulsa = valorMinutoAvulsa !== null ? valorMinutoAvulsa * 60 : null;
-              return (
-                <div className="flex flex-col md:flex-row gap-7 justify-center items-stretch w-full">
-                  {/* Comissão Assinatura */}
-                  <div className="flex-1 bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-lg p-7 flex flex-col border border-blue-100 min-w-[220px] max-w-full mb-4 md:mb-0 transition-transform hover:scale-[1.01]">
-                    <div className="flex items-center gap-2 mb-5 justify-center">
-                      <CurrencyDollarIcon className="w-6 h-6 text-blue-500" />
-                      <span className="font-semibold text-blue-700 text-lg">Comissão de Assinatura</span>
-                    </div>
-                    <div className="text-center mb-6">
-                      <span className="text-4xl font-extrabold text-blue-800 drop-shadow block">R$ {comissaoAssinatura.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                      <span className="block text-xs text-gray-400 mt-1">(40% do faturamento proporcional aos minutos)</span>
-                    </div>
-                    <div className="flex flex-col gap-1 w-full mt-2">
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Minutos</span>
-                        <span className="font-bold text-blue-700">{minutos}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Valor/min</span>
-                        <span className="font-bold text-blue-700">{valorMinuto !== null ? `R$ ${valorMinuto.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Valor/hora</span>
-                        <span className="font-bold text-blue-700">{valorHora !== null ? `R$ ${valorHora.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span># Serviços</span>
-                        <span className="font-bold text-blue-700">{totalServicos}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2 mt-1">
-                        <span>Ticket médio</span>
-                        <span className="font-bold text-blue-700">{totalServicos > 0 ? `R$ ${(comissaoAssinatura / totalServicos).toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
-                      </div>
-                    </div>
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    {[{label:'Minutos no mês', value:minutos}, {label:'Ticket Médio', value:`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}, {label:'Comissão Assinatura', value:`R$ ${comissaoAssinatura.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}, {label:'Comissão Avulsa', value:`R$ ${totalAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}].map((k, i)=> (
+                      <Card key={i} className="border border-border rounded-lg p-3">
+                        <div className="text-[11px] text-muted-foreground">{k.label}</div>
+                        <div className="text-xl font-bold">{k.value}</div>
+                      </Card>
+                    ))}
                   </div>
-                  {/* Comissão Avulsa */}
-                  <div className="flex-1 bg-gradient-to-br from-green-50 to-white rounded-2xl shadow-lg p-7 flex flex-col border border-green-100 min-w-[220px] max-w-full mb-4 md:mb-0 transition-transform hover:scale-[1.01]">
-                    <div className="flex items-center gap-2 mb-5 justify-center">
-                      <CurrencyDollarIcon className="w-6 h-6 text-green-500" />
-                      <span className="font-semibold text-green-700 text-lg">Comissão Avulsa</span>
-                    </div>
-                    <div className="text-center mb-6">
-                      <span className="text-4xl font-extrabold text-green-700 drop-shadow block">R$ {totalAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                      <span className="block text-xs text-gray-400 mt-1">(Comissões de serviços avulsos do mês)</span>
-                    </div>
-                    <div className="flex flex-col gap-1 w-full mt-2">
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Minutos</span>
-                        <span className="font-bold text-green-700">{minutosAvulsa}</span>
+
+                  <Card className="border border-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between w-full mb-2">
+                        <div className="font-semibold">Metas de Produtos</div>
+                        <div className="text-xs text-muted-foreground">Vendas no mês: <span className="text-red-500 font-semibold">{vendidos}</span></div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Valor/min</span>
-                        <span className="font-bold text-green-700">{valorMinutoAvulsa !== null ? `R$ ${valorMinutoAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Valor/hora</span>
-                        <span className="font-bold text-green-700">{valorHoraAvulsa !== null ? `R$ ${valorHoraAvulsa.toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span># Serviços</span>
-                        <span className="font-bold text-green-700">{quantidadeAvulsa}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2 mt-1">
-                        <span>Ticket médio</span>
-                        <span className="font-bold text-green-700">{quantidadeAvulsa > 0 ? `R$ ${(totalAvulsa / quantidadeAvulsa).toLocaleString("pt-BR", { minimumFractionDigits: 3 })}` : 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
+                      {faixas.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">Nenhuma meta cadastrada</div>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          {faixas.map((f, idx) => {
+                            const alvo = Number(f.quantidade || 0);
+                            const progresso = alvo > 0 ? Math.min(100, Math.round((vendidos / alvo) * 100)) : 0;
+                            const atingida = vendidos >= alvo;
+                            return (
+                              <div key={idx} className="w-full">
+                                <div className="flex items-center justify-between text-[11px] mb-1">
+                                  <div className="font-medium">Meta {idx + 1}</div>
+                                  <div className={`${atingida ? 'text-green-400' : 'text-muted-foreground'} font-semibold`}>{vendidos}/{alvo}</div>
+                                </div>
+                                <Progress value={progresso} />
+                                <div className="text-[11px] text-muted-foreground mt-1">{atingida ? 'Concluída' : `Faltam ${Math.max(0, alvo - vendidos)} produtos`}</div>
+                              </div>
+                            );
+                          })}
+                          <div className="text-[11px] text-muted-foreground">
+                            {proximaMeta ? (
+                              <>Próx. meta: faltam <span className="font-semibold text-red-500">{faltamProx}</span> produtos</>
+                            ) : (
+                              <span className="font-semibold text-green-400">Todas as metas batidas!</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               );
             })()}
-          </ModalBody>
-          <ModalFooter className="bg-white border-t border-gray-100 px-6 py-4 flex justify-end rounded-b-2xl">
-            <Button variant="light" onClick={() => setBarbeiroDetalhe(null)} className="font-semibold px-8 py-3 rounded-lg shadow-md text-base transition-colors hover:bg-blue-50">Fechar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setBarbeiroDetalhe(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-} 
+}
+
+ 
+
+
+
+

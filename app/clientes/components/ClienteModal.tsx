@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 import React, { useEffect } from "react";
 import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Button, Input, Textarea
-} from "@nextui-org/react";
+} from "@/components/ui/chakra-adapters";
 import { useForm } from "react-hook-form";
 import { cadastrarCliente, atualizarCliente } from "@/lib/services/clients";
 
@@ -74,3 +74,4 @@ export default function ClienteModal({ open, onClose, onSuccess, cliente }: { op
     </Modal>
   );
 } 
+

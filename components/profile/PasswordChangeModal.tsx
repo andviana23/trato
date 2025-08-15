@@ -1,5 +1,5 @@
-import React from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@nextui-org/react";
+﻿import React from "react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@/components/ui/chakra-adapters";
 import PasswordChange from "./PasswordChange";
 
 interface PasswordChangeModalProps {
@@ -10,14 +10,14 @@ interface PasswordChangeModalProps {
 
 const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ open, onClose, user }) => {
   return (
-    <Modal isOpen={open} onClose={onClose} size="sm" placement="center">
+    <Modal isOpen={open} onOpenChange={(v: boolean) => !v && onClose()} size="sm" placement="center">
       <ModalContent>
         <ModalHeader className="text-lg font-bold">Alterar Senha</ModalHeader>
         <ModalBody>
           <PasswordChange user={user} />
         </ModalBody>
         <ModalFooter>
-          <Button variant="light" onClick={onClose}>Fechar</Button>
+          <Button variant="ghost" onClick={onClose}>Fechar</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
@@ -25,3 +25,4 @@ const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ open, onClose
 };
 
 export default PasswordChangeModal; 
+

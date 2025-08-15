@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardBody } from "@nextui-org/react";
+﻿import { Card, CardHeader, CardBody } from "@/components/ui/chakra-adapters";
 import { ReactNode } from "react";
 
 interface Props {

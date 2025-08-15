@@ -1,0 +1,15 @@
+{
+  "plugins": ["regexp"],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "regexp/no-dupe-characters-character-class": "error",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "Literal[value=/^#([0-9a-fA-F]{3,8})$|^(rgb|rgba|hsl)a?\\(|^(black|white|red|blue|green|gray|silver|maroon|olive|navy|purple|teal|fuchsia)$/]",
+        "message": "Evite cores hardcoded; use tokens do tema ou colorScheme."
+      }
+    ]
+  }
+}
+

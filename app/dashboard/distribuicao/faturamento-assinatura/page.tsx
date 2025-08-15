@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input } from "@/components/ui/chakra-adapters";
 import { CurrencyDollarIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useFaturamentoAssinatura, Lancamento } from './useFaturamentoAssinatura';
 import { usePagamentosAsaas } from '@/app/assinaturas/assinantes/hooks/usePagamentosAsaas';
@@ -68,33 +68,33 @@ export default function FaturamentoAssinaturaPage() {
       {/* Cards de Faturamento e Comissão */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Card Faturamento Total */}
-        <Card className="shadow-lg">
-          <CardHeader className="flex items-center gap-3">
+        <Card.Root className="shadow-lg">
+          <Card.Header className="flex items-center gap-3">
             <CurrencyDollarIcon className="h-7 w-7 text-green-600" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">
               Faturamento Total do Mês
             </span>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Body>
             <span className="text-3xl font-bold text-green-700 dark:text-green-400">
               R$ {faturamentoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
         {/* Card Comissão */}
-        <Card className="shadow-lg">
-          <CardHeader className="flex items-center gap-3">
+        <Card.Root className="shadow-lg">
+          <Card.Header className="flex items-center gap-3">
             <CurrencyDollarIcon className="h-7 w-7 text-blue-600" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">
               Comissão
             </span>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Body>
             <span className="text-3xl font-bold text-blue-700 dark:text-blue-400">
               R$ {comissao.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
       </div>
 
       {/* Formulário de novo faturamento */}
@@ -145,13 +145,13 @@ export default function FaturamentoAssinaturaPage() {
       </form>
 
       {/* Lista de lançamentos do mês */}
-      <Card className="shadow">
-        <CardHeader>
+      <Card.Root className="shadow">
+        <Card.Header>
           <span className="text-lg font-semibold text-gray-900 dark:text-white">
             Lançamentos do Mês
           </span>
-        </CardHeader>
-        <CardBody>
+        </Card.Header>
+        <Card.Body>
           {loading ? (
             <div className="text-center text-gray-500">Carregando...</div>
           ) : erro ? (
@@ -191,8 +191,11 @@ export default function FaturamentoAssinaturaPage() {
               </table>
             </div>
           )}
-        </CardBody>
-      </Card>
+        </Card.Body>
+      </Card.Root>
     </>
   );
 } 
+
+
+

@@ -1,7 +1,8 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from 'react'
-import { Card, CardBody, Select, SelectItem } from '@nextui-org/react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartDataPoint } from '@/lib/types/dashboard'
 import {
   LineChart,
@@ -66,9 +67,9 @@ export default function FaturamentoChart() {
   if (error) {
     return (
       <Card className="bg-red-50 border-red-200">
-        <CardBody>
+        <CardContent>
           <p className="text-red-700">Erro ao carregar gráfico: {error}</p>
-        </CardBody>
+        </CardContent>
       </Card>
     )
   }
@@ -76,32 +77,31 @@ export default function FaturamentoChart() {
   if (loading) {
     return (
       <Card>
-        <CardBody>
+        <CardContent>
           <div className="h-[400px] flex items-center justify-center">
             <p className="text-gray-500">Carregando dados do gráfico...</p>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
     )
   }
 
   return (
     <Card>
-      <CardBody>
+      <CardContent>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Faturamento vs Metas - Anual
           </h2>
-          <Select
-            selectedKeys={[selectedYear.toString()]}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="w-32"
-          >
-            {years.map(year => (
-              <SelectItem key={year.toString()} value={year.toString()}>
-                {year}
-              </SelectItem>
-            ))}
+          <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(Number(val))}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
 
@@ -144,7 +144,10 @@ export default function FaturamentoChart() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   )
 } 
+
+
+

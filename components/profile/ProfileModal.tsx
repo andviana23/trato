@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   Modal,
   ModalContent,
@@ -10,7 +10,7 @@ import {
   Divider,
   Chip,
   Spinner
-} from "@nextui-org/react";
+} from "@/components/ui/chakra-adapters";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -98,7 +98,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose} size="md" placement="center">
+    <Modal isOpen={open} onOpenChange={(v: boolean) => !v && onClose()} size="md" placement="center">
       <ModalContent className="rounded-2xl shadow-2xl">
         <ModalHeader className="text-2xl font-bold text-center pb-0 pt-6">Perfil do Usuário</ModalHeader>
         <ModalBody className="flex flex-col items-center gap-6 px-6 pb-2 pt-2">
@@ -124,36 +124,37 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
               name="fullName"
               control={control}
               render={({ field }) => (
-                <Input
-                  label="Nome"
-                  placeholder="Digite seu nome completo"
-                  value={field.value}
-                  onChange={field.onChange}
-                  isInvalid={!!errors.fullName}
-                  errorMessage={errors.fullName?.message}
-                  className="mb-2"
-                />
+                <>
+                  <Input
+                    placeholder="Digite seu nome completo"
+                    value={field.value}
+                    onChange={field.onChange}
+                    aria-invalid={!!errors.fullName}
+                    className="mb-2"
+                  />
+                  {errors.fullName?.message && <div className="text-red-500 text-xs mt-1">{errors.fullName.message}</div>}
+                </>
               )}
             />
             <Controller
               name="phone"
               control={control}
               render={({ field }) => (
-                <Input
-                  label="Telefone"
-                  placeholder="31999999999"
-                  value={field.value}
-                  onChange={e => {
-                    // Permitir apenas números
-                    const val = e.target.value.replace(/\D/g, "");
-                    field.onChange(val);
-                  }}
-                  isInvalid={!!errors.phone}
-                  errorMessage={errors.phone?.message}
-                  maxLength={11}
-                  inputMode="tel"
-                  className="mb-2"
-                />
+                <>
+                  <Input
+                    placeholder="31999999999"
+                    value={field.value}
+                    onChange={e => {
+                      const val = (e.target as HTMLInputElement).value.replace(/\D/g, "");
+                      field.onChange(val);
+                    }}
+                    aria-invalid={!!errors.phone}
+                    maxLength={11}
+                    inputMode="tel"
+                    className="mb-2"
+                  />
+                  {errors.phone?.message && <div className="text-red-500 text-xs mt-1">{errors.phone.message}</div>}
+                </>
               )}
             />
           </div>
@@ -175,8 +176,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
           )}
         </ModalBody>
         <ModalFooter className="flex justify-between items-center px-6 pb-6 pt-2 gap-2">
-          <Button variant="light" onClick={onClose} disabled={loading} className="w-1/2">Cancelar</Button>
-          <Button color="primary" onClick={handleSubmit(onSubmit)} isLoading={loading} disabled={loading} className="w-1/2">
+          <Button variant="ghost" onClick={onClose} disabled={loading} className="w-1/2">Cancelar</Button>
+          <Button color="primary" onClick={handleSubmit(onSubmit)} loading={loading} disabled={loading} className="w-1/2">
             Salvar Alterações
           </Button>
         </ModalFooter>
@@ -189,3 +190,4 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onClose, user }) => {
 };
 
 export default ProfileModal; 
+

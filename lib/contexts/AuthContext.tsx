@@ -64,11 +64,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[Auth] Buscando perfil para usuário:', userId);
       const supabase = createClient();
       
-      // Primeiro, buscar na tabela profissionais
+      // Primeiro, buscar na tabela profissionais pelo user_id (mapeia auth.users -> profissionais)
       const { data: profissionalData, error: profissionalError } = await supabase
         .from('profissionais')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
       console.log('[Auth] Dados do profissional:', { profissionalData, profissionalError });
@@ -121,65 +121,89 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (isInitialized) return;
 
     console.log('[Auth] Iniciando monitoramento de autenticação');
-    const supabase = createClient();
 
-    // Verificar usuário atual
-    const checkUser = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        console.log('[Auth] Usuário atual:', { user, error });
+    try {
+      const supabase = createClient();
 
-        if (error) {
-          console.error('[Auth] Erro ao verificar usuário:', error);
+      // Verificar usuário atual (usa getSession para evitar AuthSessionMissingError)
+      const checkUser = async () => {
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          const user = session?.user ?? null;
+          console.log('[Auth] Sessão atual:', { hasSession: !!session, error });
+
+          if (error) {
+            console.error('[Auth] Erro ao verificar usuário:', error);
+            setLoading(false);
+            return;
+          }
+
+          if (user) {
+            setUser(user);
+            const profileData = await fetchProfile(user.id);
+            console.log('[Auth] Perfil carregado:', profileData);
+            setProfile(profileData);
+            try {
+              const isAuthRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth');
+              if (isAuthRoute) {
+                const role = profileData?.role?.toLowerCase();
+                if (role === 'professional' || role === 'barbeiro') {
+                  router.replace('/profissional');
+                } else {
+                  router.replace('/dashboard');
+                }
+              }
+            } catch {}
+          } else {
+            setUser(null);
+            setProfile(null);
+          }
+        } catch (error) {
+          console.error('[Auth] Erro inesperado ao verificar usuário:', error);
+        } finally {
           setLoading(false);
+        }
+      };
+
+      // Verificar usuário inicial
+      checkUser();
+      setIsInitialized(true);
+
+      // Monitorar mudanças na autenticação
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[Auth] Mudança de autenticação:', { event, session });
+        
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          router.push('/auth/login');
           return;
         }
 
-        if (user) {
-          setUser(user);
-          const profileData = await fetchProfile(user.id);
-          console.log('[Auth] Perfil carregado:', profileData);
+        if (session?.user) {
+          setUser(session.user);
+          const profileData = await fetchProfile(session.user.id);
+          console.log('[Auth] Perfil atualizado após auth change:', profileData);
           setProfile(profileData);
-        } else {
-          setUser(null);
-          setProfile(null);
+          // Redireciona profissional direto para a página do profissional
+          const role = profileData?.role?.toLowerCase();
+          if (role === 'professional' || role === 'barbeiro') {
+            try { router.push('/profissional'); } catch {}
+          }
         }
-      } catch (error) {
-        console.error('[Auth] Erro inesperado ao verificar usuário:', error);
-      } finally {
+        
         setLoading(false);
-      }
-    };
+      });
 
-    // Verificar usuário inicial
-    checkUser();
-    setIsInitialized(true);
-
-    // Monitorar mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] Mudança de autenticação:', { event, session });
-      
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-        router.push('/auth/login');
-        return;
-      }
-
-      if (session?.user) {
-        setUser(session.user);
-        const profileData = await fetchProfile(session.user.id);
-        console.log('[Auth] Perfil atualizado após auth change:', profileData);
-        setProfile(profileData);
-      }
-      
+      return () => {
+        console.log('[Auth] Limpando monitoramento de autenticação');
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      // Se falhar ao criar o cliente (ex.: env ausente), não travar a UI
+      console.error('[Auth] Falha ao inicializar Supabase. Verifique variáveis de ambiente.', error);
       setLoading(false);
-    });
-
-    return () => {
-      console.log('[Auth] Limpando monitoramento de autenticação');
-      subscription.unsubscribe();
-    };
+    }
   }, [router, isInitialized]);
 
   // Login
@@ -216,7 +240,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(data.session);
         // Removido: chamada dos scripts via exec
         console.log('[Auth] Login bem sucedido:', { user: data.user, profile: profileData });
-        router.push('/dashboard');
+        // Redireciona conforme role
+        const role = profileData.role?.toLowerCase();
+        if (role === 'professional' || role === 'barbeiro') {
+          router.push('/profissional');
+        } else {
+          router.push('/dashboard');
+        }
         return { success: true };
       }
 
@@ -426,7 +456,7 @@ export const usePermissions = () => {
   console.log('[Permissions] Role do usuário:', role);
   
   const isOwner = role === 'barbershop_owner';
-  const isProfessional = role === 'professional';
+  const isProfessional = role === 'professional' || role === 'barbeiro';
   const isClient = role === 'client';
   const isAdmin = role === 'admin' || role === 'administrador';
   const isRecepcionista = role === 'recepcionista';

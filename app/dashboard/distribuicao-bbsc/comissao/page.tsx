@@ -1,15 +1,15 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Avatar, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip, Tooltip, Select, SelectItem, Input } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Avatar, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Chip, Tooltip, Select, SelectItem, Input } from "@/components/ui/chakra-adapters";
 import { CurrencyDollarIcon, UserIcon, InformationCircleIcon, ChartBarIcon, PlusIcon, ClockIcon, HashtagIcon } from "@heroicons/react/24/outline";
 import { ScissorsIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/solid';
 import { createClient } from "@/lib/supabase/client";
 import { Bar } from 'react-chartjs-2';
 import { Chart, BarElement, CategoryScale, LinearScale, Tooltip as ChartTooltip, Legend } from 'chart.js';
 Chart.register(BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
-import { ComissaoResumoCard } from '../../../../components/ComissaoResumoCard';
-import { ComissaoBarbeiroCard } from '../../../../components/ComissaoBarbeiroCard';
+import { ComissaoResumoCard } from '@/components/ComissaoResumoCard';
+import { ComissaoBarbeiroCard } from '@/components/ComissaoBarbeiroCard';
 
 const supabase = createClient();
 
@@ -156,7 +156,8 @@ export default function ComissaoPage() {
 
   // Comissão total do mês (40% do faturamento da unidade)
   // A comissão é calculada automaticamente como 40% do faturamento total do mês da unidade.
-  const comissaoTotal = faturamento * 0.4;
+  const COMISSAO_PERCENT = Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENT_BBSC ?? process.env.NEXT_PUBLIC_COMMISSION_PERCENT ?? 0.4);
+  const comissaoTotal = faturamento * COMISSAO_PERCENT;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -200,9 +201,9 @@ export default function ComissaoPage() {
         <h2 className="text-xl font-bold text-gray-800 mb-4">Barbeiros BarberBeer</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {barbeiros.length === 0 ? (
-            <Card className="shadow-md rounded-2xl col-span-full">
-              <CardBody className="text-center text-gray-400 py-12">Nenhum barbeiro cadastrado.</CardBody>
-            </Card>
+            <Card.Root className="shadow-md rounded-2xl col-span-full">
+              <Card.Body className="text-center text-gray-400 py-12">Nenhum barbeiro cadastrado.</Card.Body>
+            </Card.Root>
           ) : (
             barbeiros.map((b) => {
               const feitos = realizados.filter(r => r.barbeiro_id === b.id);
@@ -476,3 +477,8 @@ export default function ComissaoPage() {
     </div>
   );
 } 
+
+
+
+
+

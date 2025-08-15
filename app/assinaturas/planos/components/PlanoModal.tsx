@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PlanoModalProps {
   open: boolean;
   onClose: () => void;
   onSalvar: (plano: { id?: string; nome: string; preco: number; descricao: string; categoria?: string }) => void;
-  plano?: any;
+  plano?: { id?: string; nome?: string; preco?: number; descricao?: string; categoria?: string };
 }
 
 export default function PlanoModal({ open, onClose, onSalvar, plano }: PlanoModalProps) {
@@ -33,7 +39,7 @@ export default function PlanoModal({ open, onClose, onSalvar, plano }: PlanoModa
     }
   }, [plano, open]);
 
-  if (!open) return null;
+  const opcoes = useMemo(() => ["", ...categorias], [categorias]);
 
   function handleSalvar() {
     if (!nome || !preco) {
@@ -45,7 +51,7 @@ export default function PlanoModal({ open, onClose, onSalvar, plano }: PlanoModa
     if (adicionandoCategoria && novaCategoria) {
       categoriaFinal = novaCategoria;
       if (!categorias.includes(novaCategoria)) {
-        setCategorias([...categorias, novaCategoria]);
+        setCategorias((prev) => [...prev, novaCategoria]);
       }
     }
     const planoData = { nome, preco: Number(preco), descricao, categoria: categoriaFinal };
@@ -61,7 +67,7 @@ export default function PlanoModal({ open, onClose, onSalvar, plano }: PlanoModa
 
   function handleAdicionarCategoria() {
     if (novaCategoria && !categorias.includes(novaCategoria)) {
-      setCategorias([...categorias, novaCategoria]);
+      setCategorias((prev) => [...prev, novaCategoria]);
       setCategoria(novaCategoria);
       setNovaCategoria("");
       setAdicionandoCategoria(false);
@@ -69,99 +75,61 @@ export default function PlanoModal({ open, onClose, onSalvar, plano }: PlanoModa
   }
 
   return (
-    open && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 w-full max-w-md mx-2 animate-fade-in">
-          <h2 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100 mb-6 text-center">Novo Plano</h2>
-          <form className="flex flex-col gap-5" onSubmit={e => { e.preventDefault(); handleSalvar(); }}>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome do plano</label>
-              <input
-                placeholder="Nome do plano"
-                value={nome}
-                onChange={e => setNome(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Preço</label>
-              <input
-                placeholder="Preço"
-                type="number"
-                min="0"
-                step="0.01"
-                value={preco}
-                onChange={e => setPreco(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Categoria</label>
-              <div className="flex gap-2 items-center">
-                <select
-                  value={categoria}
-                  onChange={e => setCategoria(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none flex-1"
-                >
-                  <option value="">Selecione uma categoria</option>
-                  {categorias.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+    <Dialog open={open} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Novo Plano</DialogTitle>
+        </DialogHeader>
+        {erro && (
+          <Alert variant="destructive" className="mb-2">
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
+        )}
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-2">
+            <label className="text-sm">Nome do plano</label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do plano" />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm">Preço</label>
+            <Input type="number" min={0} step={0.01} value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="Preço" />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm">Categoria</label>
+            <div className="flex items-start gap-2">
+              <Select value={categoria} onValueChange={setCategoria}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {opcoes.map((c, i) => (
+                    <SelectItem key={i} value={c}>{c || 'Selecione uma categoria'}</SelectItem>
                   ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setAdicionandoCategoria((v) => !v)}
-                  className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-lg font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                >
-                  +
-                </button>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={() => setAdicionandoCategoria((v) => !v)}>
+                {adicionandoCategoria ? "Cancelar" : "+ Categoria"}
+              </Button>
+            </div>
+            {adicionandoCategoria && (
+              <div className="flex items-center gap-2 mt-2">
+                <Input placeholder="Nova categoria" value={novaCategoria} onChange={(e) => setNovaCategoria(e.target.value)} />
+                <Button onClick={handleAdicionarCategoria}>Salvar</Button>
               </div>
-              {adicionandoCategoria && (
-                <div className="flex gap-2 items-center mt-2">
-                  <input
-                    placeholder="Nova categoria"
-                    value={novaCategoria}
-                    onChange={e => setNovaCategoria(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAdicionarCategoria}
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Salvar
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Descrição</label>
-              <textarea
-                placeholder="Descrição do plano"
-                value={descricao}
-                onChange={e => setDescricao(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none min-h-[80px] resize-y"
-              />
-            </div>
-            {erro && <span className="text-red-600 dark:text-red-400 text-sm text-center">{erro}</span>}
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Salvar
-              </button>
-            </div>
-          </form>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm">Descrição</label>
+            <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do plano" />
+          </div>
         </div>
-      </div>
-    )
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="secondary">Cancelar</Button>
+          </DialogClose>
+          <Button onClick={handleSalvar}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 } 

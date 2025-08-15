@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { usePagamentosAsaas } from "./hooks/usePagamentosAsaas";
 import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -14,7 +13,25 @@ import type { PagamentoAsaas } from './hooks/usePagamentosAsaas';
 import { useMemo } from 'react';
 import { getPlanos } from '@/lib/services/plans';
 import { getClientes } from '@/lib/services/clients';
-import AssinantesTable from "./components/AssinantesTable";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAppToast as useDesignToast } from "@/hooks/useAppToast";
 
 // Tipo para unificação dos dados
 export type AssinanteUnificado = {
@@ -59,7 +76,7 @@ export default function AssinantesPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [modalConfirmar, setModalConfirmar] = useState<{ open: boolean, assinatura: AssinanteUnificado | null }>({ open: false, assinatura: null });
   // Adicione o estado para controlar o assinante em edição
-  const [assinanteEditando, setAssinanteEditando] = useState(null);
+  const [assinanteEditando, setAssinanteEditando] = useState<AssinanteUnificado | null>(null);
 
   // Move fetchAssinaturasComNomes here
   async function fetchAssinaturasComNomes() {
@@ -118,39 +135,19 @@ export default function AssinantesPage() {
 
   const [busca, setBusca] = useState("");
 
-  useEffect(() => {
-    let assinantesFiltrados = todosAssinantes;
-    if (busca) {
-      assinantesFiltrados = assinantesFiltrados.filter(assinante =>
-        assinante.nome?.toLowerCase().includes(busca.toLowerCase())
-      );
-    }
-    if (periodo.dataInicio || periodo.dataFim) {
-      assinantesFiltrados = assinantesFiltrados.filter(assinante => {
-        const dataPagamento = assinante.data_pagamento;
-        if (!dataPagamento) return false;
-        const data = dayjs(dataPagamento);
-        const inicio = periodo.dataInicio ? dayjs(periodo.dataInicio) : null;
-        const fim = periodo.dataFim ? dayjs(periodo.dataFim) : null;
-        if (inicio && fim) return data.isSameOrAfter(inicio) && data.isSameOrBefore(fim);
-        if (inicio) return data.isSameOrAfter(inicio);
-        if (fim) return data.isSameOrBefore(fim);
-        return true;
-      });
-    }
-  }, [todosAssinantes, busca, periodo]);
+  // efeito legado removido (lógica consolidada em assinantesFiltrados)
 
   // Use todosAssinantes para exibir na tabela, cards e KPIs
   // Exemplo de filtro para tabela:
-  const assinantesFiltrados = todosAssinantes.filter(a => {
+  const assinantesFiltrados = todosAssinantes.filter((a) => {
     const nomeOk = a.nome.toLowerCase().includes(busca.toLowerCase());
     const dataOk = (!periodo.dataInicio || dayjs(a.data_pagamento).isSameOrAfter(dayjs(periodo.dataInicio))) &&
                    (!periodo.dataFim || dayjs(a.data_pagamento).isSameOrBefore(dayjs(periodo.dataFim)));
     return nomeOk && dataOk;
   });
 
-  // Card ASAAS Trato: status CONFIRMED e billing_type CREDIT_CARD ou PIX
-  const asaasTratoAtivos = assinantesFiltrados.filter(a => a.origem === 'asaas' && a.tipo_pagamento === 'CREDIT_CARD' || a.tipo_pagamento === 'PIX');
+  // Card ASAAS Trato: status CONFIRMED e tipo de pagamento Cartão/PIX
+  const asaasTratoAtivos = assinantesFiltrados.filter(a => a.origem === 'asaas' && a.status === 'CONFIRMED' && (a.tipo_pagamento === 'CREDIT_CARD' || a.tipo_pagamento === 'PIX'));
 
   // Remover referência a todosAssinantes
   // Se necessário, remova o card de Pagamentos Externos ou ajuste para usar pagamentosFiltrados
@@ -158,7 +155,15 @@ export default function AssinantesPage() {
     a => (a.origem === 'dinheiro' || a.origem === 'pix') && (a.status === 'AGUARDANDO_PAGAMENTO' || a.status === 'CONFIRMED')
   );
 
+  // Clientes Ativos: todos com status CONFIRMED independentemente da origem
+  const clientesAtivos = assinantesFiltrados.filter(a => a.status === 'CONFIRMED');
+
   // Cards de métricas e layout
+  const toast = useDesignToast();
+  const cardBg = 'bg-card';
+  const cardBorder = 'border-border';
+  const muted = 'text-muted-foreground';
+
   async function handleSyncPagamentos() {
     if (isSyncing) {
       alert('Já existe uma sincronização em andamento. Aguarde!');
@@ -172,215 +177,194 @@ export default function AssinantesPage() {
       const data1 = await res1.json();
       const data2 = await res2.json();
       if ((res1.status === 401 || res2.status === 401)) {
-        alert('Chave de API inválida ou permissão insuficiente.');
+        toast.error({ title: 'Chave de API inválida ou permissão insuficiente.' });
       } else if ((data1.success || data2.success)) {
-        alert('Dados atualizados com sucesso!');
+        toast.success({ title: 'Dados atualizados com sucesso!' });
         window.location.reload();
       } else {
-        alert('Erro ao atualizar: ' + (data1.error || data2.error || 'Erro desconhecido.'));
+        toast.error({ title: 'Erro ao atualizar', description: String(data1.error || data2.error || 'Erro desconhecido.') });
       }
-    } catch (e) {
-      alert('Erro ao sincronizar pagamentos.');
+    } catch {
+      toast.error({ title: 'Erro ao sincronizar pagamentos.' });
     } finally {
       setIsSyncing(false);
     }
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-10 font-sans">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+    <div className="container mx-auto max-w-7xl py-6">
+      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">Assinantes</h1>
+          <p className="text-sm text-muted-foreground">Gerencie todos os assinantes ativos e históricos do sistema</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleSyncPagamentos} disabled={isSyncing} aria-label="Atualizar dados">
+            {isSyncing ? "Sincronizando..." : "Atualizar Dados"}
+          </Button>
+          <Button onClick={() => setModalAberto(true)} aria-label="Novo Assinante">Novo Assinante</Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {[{label:'ASAAS Trato', value: asaasTratoAtivos.length, color:'text-orange-500'},
+          {label:'Pagamentos Externos', value: pagamentosExternos.length, color:'text-purple-500'},
+          {label:'Clientes Ativos', value: clientesAtivos.length, color:'text-green-500'}].map((kpi, i)=> (
+          <Card key={i} className="border border-border rounded-xl shadow-sm">
+            <CardContent className="text-center py-6">
+              <div className={`text-[11px] font-semibold ${muted}`}>{kpi.label}</div>
+              <div className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filtros */}
+      <div className="border border-border rounded-lg mb-4 shadow-sm p-4">
+        <div className="flex flex-wrap items-end gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-black mb-1 flex items-center gap-2">
-              <span className="inline-block bg-orange-100 p-2 rounded-full"><svg className="w-7 h-7 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2h5m4-4v4m0 0v-4m0 4h4m-4 0H7" /></svg></span>
-              Assinantes
-            </h1>
-            <p className="text-gray-500">Gerencie todos os assinantes ativos e históricos do sistema</p>
+            <Input className="w-[260px]" placeholder="Buscar por nome do cliente" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar assinante" />
           </div>
-          <div className="flex gap-2">
-            <button
-              className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-semibold shadow hover:bg-gray-200 transition-all flex items-center gap-2 ${isSyncing ? 'opacity-60 cursor-not-allowed' : ''}`}
-              onClick={handleSyncPagamentos}
-              disabled={isSyncing}
-            >
-              {isSyncing ? 'Sincronizando...' : 'Atualizar Dados'}
-            </button>
-            <button
-              className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-green-600 transition-all"
-              onClick={() => setModalAberto(true)}
-            >Novo Assinante</button>
-          </div>
-        </div>
-        {/* Cards de Métricas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow border-t-4 border-orange-500 flex flex-col items-center justify-center p-6">
-            <span className="text-xs text-gray-500 font-semibold">ASAAS Trato</span>
-            <span className="text-3xl font-bold text-orange-500">{asaasTratoAtivos.length}</span>
-            <span className="text-orange-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg></span>
-          </div>
-          <div className="bg-white rounded-xl shadow border-t-4 border-purple-500 flex flex-col items-center justify-center p-6">
-            <span className="text-xs text-gray-500 font-semibold">Pagamentos Externos</span>
-            <span className="text-3xl font-bold text-purple-500">{pagamentosExternos.length}</span>
-            <span className="text-purple-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-7a2 2 0 00-2-2z" /></svg></span>
-          </div>
-          <div className="bg-white rounded-xl shadow border-t-4 border-green-500 flex flex-col items-center justify-center p-6">
-            <span className="text-xs text-gray-500 font-semibold">Clientes Ativos</span>
-            <span className="text-3xl font-bold text-green-500">{assinantesFiltrados.length}</span>
-            <span className="text-green-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2h5" /></svg></span>
-          </div>
-          <div className="bg-white rounded-xl shadow border-t-4 border-blue-500 flex flex-col items-center justify-center p-6">
-            <span className="text-xs text-gray-500 font-semibold">Total de Assinantes</span>
-            <span className="text-3xl font-bold text-blue-500">{assinantesFiltrados.length}</span>
-            <span className="text-blue-400 mt-2"><svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /></svg></span>
-          </div>
-        </div>
-        {/* Barra de Filtros */}
-        <div className="flex flex-wrap gap-4 items-end bg-white rounded-xl shadow p-4 mb-4">
-          <input
-            type="text"
-            placeholder="Buscar por nome do cliente"
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            className="w-64 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500">Período de pagamento</label>
-            <input
-              type="date"
-              value={periodo.dataInicio}
-              onChange={e => setPeriodo(p => ({ ...p, dataInicio: e.target.value }))}
-              className="w-36 px-2 py-1 border rounded"
-            />
-            <span className="text-gray-500">até</span>
-            <input
-              type="date"
-              value={periodo.dataFim}
-              onChange={e => setPeriodo(p => ({ ...p, dataFim: e.target.value }))}
-              className="w-36 px-2 py-1 border rounded"
-            />
+            <span className={`text-[11px] ${muted}`}>Período de pagamento</span>
+            <Input type="date" value={periodo.dataInicio} onChange={(e) => setPeriodo((p) => ({ ...p, dataInicio: e.target.value }))} className="w-36" />
+            <span className="text-gray-600">até</span>
+            <Input type="date" value={periodo.dataFim} onChange={(e) => setPeriodo((p) => ({ ...p, dataFim: e.target.value }))} className="w-36" />
           </div>
-          <button className="bg-red-100 text-red-600 font-semibold px-4 py-2 rounded-lg hover:bg-red-200 transition-all">Limpar</button>
+          <Button variant="secondary" aria-label="Limpar filtros" onClick={() => {
+            setBusca("");
+            setPeriodo({
+              dataInicio: dayjs().startOf('month').format('YYYY-MM-DD'),
+              dataFim: dayjs().endOf('month').format('YYYY-MM-DD')
+            });
+          }}>Limpar</Button>
         </div>
-        {/* Tabela de pagamentos_asaas */}
-        <div className="overflow-x-auto rounded-xl shadow bg-white">
-          <table className="min-w-full text-sm text-gray-700">
-            <thead>
-              <tr className="bg-gray-50 text-gray-800 font-bold">
-                <th className="px-4 py-3 text-left">Nome do Cliente</th>
-                <th className="px-4 py-3 text-left">Plano</th>
-                <th className="px-4 py-3 text-left">Valor</th>
-                <th className="px-4 py-3 text-left">Status do Pagamento</th>
-                <th className="px-4 py-3 text-left">Data do Pagamento</th>
-                <th className="px-4 py-3 text-left">Próx. Vencimento</th>
-                <th className="px-4 py-3 text-left">Tipo de Pagamento</th>
-                <th className="px-4 py-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingAtivos ? (
-                <tr><td colSpan={8} className="text-center py-8">Carregando...</td></tr>
-              ) : assinantesFiltrados.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">Nenhum assinante encontrado.</td></tr>
-              ) : (
-                assinantesFiltrados.map(a => (
-                  <tr key={a.id} className="border-b hover:bg-gray-50 transition-all">
-                    <td className="px-4 py-2">{a.nome}</td>
-                    <td className="px-4 py-2">{a.plano}</td>
-                    <td className="px-4 py-2 font-bold text-blue-700">R$ {Number(a.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${a.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : a.status === 'AGUARDANDO_PAGAMENTO' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{a.status}</span>
-                    </td>
-                    <td className="px-4 py-2">{dayjs(a.data_pagamento).format('DD/MM/YYYY')}</td>
-                    <td className="px-4 py-2">{dayjs(a.proximo_vencimento).format('DD/MM/YYYY')}</td>
-                    <td className="px-4 py-2">{a.tipo_pagamento === 'CREDIT_CARD' ? 'Cartão' : a.tipo_pagamento === 'PIX' ? 'PIX' : a.tipo_pagamento === 'DINHEIRO' ? 'Dinheiro' : a.tipo_pagamento}</td>
-                    <td className="px-4 py-2 text-center">
-                      <button
-                        className="bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded flex items-center gap-2 transition-all"
-                        title="Editar assinante"
-                        onClick={() => setAssinanteEditando(a)}
-                      >
+      </div>
+
+      {/* Tabela */}
+      <div className="border border-border rounded-lg overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome do Cliente</TableHead>
+              <TableHead>Plano</TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead>Status do Pagamento</TableHead>
+              <TableHead>Data do Pagamento</TableHead>
+              <TableHead>Próx. Vencimento</TableHead>
+              <TableHead>Tipo de Pagamento</TableHead>
+              <TableHead className="text-center">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadingAtivos ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8">Carregando...</TableCell>
+              </TableRow>
+            ) : assinantesFiltrados.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum assinante encontrado.</TableCell>
+              </TableRow>
+            ) : (
+              assinantesFiltrados.map((a) => {
+                const statusPalette = a.status === 'CONFIRMED' ? 'green' : a.status === 'AGUARDANDO_PAGAMENTO' ? 'yellow' : 'red';
+                const tipo = a.tipo_pagamento === 'CREDIT_CARD' ? 'Cartão' : a.tipo_pagamento === 'PIX' ? 'PIX' : a.tipo_pagamento === 'DINHEIRO' ? 'Dinheiro' : a.tipo_pagamento;
+                return (
+                  <TableRow key={a.id}>
+                    <TableCell>{a.nome}</TableCell>
+                    <TableCell>{a.plano}</TableCell>
+                    <TableCell>{Number(a.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusPalette === 'green' ? 'bg-green-100 text-green-800' : statusPalette === 'yellow' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{a.status}</span>
+                    </TableCell>
+                    <TableCell>{dayjs(a.data_pagamento).format('DD/MM/YYYY')}</TableCell>
+                    <TableCell>{dayjs(a.proximo_vencimento).format('DD/MM/YYYY')}</TableCell>
+                    <TableCell>{tipo}</TableCell>
+                    <TableCell className="text-center">
+                      <Button variant="outline" size="sm" onClick={() => setAssinanteEditando(a)} aria-label="Editar assinante">
                         Editar
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" /></svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
       <CadastrarAssinanteModal open={modalAberto} onClose={() => setModalAberto(false)} />
       {/* Modal de confirmação de pagamento */}
       {modalConfirmar.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md mx-2 animate-fade-in">
-            <h2 className="text-xl font-bold mb-4">Confirmar pagamento</h2>
-            <p className="mb-4">Deseja confirmar o pagamento do cliente <b>{modalConfirmar.assinatura?.nome}</b>?</p>
-            <div className="flex gap-4 justify-end">
-              <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium" onClick={() => setModalConfirmar({ open: false, assinatura: null })}>Cancelar</button>
-              <button className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-semibold transition-all" onClick={async () => {
-                if (modalConfirmar.assinatura?.id) {
-                  await deletarAssinatura(modalConfirmar.assinatura.id);
-                }
-                setModalConfirmar({ open: false, assinatura: null });
-                window.location.reload();
-              }}>Cancelar assinatura</button>
-              <button className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-semibold transition-all" onClick={async () => {
-                if (modalConfirmar.assinatura?.id) {
-                  await updateAssinaturaStatus(modalConfirmar.assinatura.id, 'CONFIRMED');
-                }
-                setModalConfirmar({ open: false, assinatura: null });
-                window.location.reload();
-              }}>Confirmar</button>
-            </div>
-          </div>
-        </div>
+        <Dialog open onOpenChange={() => setModalConfirmar({ open: false, assinatura: null })}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirmar pagamento</DialogTitle>
+            </DialogHeader>
+            <div className="mb-4 text-sm">Deseja confirmar o pagamento do cliente <b>{modalConfirmar.assinatura?.nome}</b>?</div>
+            <DialogFooter className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setModalConfirmar({ open: false, assinatura: null })}>Cancelar</Button>
+              <Button variant="destructive" onClick={async () => {
+                  if (modalConfirmar.assinatura?.id) {
+                    await deletarAssinatura(modalConfirmar.assinatura.id);
+                  }
+                  setModalConfirmar({ open: false, assinatura: null });
+                  window.location.reload();
+                }}>Cancelar assinatura</Button>
+              <Button onClick={async () => {
+                  if (modalConfirmar.assinatura?.id) {
+                    await updateAssinaturaStatus(modalConfirmar.assinatura.id, 'CONFIRMED');
+                  }
+                  setModalConfirmar({ open: false, assinatura: null });
+                  window.location.reload();
+                }}>Confirmar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
       {/* Modal de edição/ação do assinante */}
       {assinanteEditando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md mx-2 animate-fade-in relative">
-            {/* Botão fechar discreto */}
-            <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-700" onClick={() => setAssinanteEditando(null)} title="Fechar">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h2 className="text-xl font-bold mb-4">{assinanteEditando.tipo_pagamento === 'DINHEIRO' || assinanteEditando.tipo_pagamento === 'PIX' ? 'Confirmar pagamento' : 'Editar Assinante'}</h2>
-            {/* Informações do assinante */}
-            <div className="mb-4 space-y-1 text-sm">
+        <Dialog open onOpenChange={() => setAssinanteEditando(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                  {assinanteEditando.tipo_pagamento === 'DINHEIRO' || assinanteEditando.tipo_pagamento === 'PIX' ? 'Confirmar pagamento' : 'Editar Assinante'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mb-4 text-sm space-y-1">
               <div><b>Nome:</b> {assinanteEditando.nome}</div>
               <div><b>Plano:</b> {assinanteEditando.plano}</div>
-              <div><b>Valor:</b> R$ {Number(assinanteEditando.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              <div><b>Valor:</b> {Number(assinanteEditando.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
               <div><b>Status:</b> {assinanteEditando.status}</div>
               <div><b>Vencimento:</b> {dayjs(assinanteEditando.proximo_vencimento).format('DD/MM/YYYY')}</div>
               <div><b>Tipo de Pagamento:</b> {assinanteEditando.tipo_pagamento === 'CREDIT_CARD' ? 'Cartão' : assinanteEditando.tipo_pagamento === 'PIX' ? 'PIX' : assinanteEditando.tipo_pagamento === 'DINHEIRO' ? 'Dinheiro' : assinanteEditando.tipo_pagamento}</div>
             </div>
-            {/* Fluxo de ação */}
-            {assinanteEditando.tipo_pagamento === 'DINHEIRO' || assinanteEditando.tipo_pagamento === 'PIX' ? (
-              <button className="w-full mb-4 px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all" onClick={async () => {
-                await updateAssinaturaStatus(assinanteEditando.id, 'CONFIRMED');
-                setAssinanteEditando(null);
-                window.location.reload();
-              }}>Confirmar Pagamento</button>
-            ) : null}
-            {/* Cancelar assinatura com confirmação */}
-            <button className="w-full px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-all" onClick={async () => {
-              if (window.confirm('Tem certeza que deseja cancelar esta assinatura? Ela será removida do sistema e do Supabase na data de vencimento.')) {
-                const hoje = new Date();
-                const vencimento = new Date(assinanteEditando.proximo_vencimento);
-                if (vencimento <= hoje) {
-                  await fetch(`/api/assinantes/${assinanteEditando.id}`, { method: 'DELETE' });
-                  setAssinanteEditando(null);
-                  window.location.reload();
-                } else {
-                  alert('A assinatura só será cancelada na data de vencimento.');
-                  setAssinanteEditando(null);
-                }
-              }
-            }}>Cancelar Assinatura</button>
-          </div>
-        </div>
+            <DialogFooter className="grid gap-3">
+                {assinanteEditando.tipo_pagamento === 'DINHEIRO' || assinanteEditando.tipo_pagamento === 'PIX' ? (
+                  <Button onClick={async () => {
+                    await updateAssinaturaStatus(assinanteEditando.id, 'CONFIRMED');
+                    setAssinanteEditando(null);
+                    window.location.reload();
+                  }}>Confirmar Pagamento</Button>
+                ) : null}
+                <Button variant="destructive" onClick={async () => {
+                  if (window.confirm('Tem certeza que deseja cancelar esta assinatura? Ela será removida do sistema e do Supabase na data de vencimento.')) {
+                    const hoje = new Date();
+                    const vencimento = new Date(assinanteEditando.proximo_vencimento);
+                    if (vencimento <= hoje) {
+                      await fetch(`/api/assinantes/${assinanteEditando.id}`, { method: 'DELETE' });
+                      setAssinanteEditando(null);
+                      window.location.reload();
+                    } else {
+                      alert('A assinatura só será cancelada na data de vencimento.');
+                      setAssinanteEditando(null);
+                    }
+                  }
+                }}>Cancelar Assinatura</Button>
+                <Button variant="secondary" onClick={() => setAssinanteEditando(null)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
-    </DashboardLayout>
+    </div>
   );
 } 

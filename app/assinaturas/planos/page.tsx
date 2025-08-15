@@ -1,29 +1,45 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import PlanosTable from "./components/PlanosTable";
+
+import React, { useEffect, useMemo, useState } from "react";
 import PlanoModal from "./components/PlanoModal";
 import { getPlanos, criarPlano } from "@/lib/services/plans";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+
+type Plano = {
+  id: string;
+  nome: string;
+  preco: number;
+  descricao: string;
+  categoria?: string;
+};
 
 export default function PlanosPage() {
   const [modalAberto, setModalAberto] = useState(false);
-  const [planos, setPlanos] = useState<any[]>([]);
+  const [planos, setPlanos] = useState<Plano[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>("all");
   const [categorias, setCategorias] = useState<string[]>([]);
-  const [planoEditando, setPlanoEditando] = useState<any | null>(null);
+  const [planoEditando, setPlanoEditando] = useState<Plano | null>(null);
 
   useEffect(() => {
     async function fetchPlanos() {
       setCarregando(true);
       try {
-        const data = await getPlanos();
+        const data = (await getPlanos()) as unknown as Plano[];
         setPlanos(data || []);
-        setCategorias(Array.from(new Set(data?.map((p: any) => p.categoria) || [])));
-      } catch (e: any) {
-        setErro("Erro ao buscar planos: " + (e.message || e));
+        setCategorias(
+          Array.from(new Set((data || []).map((p) => p.categoria).filter(Boolean))) as string[]
+        );
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setErro("Erro ao buscar planos: " + msg);
       } finally {
         setCarregando(false);
       }
@@ -31,112 +47,133 @@ export default function PlanosPage() {
     fetchPlanos();
   }, []);
 
-  async function handleNovoPlano(plano: any) {
+  async function handleNovoPlano(plano: Omit<Plano, "id">) {
     try {
-      const novo = await criarPlano(plano);
-      if (!novo) throw new Error('Plano não foi criado.');
+      const novo = (await criarPlano(plano)) as unknown as Plano | undefined;
+      if (!novo) throw new Error("Plano não foi criado.");
       setPlanos((prev) => [...prev, novo]);
-    } catch (e: any) {
-      setErro("Erro ao criar plano: " + (e.message || e));
+      if (novo.categoria && !categorias.includes(novo.categoria)) {
+        setCategorias((prev) => [...prev, novo.categoria!]);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro("Erro ao criar plano: " + msg);
     }
   }
 
-  async function handleEditarPlano(plano: any) {
+  function handleEditarPlano(plano: Plano) {
     setPlanoEditando(plano);
     setModalAberto(true);
   }
 
-  async function handleSalvarPlanoEditado(planoEditado: any) {
-    // Atualiza no backend e frontend
-    // (implementar chamada para atualizar no banco, ex: await atualizarPlano(planoEditado))
-    setPlanos((prev) => prev.map((p) => p.id === planoEditado.id ? planoEditado : p));
+  function handleSalvarPlanoEditado(planoEditado: Plano) {
+    setPlanos((prev) => prev.map((p) => (p.id === planoEditado.id ? planoEditado : p)));
+    if (planoEditado.categoria && !categorias.includes(planoEditado.categoria)) {
+      setCategorias((prev) => [...prev, planoEditado.categoria!]);
+    }
     setPlanoEditando(null);
     setModalAberto(false);
   }
 
-  async function handleExcluirPlano(planoId: string) {
-    if (window.confirm('Tem certeza que deseja excluir este plano?')) {
-      // await excluirPlano(planoId); // implementar backend
+  function handleExcluirPlano(planoId: string) {
+    if (window.confirm("Tem certeza que deseja excluir este plano?")) {
       setPlanos((prev) => prev.filter((p) => p.id !== planoId));
     }
   }
 
-  const planosFiltrados = planos.filter((plano) =>
-    categoriaFiltro === "" || plano.categoria === categoriaFiltro
+  const planosFiltrados = planos.filter(
+    (plano) => categoriaFiltro === "all" || plano.categoria === categoriaFiltro
   );
 
+  // coleção não é necessária com shadcn Select; usamos map direto
+
   return (
-    <DashboardLayout>
-      <div>
-        {/* Filtro de categoria global */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-zinc-800 dark:text-zinc-100 mb-1">Planos</h1>
-            <p className="text-zinc-600 dark:text-zinc-400">Gestão de planos de assinatura disponíveis</p>
-          </div>
-          <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg px-4 py-2 border border-zinc-200 dark:border-zinc-700">
-            <label htmlFor="filtro-categoria-global" className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">Filtrar por categoria:</label>
-            <select
-              id="filtro-categoria-global"
-              value={categoriaFiltro}
-              onChange={e => setCategoriaFiltro(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 focus:outline-none"
-            >
-              <option value="">Todas</option>
-              {categorias.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            className="bg-black hover:bg-zinc-800 text-white font-semibold px-6 py-2 rounded-lg shadow transition-colors"
-            onClick={() => setModalAberto(true)}
-          >
-            Novo Plano
-          </button>
+    <div className="container mx-auto max-w-7xl py-6">
+      <div className="flex flex-wrap justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Planos</h1>
+          <p className="text-sm text-muted-foreground">Gestão de planos de assinatura disponíveis</p>
         </div>
-
-        {/* Mensagem de erro */}
-        {erro && (
-          <div className="mb-6">
-            <div className="text-red-600 dark:text-red-400 text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              {erro}
-            </div>
+        <div className="flex items-end gap-3">
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-1">Filtrar por categoria</div>
+            <Select value={categoriaFiltro} onValueChange={(v) => setCategoriaFiltro(v)}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {categorias.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
-
-        {/* Conteúdo principal */}
-        {carregando ? (
-          <div className="flex justify-center items-center h-32">
-            <span className="text-zinc-500 dark:text-zinc-300">Carregando planos...</span>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-6">
-            <h2 className="text-xl md:text-2xl font-bold text-zinc-800 dark:text-zinc-100 mb-6">Planos cadastrados</h2>
-            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {planosFiltrados.map((plano) => (
-                <li key={plano.id} className="py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm md:text-base">
-                  <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-100 text-base md:text-lg">{plano.nome}</span>
-                    {plano.categoria && (
-                      <span className="ml-2 text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium">{plano.categoria}</span>
-                    )}
-                    <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">{plano.descricao}</div>
-                  </div>
-                  <span className="text-blue-600 dark:text-blue-400 font-bold text-base md:text-lg">{plano.preco !== undefined && plano.preco !== null && !isNaN(plano.preco) ? `R$ ${plano.preco.toFixed(2)}` : 'R$ --'}</span>
-                  <div className="flex gap-2 ml-2">
-                    <button onClick={() => handleEditarPlano(plano)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800"><PencilIcon className="w-5 h-5 text-zinc-500" /></button>
-                    <button onClick={() => handleExcluirPlano(plano.id)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900"><TrashIcon className="w-5 h-5 text-red-500" /></button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Modal */}
-        <PlanoModal open={modalAberto} plano={planoEditando} onClose={() => { setModalAberto(false); setPlanoEditando(null); }} onSalvar={planoEditando ? handleSalvarPlanoEditado : handleNovoPlano} />
+          <Button onClick={() => setModalAberto(true)}>Novo Plano</Button>
+        </div>
       </div>
-    </DashboardLayout>
+
+      {erro && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{erro}</AlertDescription>
+        </Alert>
+      )}
+
+      {carregando ? (
+        <div className="flex justify-center py-10">Carregando...</div>
+      ) : (
+        <>
+          <h2 className="text-lg font-semibold mb-3">Planos cadastrados</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {planosFiltrados.map((plano) => (
+               <Card
+                key={plano.id}
+                className="rounded-xl border border-border"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-sm font-semibold">{plano.nome}</div>
+                        {plano.categoria && <Badge>{plano.categoria}</Badge>}
+                      </div>
+                      <div className="text-lg font-extrabold text-blue-500">
+                        {Number.isFinite(plano.preco)
+                          ? `R$ ${Number(plano.preco).toFixed(2)}`
+                          : "R$ --"}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditarPlano(plano)}>
+                        Editar
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleExcluirPlano(plano.id)}>
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                  {plano.descricao && (
+                    <div className="text-sm text-muted-foreground mt-2">
+                      {plano.descricao}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      <PlanoModal
+        open={modalAberto}
+        plano={planoEditando ?? undefined}
+        onClose={() => {
+          setModalAberto(false);
+          setPlanoEditando(null);
+        }}
+        onSalvar={planoEditando ? handleSalvarPlanoEditado : (p) => handleNovoPlano(p as Omit<Plano, "id">)}
+      />
+    </div>
   );
 } 

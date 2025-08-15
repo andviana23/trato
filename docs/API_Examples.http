@@ -1,0 +1,469 @@
+### Coleção de Exemplos - API Trato de Barbados
+### VSCode REST Client Extension
+
+# Variáveis globais
+@baseUrl = http://localhost:3000/api
+@prodUrl = https://trato.vercel.app/api
+@authToken = your-jwt-token-here
+
+# =================== AUTENTICAÇÃO ===================
+
+### Login do usuário
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "barbeiro@trato.com",
+  "password": "senha123"
+}
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{authToken}}
+
+### Recuperação de senha
+POST {{baseUrl}}/auth/recover
+Content-Type: application/json
+
+{
+  "email": "barbeiro@trato.com"
+}
+
+# =================== AGENDAMENTOS ===================
+
+### Agendar notificações para agendamento
+POST {{baseUrl}}/appointments/123e4567-e89b-12d3-a456-426614174000/schedule-notifications
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "channel": "whatsapp"
+}
+
+### Agendar notificações por SMS
+POST {{baseUrl}}/appointments/123e4567-e89b-12d3-a456-426614174000/schedule-notifications
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "channel": "sms"
+}
+
+# =================== DASHBOARD ===================
+
+### Faturamento mensal - ano corrente
+GET {{baseUrl}}/dashboard/faturamento-mensal?year=2024&unidade_id=244c0543-7108-4892-9eac-48186ad1d5e7
+Authorization: Bearer {{authToken}}
+
+### Faturamento mensal - ano específico
+GET {{baseUrl}}/dashboard/faturamento-mensal?year=2023
+Authorization: Bearer {{authToken}}
+
+### Dados de assinaturas ASAAS
+GET {{baseUrl}}/dashboard/faturamento-assinatura
+Authorization: Bearer {{authToken}}
+
+### Metas do mês atual
+GET {{baseUrl}}/dashboard/metas?month=2024-12&unidade_id=244c0543-7108-4892-9eac-48186ad1d5e7
+Authorization: Bearer {{authToken}}
+
+### Metas de todos os barbeiros
+GET {{baseUrl}}/dashboard/metas
+Authorization: Bearer {{authToken}}
+
+### Histórico de metas - 6 meses
+GET {{baseUrl}}/dashboard/metas/historico?barbeiro_id=123e4567-e89b-12d3-a456-426614174000&months=6
+Authorization: Bearer {{authToken}}
+
+### Histórico de metas - 12 meses
+GET {{baseUrl}}/dashboard/metas/historico?months=12
+Authorization: Bearer {{authToken}}
+
+### Timeline de receita - mensal
+GET {{baseUrl}}/dashboard/revenue-timeline?period=month
+Authorization: Bearer {{authToken}}
+
+### Timeline de receita - semanal
+GET {{baseUrl}}/dashboard/revenue-timeline?period=week
+Authorization: Bearer {{authToken}}
+
+### Timeline de receita - trimestral
+GET {{baseUrl}}/dashboard/revenue-timeline?period=quarter
+Authorization: Bearer {{authToken}}
+
+# =================== ASAAS INTEGRATION ===================
+
+### Listar pagamentos ASAAS - todos
+GET {{baseUrl}}/asaas/trato/payments
+Authorization: Bearer {{authToken}}
+
+### Listar pagamentos ASAAS - confirmados
+GET {{baseUrl}}/asaas/trato/payments?status=CONFIRMED
+Authorization: Bearer {{authToken}}
+
+### Listar pagamentos ASAAS - por período
+GET {{baseUrl}}/asaas/trato/payments?dateFrom=2024-12-01&dateTo=2024-12-31
+Authorization: Bearer {{authToken}}
+
+### Listar pagamentos ASAAS - com limite
+GET {{baseUrl}}/asaas/trato/payments?limit=20
+Authorization: Bearer {{authToken}}
+
+### Listar pagamentos ASAAS - filtro completo
+GET {{baseUrl}}/asaas/trato/payments?status=CONFIRMED&dateFrom=2024-12-01&dateTo=2024-12-31&limit=50
+Authorization: Bearer {{authToken}}
+
+### Teste de conexão ASAAS
+GET {{baseUrl}}/test-asaas
+Authorization: Bearer {{authToken}}
+
+### Teste de integração ASAAS completo
+GET {{baseUrl}}/asaas-teste
+Authorization: Bearer {{authToken}}
+
+# =================== PROFISSIONAIS ===================
+
+### Criar novo profissional
+POST {{baseUrl}}/profissionais/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "nome": "João Silva",
+  "email": "joao@trato.com",
+  "telefone": "(11) 99999-9999",
+  "role": "professional",
+  "especialidades": ["corte", "barba"],
+  "unidade_id": "244c0543-7108-4892-9eac-48186ad1d5e7"
+}
+
+### Criar recepcionista
+POST {{baseUrl}}/profissionais/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "nome": "Maria Santos",
+  "email": "maria@trato.com",
+  "telefone": "(11) 88888-8888",
+  "role": "recepcionista",
+  "unidade_id": "244c0543-7108-4892-9eac-48186ad1d5e7"
+}
+
+### Reset de senha para profissional
+POST {{baseUrl}}/profissionais/reset-password
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "email": "joao@trato.com"
+}
+
+# =================== PAGAMENTOS EXTERNOS ===================
+
+### Registrar pagamento em dinheiro
+POST {{baseUrl}}/external-payments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "valor": 50.00,
+  "tipo": "dinheiro",
+  "descricao": "Corte + barba - João Silva",
+  "barbeiro_id": "123e4567-e89b-12d3-a456-426614174000",
+  "cliente_nome": "João Silva",
+  "data": "2024-12-15T14:30:00Z",
+  "unidade_id": "244c0543-7108-4892-9eac-48186ad1d5e7"
+}
+
+### Registrar pagamento no cartão
+POST {{baseUrl}}/external-payments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "valor": 75.00,
+  "tipo": "cartao_credito",
+  "descricao": "Corte premium + tratamento",
+  "barbeiro_id": "123e4567-e89b-12d3-a456-426614174000",
+  "cliente_nome": "Pedro Oliveira",
+  "data": "2024-12-15T15:00:00Z",
+  "unidade_id": "244c0543-7108-4892-9eac-48186ad1d5e7"
+}
+
+### Registrar pagamento PIX
+POST {{baseUrl}}/external-payments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "valor": 40.00,
+  "tipo": "pix",
+  "descricao": "Corte simples",
+  "barbeiro_id": "456e7890-e89b-12d3-a456-426614174000",
+  "cliente_nome": "Carlos Lima",
+  "data": "2024-12-15T16:30:00Z",
+  "unidade_id": "87884040-cafc-4625-857b-6e0402ede7d7"
+}
+
+# =================== UNIDADES ===================
+
+### Listar todas as unidades
+GET {{baseUrl}}/unidades
+Authorization: Bearer {{authToken}}
+
+# =================== WEBHOOKS (Simulação) ===================
+
+### Webhook ASAAS - Payment Confirmed
+POST {{baseUrl}}/asaas-webhook
+Content-Type: application/json
+
+{
+  "event": "PAYMENT_CONFIRMED",
+  "payment": {
+    "id": "pay_123456789",
+    "customer": "cus_123456789",
+    "subscription": "sub_123456789",
+    "value": 250.00,
+    "status": "CONFIRMED",
+    "dueDate": "2024-12-15",
+    "date": "2024-12-15",
+    "description": "Assinatura Trato - João Silva",
+    "externalReference": "ref_123"
+  }
+}
+
+### Webhook ASAAS - Payment Received
+POST {{baseUrl}}/asaas-webhook
+Content-Type: application/json
+
+{
+  "event": "PAYMENT_RECEIVED",
+  "payment": {
+    "id": "pay_987654321",
+    "customer": "cus_987654321",
+    "subscription": "sub_987654321",
+    "value": 199.90,
+    "status": "RECEIVED",
+    "dueDate": "2024-12-10",
+    "receivedDate": "2024-12-12",
+    "description": "Assinatura BarberBeer - Maria Silva"
+  }
+}
+
+### Webhook ASAAS - Payment Overdue
+POST {{baseUrl}}/asaas-webhook
+Content-Type: application/json
+
+{
+  "event": "PAYMENT_OVERDUE",
+  "payment": {
+    "id": "pay_555666777",
+    "customer": "cus_555666777",
+    "subscription": "sub_555666777",
+    "value": 175.00,
+    "status": "OVERDUE",
+    "dueDate": "2024-12-01",
+    "description": "Assinatura Trato - Pedro Santos"
+  }
+}
+
+# =================== CENÁRIOS DE TESTE ===================
+
+### Cenário 1: Fluxo completo de agendamento
+# 1. Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "recepcionista@trato.com",
+  "password": "senha123"
+}
+
+# 2. Criar agendamento (através do frontend AgendaGrid)
+# 3. Agendar notificações
+POST {{baseUrl}}/appointments/new-appointment-id/schedule-notifications
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "channel": "whatsapp"
+}
+
+### Cenário 2: Fluxo de meta mensal
+# 1. Verificar metas atuais
+GET {{baseUrl}}/dashboard/metas?month=2024-12
+Authorization: Bearer {{authToken}}
+
+# 2. Registrar venda externa
+POST {{baseUrl}}/external-payments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "valor": 120.00,
+  "tipo": "dinheiro",
+  "descricao": "Produto vendido - Pomada",
+  "barbeiro_id": "123e4567-e89b-12d3-a456-426614174000",
+  "data": "2024-12-15T17:00:00Z",
+  "unidade_id": "244c0543-7108-4892-9eac-48186ad1d5e7"
+}
+
+# 3. Verificar metas atualizadas
+GET {{baseUrl}}/dashboard/metas?month=2024-12
+Authorization: Bearer {{authToken}}
+
+### Cenário 3: Relatório financeiro
+# 1. Dados de assinaturas
+GET {{baseUrl}}/dashboard/faturamento-assinatura
+Authorization: Bearer {{authToken}}
+
+# 2. Faturamento mensal
+GET {{baseUrl}}/dashboard/faturamento-mensal?year=2024
+Authorization: Bearer {{authToken}}
+
+# 3. Timeline de receita
+GET {{baseUrl}}/dashboard/revenue-timeline?period=month
+Authorization: Bearer {{authToken}}
+
+### Cenário 4: Gestão de profissionais
+# 1. Criar barbeiro
+POST {{baseUrl}}/profissionais/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "nome": "Lucas Mendes",
+  "email": "lucas@trato.com",
+  "telefone": "(11) 77777-7777",
+  "role": "professional",
+  "especialidades": ["corte", "barba", "sobrancelha"],
+  "unidade_id": "244c0543-7108-4892-9eac-48186ad1d5e7"
+}
+
+# 2. Enviar reset de senha
+POST {{baseUrl}}/profissionais/reset-password
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "email": "lucas@trato.com"
+}
+
+# =================== TESTES DE ERRO ===================
+
+### Teste: Login com credenciais inválidas
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalido@teste.com",
+  "password": "senhaerrada"
+}
+
+### Teste: Acesso sem autenticação
+GET {{baseUrl}}/dashboard/metas
+
+### Teste: Dados inválidos na criação de profissional
+POST {{baseUrl}}/profissionais/create
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "nome": "",
+  "email": "email-invalido",
+  "role": "role-inexistente"
+}
+
+### Teste: Agendamento para ID inexistente
+POST {{baseUrl}}/appointments/00000000-0000-0000-0000-000000000000/schedule-notifications
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "channel": "whatsapp"
+}
+
+### Teste: Webhook com estrutura inválida
+POST {{baseUrl}}/asaas-webhook
+Content-Type: application/json
+
+{
+  "event": "INVALID_EVENT",
+  "data": "dados-incorretos"
+}
+
+# =================== TESTES DE PERFORMANCE ===================
+
+### Teste: Lista grande de pagamentos
+GET {{baseUrl}}/asaas/trato/payments?limit=100
+Authorization: Bearer {{authToken}}
+
+### Teste: Histórico longo de metas
+GET {{baseUrl}}/dashboard/metas/historico?months=24
+Authorization: Bearer {{authToken}}
+
+### Teste: Timeline anual
+GET {{baseUrl}}/dashboard/revenue-timeline?period=year
+Authorization: Bearer {{authToken}}
+
+# =================== URLS DE PRODUÇÃO ===================
+
+### Login em produção
+POST {{prodUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@trato.com",
+  "password": "senha-producao"
+}
+
+### Teste de conectividade produção
+GET {{prodUrl}}/test-asaas
+Authorization: Bearer {{authToken}}
+
+### Health check (inferido)
+GET {{prodUrl}}/health
+
+# =================== VARIÁVEIS DE AMBIENTE ===================
+
+### Teste com diferentes unidades
+# Trato
+@tratoUnidadeId = 244c0543-7108-4892-9eac-48186ad1d5e7
+
+# BarberBeer  
+@bbscUnidadeId = 87884040-cafc-4625-857b-6e0402ede7d7
+
+### Metas Trato
+GET {{baseUrl}}/dashboard/metas?unidade_id={{tratoUnidadeId}}
+Authorization: Bearer {{authToken}}
+
+### Metas BarberBeer
+GET {{baseUrl}}/dashboard/metas?unidade_id={{bbscUnidadeId}}
+Authorization: Bearer {{authToken}}
+
+# =================== DOCUMENTAÇÃO ===================
+
+### Para usar esta coleção:
+# 1. Instale a extensão "REST Client" no VSCode
+# 2. Atualize o @authToken com um JWT válido
+# 3. Ajuste @baseUrl conforme seu ambiente
+# 4. Execute cada request com Ctrl+Enter (ou Cmd+Enter no Mac)
+
+### Estrutura de resposta padrão:
+# Sucesso: { data: any, message?: string }
+# Erro: { error: string, code?: string, details?: object }
+
+### Headers importantes:
+# Authorization: Bearer <jwt-token>
+# Content-Type: application/json
+# User-Agent: VSCode REST Client
+
+### Status codes:
+# 200: Sucesso
+# 201: Criado
+# 400: Dados inválidos
+# 401: Não autenticado
+# 403: Sem permissão
+# 404: Não encontrado
+# 500: Erro interno

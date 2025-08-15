@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { Button, Input, Checkbox, Card, CardBody, CardHeader } from "@nextui-org/react";
+import { Button, Input } from "@chakra-ui/react";
+import { Checkbox, Card } from "@/components/ui/chakra-adapters";
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -83,11 +84,11 @@ const LoginForm = () => {
           </p>
         </div>
 
-        <Card>
-          <CardHeader className="pb-0">
+        <Card.Root>
+          <Card.Header className="pb-0">
             <h3 className="text-lg font-semibold text-center">Acesso ao Sistema</h3>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Body>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-md">
@@ -95,56 +96,37 @@ const LoginForm = () => {
                 </div>
               )}
 
-              <Input
-                type="email"
-                label="Email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                variant="bordered"
-                color="primary"
-                isRequired
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "h-12"
-                }}
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
 
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                label="Senha"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                variant="bordered"
-                color="primary"
-                isRequired
-                endContent={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="focus:outline-none"
-                  >
+              <div>
+                <label className="block text-sm font-medium mb-1">Senha</label>
+                <div className="flex gap-2">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <Button type="button" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                      <EyeSlashIcon className="h-5 w-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400" />
+                      <EyeIcon className="h-5 w-5" />
                     )}
-                  </button>
-                }
-                classNames={{
-                  input: "text-sm",
-                  inputWrapper: "h-12"
-                }}
-              />
+                  </Button>
+                </div>
+              </div>
 
               <div className="flex items-center justify-between">
-                <Checkbox
-                  isSelected={rememberMe}
-                  onValueChange={setRememberMe}
-                  color="primary"
-                  size="sm"
-                >
+                <Checkbox checked={rememberMe} onChange={(e: any) => setRememberMe(!!e.target?.checked)} size="sm">
                   Lembrar de mim
                 </Checkbox>
                 <Link
@@ -155,12 +137,7 @@ const LoginForm = () => {
                 </Link>
               </div>
 
-              <Button
-                type="submit"
-                color="primary"
-                className="w-full h-12 font-medium"
-                isLoading={isLoading}
-              >
+              <Button type="submit" colorScheme="blue" className="w-full h-12 font-medium" loading={isLoading}>
                 {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
 
@@ -176,11 +153,12 @@ const LoginForm = () => {
                 </p>
               </div>
             </form>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
       </div>
     </div>
   );
 };
 
 export default LoginForm; 
+

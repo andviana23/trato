@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@/components/ui/chakra-adapters";
 import { PlusIcon, TrashIcon, UserIcon } from "@heroicons/react/24/outline";
 import { createClient } from "@/lib/supabase/client";
 import dayjs from "dayjs";
 
 const supabase = createClient();
-const TRATO_ID = "244c0543-7108-4892-9eac-48186ad1d5e7";
+const TRATO_ID = process.env.NEXT_PUBLIC_TRATO_UNIDADE_ID || "244c0543-7108-4892-9eac-48186ad1d5e7";
 
 export default function ComissaoAvulsaTratoPage() {
   const [comissoes, setComissoes] = useState<any[]>([]);
@@ -131,18 +131,18 @@ export default function ComissaoAvulsaTratoPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-6 tracking-tight">Profissionais</h2>
           <div className="flex flex-col gap-5">
             {comissoesPorProfissional.length === 0 ? (
-              <Card className="shadow-md rounded-2xl">
-                <CardBody className="text-center text-gray-400 py-8">Nenhum profissional encontrado.</CardBody>
-              </Card>
+              <Card.Root className="shadow-md rounded-2xl">
+                <Card.Body className="text-center text-gray-400 py-8">Nenhum profissional encontrado.</Card.Body>
+              </Card.Root>
             ) : (
               comissoesPorProfissional.map((p) => (
-                <Card
+                <Card.Root
                   key={p.id}
                   isPressable
                   onPress={() => setProfissionalSelecionado(p.id)}
                   className={`rounded-2xl shadow-md border-2 transition-all duration-200 ${profissionalSelecionado === p.id || (!profissionalSelecionado && p === comissoesPorProfissional[0]) ? "border-green-600 bg-green-50 scale-[1.03]" : "border-gray-100 bg-white hover:scale-[1.01] hover:shadow-lg"} cursor-pointer group`}
                 >
-                  <CardHeader className="flex items-center gap-3 pb-0">
+                  <Card.Header className="flex items-center gap-3 pb-0">
                     <div className={`rounded-full bg-green-100 p-2 flex items-center justify-center ${profissionalSelecionado === p.id ? "ring-2 ring-green-400" : ""}`}>
                       <UserIcon className="w-7 h-7 text-green-400" />
                     </div>
@@ -151,8 +151,8 @@ export default function ComissaoAvulsaTratoPage() {
                       <span className="text-xs text-gray-500 mt-1">Total: <span className="font-bold text-green-700">R$ {p.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></span>
                       <span className="text-xs text-gray-500 mt-1">Minutos: <span className="font-bold text-green-700">{p.tempoTotal}</span></span>
                     </div>
-                  </CardHeader>
-                </Card>
+                  </Card.Header>
+                </Card.Root>
               ))
             )}
           </div>
@@ -255,3 +255,8 @@ export default function ComissaoAvulsaTratoPage() {
     </div>
   );
 }
+
+
+
+
+

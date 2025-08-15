@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardBody, Avatar, Tooltip } from "@nextui-org/react";
+﻿import { Card, CardHeader, CardBody, Avatar, Tooltip } from "@/components/ui/chakra-adapters";
 import { ReactNode } from "react";
 
 interface Props {
@@ -51,11 +51,16 @@ export function ComissaoBarbeiroCard({
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {Object.entries(tipos).map(([tipo, qtd]) => (
-            <Tooltip key={tipo} content={`Serviços de ${tipo}`}>
-              <span className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-200">
-                {tipoServicoIcone[tipo]} {tipo.charAt(0).toUpperCase() + tipo.slice(1)}: <span className="ml-1 font-bold">{qtd}</span>
-              </span>
-            </Tooltip>
+            <Tooltip.Root key={tipo}>
+              <Tooltip.Trigger asChild>
+                <span className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-200">
+                  {tipoServicoIcone[tipo]} {tipo.charAt(0).toUpperCase() + tipo.slice(1)}: <span className="ml-1 font-bold">{qtd}</span>
+                </span>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                Serviços de {tipo}
+              </Tooltip.Content>
+            </Tooltip.Root>
           ))}
         </div>
       </CardBody>

@@ -1,0 +1,893 @@
+openapi: 3.0.3
+info:
+  title: Trato de Barbados API
+  description: |
+    API completa para sistema de gestão de barbearias com Next.js App Router.
+
+    ## Autenticação
+    Todas as rotas protegidas requerem JWT token do Supabase Auth.
+
+    ## Multi-tenant
+    Sistema opera com duas unidades (Trato e BarberBeer) usando RLS.
+
+    ## Rate Limiting
+    - 100 requests/min para usuários autenticados
+    - 20 requests/min para webhooks
+  version: 1.0.0
+  contact:
+    name: Trato de Barbados
+    email: dev@tratodebarbados.com
+  license:
+    name: MIT
+servers:
+  - url: https://trato.vercel.app/api
+    description: Produção
+  - url: http://localhost:3000/api
+    description: Desenvolvimento
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Autenticação e autorização
+  - name: Appointments
+    description: Sistema de agendamentos
+  - name: Dashboard
+    description: Métricas e relatórios
+  - name: ASAAS
+    description: Integração gateway de pagamentos
+  - name: Webhooks
+    description: Webhooks externos
+  - name: Professionals
+    description: Gestão de profissionais
+  - name: Units
+    description: Gestão de unidades
+
+paths:
+  # =================== AUTH ===================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login do usuário
+      description: Autentica usuário e retorna session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "barbeiro@trato.com"
+                password:
+                  type: string
+                  minLength: 6
+                  example: "senha123"
+      responses:
+        "200":
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  session:
+                    $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout do usuário
+      description: Encerra sessão e limpa cookies
+      responses:
+        "200":
+          description: Logout realizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/recover:
+    post:
+      tags: [Auth]
+      summary: Recuperação de senha
+      description: Envia email de recuperação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "barbeiro@trato.com"
+      responses:
+        "200":
+          description: Email de recuperação enviado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Email de recuperação enviado"
+
+  # =================== APPOINTMENTS ===================
+  /appointments/{id}/schedule-notifications:
+    post:
+      tags: [Appointments]
+      summary: Agendar notificações
+      description: |
+        Agenda notificações automáticas para um agendamento:
+        - 24h antes
+        - 1h antes  
+        - 15min antes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel:
+                  type: string
+                  enum: [whatsapp, sms, email, push]
+                  default: whatsapp
+                  example: "whatsapp"
+      responses:
+        "200":
+          description: Notificações agendadas com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Notificações agendadas com sucesso"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # =================== DASHBOARD ===================
+  /dashboard/faturamento-mensal:
+    get:
+      tags: [Dashboard]
+      summary: Faturamento mensal
+      description: Retorna dados de faturamento por mês
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+            example: 2024
+        - name: unidade_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dados de faturamento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        month:
+                          type: string
+                          example: "2024-01"
+                        total:
+                          type: number
+                          example: 15420.50
+                        asaas:
+                          type: number
+                          example: 12300.00
+                        external:
+                          type: number
+                          example: 3120.50
+
+  /dashboard/faturamento-assinatura:
+    get:
+      tags: [Dashboard]
+      summary: Faturamento de assinaturas
+      description: Dados específicos de assinaturas ASAAS
+      responses:
+        "200":
+          description: Dados de assinaturas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_ativo:
+                    type: number
+                    example: 50
+                  receita_mensal:
+                    type: number
+                    example: 12500.00
+                  crescimento:
+                    type: number
+                    example: 8.5
+
+  /dashboard/metas:
+    get:
+      tags: [Dashboard]
+      summary: Dados de metas
+      description: Metas por barbeiro e unidade
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: "2024-12"
+        - name: unidade_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dados de metas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metas:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Meta"
+
+  /dashboard/metas/historico:
+    get:
+      tags: [Dashboard]
+      summary: Histórico de metas
+      description: Histórico de performance das metas
+      parameters:
+        - name: barbeiro_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: months
+          in: query
+          schema:
+            type: integer
+            default: 6
+            example: 12
+      responses:
+        "200":
+          description: Histórico de metas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    month:
+                      type: string
+                      example: "2024-01"
+                    vendas:
+                      type: number
+                      example: 850.00
+                    meta:
+                      type: number
+                      example: 600.00
+                    percentual:
+                      type: number
+                      example: 141.67
+                    bonificacao:
+                      type: number
+                      example: 150.00
+
+  /dashboard/revenue-timeline:
+    get:
+      tags: [Dashboard]
+      summary: Timeline de receita
+      description: Evolução da receita ao longo do tempo
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, quarter, year]
+            default: month
+      responses:
+        "200":
+          description: Timeline de receita
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    date:
+                      type: string
+                      format: date
+                    revenue:
+                      type: number
+                    transactions:
+                      type: integer
+
+  # =================== ASAAS ===================
+  /asaas/trato/payments:
+    get:
+      tags: [ASAAS]
+      summary: Listar pagamentos ASAAS
+      description: Lista pagamentos processados via ASAAS para unidade Trato
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, RECEIVED]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        "200":
+          description: Lista de pagamentos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AsaasPayment"
+                  totalCount:
+                    type: integer
+                  hasMore:
+                    type: boolean
+
+  /asaas-webhook:
+    post:
+      tags: [Webhooks]
+      summary: Webhook ASAAS
+      description: |
+        Recebe notificações de pagamento do ASAAS.
+        Eventos suportados:
+        - PAYMENT_CONFIRMED
+        - PAYMENT_RECEIVED
+        - PAYMENT_OVERDUE
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AsaasWebhook"
+      responses:
+        "200":
+          description: Webhook processado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                    example: true
+
+  # =================== PROFESSIONALS ===================
+  /profissionais/create:
+    post:
+      tags: [Professionals]
+      summary: Criar profissional
+      description: Cadastra novo profissional no sistema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, role]
+              properties:
+                nome:
+                  type: string
+                  example: "João Silva"
+                email:
+                  type: string
+                  format: email
+                  example: "joao@trato.com"
+                telefone:
+                  type: string
+                  example: "(11) 99999-9999"
+                role:
+                  type: string
+                  enum: [professional, recepcionista]
+                  example: "professional"
+                especialidades:
+                  type: array
+                  items:
+                    type: string
+                  example: ["corte", "barba"]
+                unidade_id:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Profissional criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email já existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Email já cadastrado"
+
+  /profissionais/reset-password:
+    post:
+      tags: [Professionals]
+      summary: Resetar senha
+      description: Envia email para redefinir senha do profissional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "joao@trato.com"
+      responses:
+        "200":
+          description: Email de reset enviado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Email de redefinição enviado"
+
+  # =================== EXTERNAL PAYMENTS ===================
+  /external-payments:
+    post:
+      tags: [Dashboard]
+      summary: Registrar pagamento externo
+      description: Registra pagamento em dinheiro, cartão local, etc.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [valor, tipo, data, unidade_id]
+              properties:
+                valor:
+                  type: number
+                  example: 50.00
+                tipo:
+                  type: string
+                  enum: [dinheiro, cartao_debito, cartao_credito, pix]
+                  example: "dinheiro"
+                descricao:
+                  type: string
+                  example: "Corte + barba - João Silva"
+                barbeiro_id:
+                  type: string
+                  format: uuid
+                cliente_nome:
+                  type: string
+                  example: "João Silva"
+                data:
+                  type: string
+                  format: date-time
+                unidade_id:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Pagamento registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                    example: "Pagamento registrado com sucesso"
+
+  # =================== UNITS ===================
+  /unidades:
+    get:
+      tags: [Units]
+      summary: Listar unidades
+      description: Lista todas as unidades do sistema
+      responses:
+        "200":
+          description: Lista de unidades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
+
+  # =================== TEST ===================
+  /test-asaas:
+    get:
+      tags: [ASAAS]
+      summary: Teste conexão ASAAS
+      description: Testa conectividade com API ASAAS
+      responses:
+        "200":
+          description: Conexão OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "connected"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /asaas-teste:
+    get:
+      tags: [ASAAS]
+      summary: Teste integração ASAAS
+      description: Testa operações básicas com ASAAS
+      responses:
+        "200":
+          description: Teste realizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  results:
+                    type: array
+                    items:
+                      type: object
+
+# =================== COMPONENTS ===================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token do Supabase Auth
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        user_metadata:
+          type: object
+        app_metadata:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+
+    Session:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: "bearer"
+        expires_in:
+          type: integer
+          example: 3600
+        refresh_token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    Professional:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+          example: "João Silva"
+        email:
+          type: string
+          format: email
+        telefone:
+          type: string
+        role:
+          type: string
+          enum: [professional, recepcionista]
+        especialidades:
+          type: array
+          items:
+            type: string
+        unidade_id:
+          type: string
+          format: uuid
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Meta:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        barbeiro_id:
+          type: string
+          format: uuid
+        barbeiro_nome:
+          type: string
+          example: "João Silva"
+        mes:
+          type: string
+          example: "2024-12"
+        vendas_atual:
+          type: number
+          example: 850.00
+        meta_bronze:
+          type: number
+          example: 300.00
+        meta_prata:
+          type: number
+          example: 600.00
+        meta_ouro:
+          type: number
+          example: 900.00
+        meta_diamante:
+          type: number
+          example: 1200.00
+        nivel_atual:
+          type: string
+          enum: [bronze, prata, ouro, diamante]
+          example: "ouro"
+        bonificacao:
+          type: number
+          example: 150.00
+        percentual_atingido:
+          type: number
+          example: 141.67
+
+    AsaasPayment:
+      type: object
+      properties:
+        id:
+          type: string
+        customer:
+          type: string
+        subscription:
+          type: string
+        value:
+          type: number
+          example: 250.00
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, RECEIVED, OVERDUE]
+        dueDate:
+          type: string
+          format: date
+        description:
+          type: string
+        externalReference:
+          type: string
+        invoiceUrl:
+          type: string
+          format: uri
+
+    AsaasWebhook:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [PAYMENT_CONFIRMED, PAYMENT_RECEIVED, PAYMENT_OVERDUE]
+        payment:
+          $ref: "#/components/schemas/AsaasPayment"
+
+    Unit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+          example: "Trato de Barbados"
+        codigo:
+          type: string
+          example: "TRATO"
+        endereco:
+          type: string
+        telefone:
+          type: string
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
+        config:
+          type: object
+          properties:
+            commission_percent:
+              type: number
+              example: 0.4
+            colors:
+              type: object
+              properties:
+                primary:
+                  type: string
+                  example: "#22c55e"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Mensagem de erro"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Dados inválidos"
+            code: "VALIDATION_ERROR"
+
+    Unauthorized:
+      description: Não autorizado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Token inválido ou expirado"
+            code: "UNAUTHORIZED"
+
+    Forbidden:
+      description: Acesso negado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Permissão insuficiente"
+            code: "FORBIDDEN"
+
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Recurso não encontrado"
+            code: "NOT_FOUND"
+
+    InternalServerError:
+      description: Erro interno do servidor
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Erro interno do servidor"
+            code: "INTERNAL_ERROR"
+
+  examples:
+    LoginRequest:
+      value:
+        email: "barbeiro@trato.com"
+        password: "senha123"
+
+    AppointmentNotification:
+      value:
+        channel: "whatsapp"
+
+    CreateProfessional:
+      value:
+        nome: "João Silva"
+        email: "joao@trato.com"
+        telefone: "(11) 99999-9999"
+        role: "professional"
+        especialidades: ["corte", "barba"]
+        unidade_id: "244c0543-7108-4892-9eac-48186ad1d5e7"
+
+    ExternalPayment:
+      value:
+        valor: 50.00
+        tipo: "dinheiro"
+        descricao: "Corte + barba"
+        barbeiro_id: "123e4567-e89b-12d3-a456-426614174000"
+        cliente_nome: "João Silva"
+        data: "2024-12-15T14:30:00Z"
+        unidade_id: "244c0543-7108-4892-9eac-48186ad1d5e7"

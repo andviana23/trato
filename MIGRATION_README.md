@@ -14,12 +14,12 @@ O sistema de autenticação foi migrado com sucesso do React + Express para Next
 - ✅ Hooks `useAuth`, `usePermissions`, `useRequireAuth`
 - ✅ Gestão completa de sessão e perfil
 
-### **Componentes de Autenticação**
+### **Componentes de Autenticação (Chakra UI)**
 
-- ✅ **Login** (`components/auth/login-form.tsx`) - Formulário de login completo
-- ✅ **Registro** (`components/auth/register-form.tsx`) - Cadastro com validação
-- ✅ **Recuperação de Senha** (`components/auth/forgot-password-form.tsx`) - Reset de senha
-- ✅ **Toast** (`components/ui/toast.tsx`) - Sistema de notificações
+- ✅ **Login** (`components/auth/login-form.tsx`) — Formulários 100% Chakra UI
+- ✅ **Registro** (`components/auth/register-form.tsx`)
+- ✅ **Recuperação de Senha** (`components/auth/forgot-password-form.tsx`)
+- ✅ **Toast** (`components/ui/toast.tsx`)
 
 ### **Páginas de Autenticação**
 
@@ -42,7 +42,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 ### **2. Dependências Instaladas**
 
 ```bash
-npm install @radix-ui/react-select
+npm install @radix-ui/react-select @chakra-ui/react @chakra-ui/next-js @emotion/react @emotion/styled
 ```
 
 ## 🎯 Funcionalidades Implementadas

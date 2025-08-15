@@ -2,405 +2,82 @@
 import { useEffect, useState } from "react";
 import { useRequireAuth, usePermissions } from "@/lib/contexts/AuthContext";
 import { toast } from "sonner";
-import { useBarberQueue } from "@/hooks/useBarberQueue";
-import { createClient } from "@/lib/supabase/client";
-
+import { useBarberQueue, type QueueItem } from "@/hooks/useBarberQueue";
+import {
+  Container,
+  Heading,
+  HStack,
+  Card,
+  Text,
+  Button,
+  Table,
+  Avatar,
+  Badge,
+  Switch,
+  Box,
+  Spinner,
+  Alert,
+} from "@chakra-ui/react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
 
-const supabase = createClient();
-
-// Função para atualizar ordem da fila
-const updateQueueOrder = async (newOrderedQueue: any[]) => {
-  try {
-    console.log('🔄 Atualizando ordem da fila:', newOrderedQueue);
-    for (let i = 0; i < newOrderedQueue.length; i++) {
-      const { error } = await supabase
-        .from('barber_queue')
-        .update({ queue_position: i + 1 })
-        .eq('profissional_id', newOrderedQueue[i].id);
-      
-      if (error) {
-        console.error(`❌ Erro ao atualizar posição do barbeiro ${newOrderedQueue[i].id}:`, error);
-        throw error;
-      }
-    }
-    console.log('✅ Ordem da fila atualizada com sucesso');
-  } catch (error) {
-    console.error('💥 Erro ao atualizar ordem:', error);
-    throw error;
-  }
+// Row arrastável usando Chakra Table
+type DraggableRowProps = {
+  item: QueueItem;
+  loading: boolean;
+  onPlusOne: (e: React.MouseEvent, id: string) => void;
+  onPass: (e: React.MouseEvent, id: string) => void;
+  onToggle: (checked: boolean, id: string) => void;
 };
 
-// Função para atendimento (+1)
-const handleAtendimento = async (event: React.MouseEvent, barbeiroId: string, refetch: () => void) => {
-  // CRÍTICO: Parar propagação do evento
-  event.preventDefault();
-  event.stopPropagation();
-  
-  try {
-    console.log('🔢 [+1] Botão clicado para:', barbeiroId);
-    console.log('🔄 Processando atendimento para ID:', barbeiroId);
-    
-    // 1. Buscar barbeiro atual
-    const { data: barbeiro, error: fetchError } = await supabase
-      .from('barber_queue')
-      .select('*')
-      .eq('profissional_id', barbeiroId)
-      .single();
-
-    if (fetchError || !barbeiro) {
-      console.error('❌ Erro ao buscar barbeiro:', fetchError);
-      toast.error('Erro ao buscar dados do barbeiro');
-      return;
-    }
-
-    console.log('✅ Barbeiro encontrado:', barbeiro);
-
-    // 2. Preparar dados com tipos corretos
-    const updateData = {
-      total_services: parseInt(String(barbeiro.total_services || 0)) + 1,
-      daily_services: parseInt(String(barbeiro.daily_services || 0)) + 1,
-      last_service_date: new Date().toISOString().split('T')[0]
-    };
-
-    console.log('📤 [+1] Dados sendo enviados:', JSON.stringify(updateData, null, 2));
-    console.log('🔍 [+1] Tipos dos campos:', Object.entries(updateData).map(([key, value]) => 
-      `${key}: ${typeof value} (${value})`
-    ));
-
-    // 3. Incrementar contadores
-    const { error: updateError } = await supabase
-      .from('barber_queue')
-      .update(updateData)
-      .eq('profissional_id', barbeiroId);
-
-    if (updateError) {
-      console.error('❌ Erro ao atualizar barbeiro:', updateError);
-      toast.error('Erro ao atualizar dados do barbeiro');
-      return;
-    }
-
-    console.log('✅ [+1] Barbeiro atualizado com sucesso');
-
-    // 4. Reorganizar fila
-    await reorganizarFila();
-    
-    // 5. Recarregar dados
-    if (typeof refetch === 'function') {
-      await refetch();
-    }
-    
-    console.log('✅ [+1] Incremento concluído');
-    toast.success("Atendimento registrado com sucesso!");
-  } catch (error) {
-    console.error('💥 [+1] Erro geral ao processar atendimento:', error);
-    toast.error("Erro ao processar atendimento");
-  }
-};
-
-// Função para passar a vez
-const handlePassarVez = async (event: React.MouseEvent, barbeiroId: string, refetch: () => void) => {
-  // CRÍTICO: Parar propagação do evento
-  event.preventDefault();
-  event.stopPropagation();
-  
-  try {
-    console.log('➡️ [PASSAR] Botão clicado para:', barbeiroId);
-    console.log('🔄 Processando passar vez para ID:', barbeiroId);
-    
-    const { data: barbeiro, error: fetchError } = await supabase
-      .from('barber_queue')
-      .select('*')
-      .eq('profissional_id', barbeiroId)
-      .single();
-
-    if (fetchError || !barbeiro) {
-      console.error('❌ Erro ao buscar barbeiro:', fetchError);
-      toast.error('Erro ao buscar dados do barbeiro');
-      return;
-    }
-
-    console.log('✅ [PASSAR] Barbeiro encontrado para passar vez:', barbeiro);
-
-    // Preparar dados com tipos corretos - CORRIGIDO para evitar string "true" em campo integer
-    const updateData = {
-      total_services: parseInt(String(barbeiro.total_services || 0)) + 1,
-      daily_services: parseInt(String(barbeiro.daily_services || 0)) + 1,
-      passou_vez: parseInt(String(barbeiro.passou_vez || 0)) + 1, // CORRIGIDO: incrementar contador numérico ao invés de boolean
-    };
-
-    console.log('📤 [PASSAR] Dados sendo enviados para passar vez:', JSON.stringify(updateData, null, 2));
-    console.log('🔍 [PASSAR] Tipos dos campos:', Object.entries(updateData).map(([key, value]) => 
-      `${key}: ${typeof value} (${value})`
-    ));
-
-    const { error: updateError } = await supabase
-      .from('barber_queue')
-      .update(updateData)
-      .eq('profissional_id', barbeiroId);
-
-    if (updateError) {
-      console.error('❌ Erro ao atualizar barbeiro:', updateError);
-      toast.error('Erro ao atualizar dados do barbeiro');
-      return;
-    }
-
-    await reorganizarFila();
-    
-    if (typeof refetch === 'function') {
-      await refetch();
-    }
-    
-    console.log('✅ [PASSAR] Passou a vez concluído');
-    toast.success("Vez passada com sucesso!");
-  } catch (error) {
-    console.error('💥 [PASSAR] Erro ao processar passar vez:', error);
-    toast.error("Erro ao processar passar vez");
-  }
-};
-
-// Função para reorganizar fila
-const reorganizarFila = async () => {
-  try {
-    console.log('🔄 Reorganizando fila...');
-    
-    // 1. Buscar todos os barbeiros ativos
-    const { data: barbeiros, error: fetchError } = await supabase
-      .from('barber_queue')
-      .select('*')
-      .eq('is_active', true)
-      .order('total_services', { ascending: true });
-
-    if (fetchError) {
-      console.error('❌ Erro ao buscar barbeiros:', fetchError);
-      return;
-    }
-
-    console.log('✅ Barbeiros encontrados:', barbeiros);
-
-    if (barbeiros && barbeiros.length > 0) {
-      // 2. Atualizar posições
-      for (let i = 0; i < barbeiros.length; i++) {
-        const { error: updateError } = await supabase
-          .from('barber_queue')
-          .update({ queue_position: i + 1 })
-          .eq('profissional_id', barbeiros[i].profissional_id);
-
-        if (updateError) {
-          console.error(`❌ Erro ao atualizar posição do barbeiro ${barbeiros[i].profissional_id}:`, updateError);
-        }
-      }
-    }
-    
-    console.log('✅ Fila reorganizada com sucesso');
-  } catch (error) {
-    console.error('💥 Erro ao reorganizar fila:', error);
-  }
-};
-
-// Função para toggle ativo/inativo
-const handleToggleAtivo = async (event: React.ChangeEvent<HTMLInputElement>, barbeiroId: string, refetch: () => void) => {
-  // CRÍTICO: Parar propagação do evento
-  event.stopPropagation();
-  
-  const novoStatus = event.target.checked;
-  
-  try {
-    console.log('🔄 [TOGGLE] Alterando status do barbeiro:', barbeiroId, 'para:', novoStatus);
-    
-    // Preparar dados com tipos corretos
-    const updateData = {
-      is_active: Boolean(novoStatus) // Garantir que é boolean
-    };
-
-    console.log('📤 [TOGGLE] Dados sendo enviados para toggle:', JSON.stringify(updateData, null, 2));
-
-    const { error } = await supabase
-      .from('barber_queue')
-      .update(updateData)
-      .eq('profissional_id', barbeiroId);
-
-    if (error) {
-      console.error('❌ Erro ao alterar status:', error);
-      toast.error('Erro ao alterar status do barbeiro');
-      return;
-    }
-
-    if (novoStatus) {
-      await reorganizarFila();
-    }
-    
-    if (typeof refetch === 'function') {
-      await refetch();
-    }
-    
-    console.log('✅ [TOGGLE] Status alterado com sucesso');
-    toast.success(`Barbeiro ${novoStatus ? 'ativado' : 'inativado'} com sucesso!`);
-  } catch (error) {
-    console.error('💥 [TOGGLE] Erro ao alterar status:', error);
-    toast.error("Erro ao alterar status do barbeiro");
-  }
-};
-
-// Função para zerar lista
-const zerarLista = async (refetch: () => void) => {
-  try {
-    if (!confirm('Tem certeza que deseja zerar a lista? Esta ação irá resetar todos os atendimentos.')) return;
-
-    console.log('🔄 Zerando lista...');
-
-    // Preparar dados com tipos corretos
-    const updateData = {
-      total_services: 0,
-      daily_services: 0,
-      last_service_date: null,
-      passou_vez: 0 // CORRIGIDO: zerar contador numérico ao invés de boolean false
-    };
-
-    console.log('📤 Dados sendo enviados para zerar:', JSON.stringify(updateData, null, 2));
-
-    const { error } = await supabase
-      .from('barber_queue')
-      .update(updateData)
-      .eq('is_active', true);
-
-    if (error) {
-      console.error('❌ Erro ao zerar lista:', error);
-      toast.error('Erro ao zerar a lista');
-      return;
-    }
-
-    await reorganizarFila();
-    
-    if (typeof refetch === 'function') {
-      await refetch();
-    }
-    
-    console.log('✅ Lista zerada com sucesso');
-    toast.success("Lista zerada com sucesso!");
-  } catch (error) {
-    console.error('💥 Erro ao zerar lista:', error);
-    toast.error("Erro ao zerar a lista");
-  }
-};
-
-// Componente da linha da tabela arrastável
-const DraggableRow = ({ item, refetch, loading }: { item: any; refetch: () => void; loading: boolean }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id });
-
-  const style = {
+function DraggableRow({ item, loading, onPlusOne, onPass, onToggle }: DraggableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.8 : 1,
-    zIndex: isDragging ? 10 : 'auto',
-  };
-
-  // Handlers específicos para cada botão
-  const handleIncrementClick = (event: React.MouseEvent) => {
-    console.log('🔢 Botão +1 clicado - iniciando handler');
-    handleAtendimento(event, item.id, refetch);
-  };
-
-  const handlePassClick = (event: React.MouseEvent) => {
-    console.log('➡️ Botão Passar clicado - iniciando handler');
-    handlePassarVez(event, item.id, refetch);
-  };
-
-  const handleToggleClick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('🔄 Toggle clicado - iniciando handler');
-    handleToggleAtivo(event, item.id, refetch);
+    opacity: isDragging ? 0.85 : 1,
+    zIndex: isDragging ? 10 : 'auto' as any,
   };
 
   return (
-    <tr ref={setNodeRef} style={style} className="bg-white hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <span {...listeners} {...attributes} className="cursor-grab touch-none text-gray-400 hover:text-gray-600">
-            ⋮
-          </span>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-            {item.queue_position}º
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center">
-          <img
-            className="h-10 w-10 rounded-full ring-2 ring-gray-200"
-            src={item.barber?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.barber?.nome || 'User')}&background=365E78&color=fff`}
-            alt={item.barber?.nome}
-          />
-          <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900">
-              {item.barber?.nome}
-            </div>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {item.barber?.telefone || 'N/A'}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          {item.daily_services || 0}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-          {item.total_services || 0}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          item.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {item.is_active ? 'Ativo' : 'Inativo'}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        {/* ESTRUTURA CORRIGIDA: Botões separados, sem conflito */}
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={handleIncrementClick}
-            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={loading}
-          >
-            +1
-          </button>
-          <button
-            type="button"
-            onClick={handlePassClick}
-            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={loading}
-          >
-            Passar
-          </button>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={item.is_active}
-              onChange={handleToggleClick}
-              className="sr-only peer"
-              disabled={loading}
-            />
-            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
-          </label>
-        </div>
-      </td>
-    </tr>
+    <Table.Row ref={setNodeRef as any} style={style} bg="whiteAlpha.50" _hover={{ bg: "whiteAlpha.100" }}>
+      <Table.Cell>
+        <HStack align="center" gap={2}>
+          <Box {...listeners} {...attributes} cursor="grab" userSelect="none" color="whiteAlpha.600">⋮</Box>
+          <Badge>{item.queue_position}º</Badge>
+        </HStack>
+      </Table.Cell>
+      <Table.Cell>
+        <HStack>
+          <Avatar.Root size="sm">
+            <Avatar.Image src={item.barber?.avatar_url || ''} />
+            <Avatar.Fallback>{(item.barber?.nome || 'U').charAt(0)}</Avatar.Fallback>
+          </Avatar.Root>
+          <Text fontWeight="medium">{item.barber?.nome}</Text>
+        </HStack>
+      </Table.Cell>
+      <Table.Cell>{item.barber?.telefone || 'N/A'}</Table.Cell>
+      <Table.Cell>
+        <Badge colorPalette="green">{item.daily_services || 0}</Badge>
+      </Table.Cell>
+      <Table.Cell>
+        <Badge colorPalette="yellow">{item.total_services || 0}</Badge>
+      </Table.Cell>
+      <Table.Cell>
+        <Badge colorPalette={item.is_active ? 'green' : 'gray'}>{item.is_active ? 'Ativo' : 'Inativo'}</Badge>
+      </Table.Cell>
+      <Table.Cell>
+        <HStack gap={2}>
+           <Button size="xs" colorPalette="green" onClick={(e) => onPlusOne(e, item.id)} disabled={loading}>+1</Button>
+           <Button size="xs" variant="outline" colorPalette="blue" onClick={(e) => onPass(e, item.id)} disabled={loading}>Passar</Button>
+          <Switch.Root checked={item.is_active} onCheckedChange={(d) => onToggle(Boolean(d.checked), item.id)} disabled={loading} />
+        </HStack>
+      </Table.Cell>
+    </Table.Row>
   );
-};
+}
 
 export default function ListaDaVezPage() {
   useRequireAuth();
@@ -409,44 +86,39 @@ export default function ListaDaVezPage() {
     queue,
     loading: queueLoading,
     refetch,
+    updateQueueOrder,
+    handleAtendimento,
+    handlePassarVez,
+    handleToggleAtivo,
+    reorganizarPorAtendimentos,
+    zerarLista,
   } = useBarberQueue();
 
-  const [localQueue, setLocalQueue] = useState<any[]>([]);
+  const [localQueue, setLocalQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (queue) {
-      setLocalQueue(queue);
-    }
+    if (queue) setLocalQueue(queue);
   }, [queue]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const handleDragEnd = async (event: DragEndEvent) => {
     if (!isAdmin) return;
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
-      const oldIndex = localQueue.findIndex((item) => item.id === active.id);
-      const newIndex = localQueue.findIndex((item) => item.id === over.id);
-
+      const oldIndex = localQueue.findIndex((i) => i.id === active.id);
+      const newIndex = localQueue.findIndex((i) => i.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrderedQueue = arrayMove(localQueue, oldIndex, newIndex);
-        setLocalQueue(newOrderedQueue);
-
+        const newOrdered = arrayMove(localQueue, oldIndex, newIndex);
+        setLocalQueue(newOrdered);
         try {
           setLoading(true);
-          await updateQueueOrder(newOrderedQueue);
+          await updateQueueOrder(newOrdered.map((i) => ({ id: i.id })));
           toast.success("Ordem da fila atualizada com sucesso!");
-        } catch (error) {
+        } catch {
           toast.error("Falha ao atualizar a ordem da fila.");
-          setLocalQueue(queue); // Reverte em caso de erro
+          setLocalQueue(queue);
         } finally {
           setLoading(false);
         }
@@ -454,178 +126,107 @@ export default function ListaDaVezPage() {
     }
   };
 
-  const handleReorganizarFila = async () => {
-    try {
-      setLoading(true);
-      await reorganizarFila();
-      await refetch();
-      toast.success("Fila reorganizada com sucesso!");
-    } catch (error) {
-      toast.error("Erro ao reorganizar fila");
-    } finally {
-      setLoading(false);
-    }
+  // Wrappers para parar propagação durante o drag
+  const onPlusOne = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); e.stopPropagation();
+    setLoading(true);
+    try { await handleAtendimento(id); } finally { setLoading(false); }
+  };
+  const onPass = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); e.stopPropagation();
+    setLoading(true);
+    try { await handlePassarVez(id); } finally { setLoading(false); }
+  };
+  const onToggle = async (checked: boolean, id: string) => {
+    setLoading(true);
+    try { await handleToggleAtivo(id, checked); } finally { setLoading(false); }
   };
 
-  const handleZerarLista = async () => {
-    try {
-      setLoading(true);
-      await zerarLista(refetch);
-    } catch (error) {
-      toast.error("Erro ao zerar lista");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const nextInLine = queue?.find(b => b.is_active && b.queue_position === 1) || queue?.find(b => b.is_active) || null;
+  const nextInLine: QueueItem | null = queue?.find((b) => b.is_active && b.queue_position === 1) || queue?.find((b) => b.is_active) || null;
 
   if (queueLoading) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-300 rounded w-1/4 mb-6"></div>
-          <div className="space-y-4">
-            <div className="h-20 bg-gray-300 rounded"></div>
-            <div className="h-20 bg-gray-300 rounded"></div>
-            <div className="h-64 bg-gray-300 rounded"></div>
-          </div>
-        </div>
-      </div>
+      <Container maxW="7xl" py={6}>
+        <HStack justify="center" py={10}><Spinner /></HStack>
+      </Container>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+    <Container maxW="7xl" py={6}>
       {/* Card do Barbeiro Ativo */}
       {nextInLine && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img
-                className="h-12 w-12 rounded-full ring-4 ring-green-200"
-                src={nextInLine.barber?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(nextInLine.barber?.nome || 'User')}&background=365E78&color=fff`}
-                alt={nextInLine.barber?.nome}
-              />
-              <div className="ml-4">
-                <div className="text-lg font-semibold text-gray-900">
-                  {nextInLine.barber?.nome}
-                </div>
-                <div className="text-sm text-green-600 font-medium">
-                  1º na fila
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={(event) => handleAtendimento(event, nextInLine.id, refetch)}
-                disabled={loading}
-              >
-                ✓ Atendeu
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={(event) => handlePassarVez(event, nextInLine.id, refetch)}
-                disabled={loading}
-              >
-                → Passou a Vez
-              </button>
-            </div>
-          </div>
-        </div>
+        <Card.Root bg="green.900" borderWidth="1px" borderColor="green.700" rounded="lg" mb={6}>
+          <Card.Body>
+            <HStack justify="space-between" align="center">
+              <HStack>
+                <Avatar.Root size="md">
+                  <Avatar.Image src={nextInLine.barber?.avatar_url || ''} />
+                  <Avatar.Fallback>{(nextInLine.barber?.nome || 'U').charAt(0)}</Avatar.Fallback>
+                </Avatar.Root>
+                <Box>
+                  <Text fontSize="lg" fontWeight="semibold">{nextInLine.barber?.nome}</Text>
+                  <Text fontSize="sm" color="green.200">1º na fila</Text>
+                </Box>
+              </HStack>
+              <HStack gap={3}>
+               <Button colorPalette="green" onClick={(e) => onPlusOne(e, nextInLine.id)} disabled={loading}>✓ Atendeu</Button>
+                 <Button variant="outline" colorPalette="green" onClick={(e) => onPass(e, nextInLine.id)} disabled={loading}>→ Passou a Vez</Button>
+              </HStack>
+            </HStack>
+          </Card.Body>
+        </Card.Root>
       )}
 
       {/* Card de Instruções */}
-      <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-sm text-blue-800">
-            <strong>Reorganização Manual:</strong> Arraste o ícone ⋮ ao lado da posição para reorganizar manualmente a fila.
-          </p>
-          <p className="text-sm text-blue-800">
-            <strong>Zerar Lista:</strong> Reseta tanto os atendimentos diários quanto os totais de todos os barbeiros.
-          </p>
-        </div>
-      </div>
+      <Alert.Root status="info" mb={4}>
+        <Alert.Indicator />
+        <Alert.Title>Reorganização Manual</Alert.Title>
+        <Alert.Description>
+          Arraste o ícone "⋮" ao lado da posição para reorganizar manualmente a fila. "Zerar Lista" reseta os atendimentos diários e totais.
+        </Alert.Description>
+      </Alert.Root>
 
-      {/* Tabela de Barbeiros - ESTRUTURA CORRIGIDA */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900">Fila de Atendimento</h2>
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleReorganizarFila}
-                disabled={loading}
-              >
+      {/* Tabela de Barbeiros */}
+      <Card.Root>
+        <Card.Header>
+          <HStack justify="space-between" align="center">
+            <Heading size="sm">Fila de Atendimento</Heading>
+            <HStack gap={2}>
+              <Button colorPalette="purple" onClick={async () => { setLoading(true); try { await reorganizarPorAtendimentos(); await refetch(); } catch { toast.error('Erro ao reorganizar fila'); } finally { setLoading(false); } }} disabled={loading}>
                 🔄 Reorganizar por Atendimentos
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleZerarLista}
-                disabled={loading}
-              >
+              </Button>
+              <Button colorPalette="red" onClick={async () => { setLoading(true); try { await zerarLista(); } catch { toast.error('Erro ao zerar lista'); } finally { setLoading(false); } }} disabled={loading}>
                 🗑️ Zerar Lista
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          {/* ESTRUTURA CORRIGIDA: DndContext FORA do tbody */}
-          <DndContext 
-            sensors={sensors} 
-            collisionDetection={closestCenter} 
-            onDragEnd={handleDragEnd}
-            modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
-          >
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Posição
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Barbeiro
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Telefone
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Hoje
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <SortableContext items={localQueue.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                <tbody className="bg-white divide-y divide-gray-200">
+              </Button>
+            </HStack>
+          </HStack>
+        </Card.Header>
+        <Card.Body>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}>
+            <Table.Root>
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeader>Posição</Table.ColumnHeader>
+                  <Table.ColumnHeader>Barbeiro</Table.ColumnHeader>
+                  <Table.ColumnHeader>Telefone</Table.ColumnHeader>
+                  <Table.ColumnHeader>Hoje</Table.ColumnHeader>
+                  <Table.ColumnHeader>Total</Table.ColumnHeader>
+                  <Table.ColumnHeader>Status</Table.ColumnHeader>
+                  <Table.ColumnHeader>Ações</Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <SortableContext items={localQueue.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <Table.Body>
                   {localQueue.map((item) => (
-                    <DraggableRow 
-                      key={item.id}
-                      item={item} 
-                      refetch={refetch}
-                      loading={loading}
-                    />
+                    <DraggableRow key={item.id} item={item} loading={loading} onPlusOne={onPlusOne} onPass={onPass} onToggle={onToggle} />
                   ))}
-                </tbody>
+                </Table.Body>
               </SortableContext>
-            </table>
+            </Table.Root>
           </DndContext>
-        </div>
-      </div>
-    </div>
+        </Card.Body>
+      </Card.Root>
+    </Container>
   );
 } 

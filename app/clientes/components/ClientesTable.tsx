@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import {
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   Chip, Pagination, Spinner, Tooltip
-} from "@nextui-org/react";
+} from "@/components/ui/chakra-adapters";
 import { Cliente } from "../types";
 import { listarClientes } from "@/lib/services/clients";
 import ClienteModal from "./ClienteModal";
@@ -56,7 +56,7 @@ export default function ClientesTable({ filtros, reload }: { filtros: any, reloa
       ) : (
         <>
           <div className="overflow-x-auto">
-            <Table aria-label="Tabela de clientes" removeWrapper className="min-w-[700px] md:table hidden">
+            <Table aria-label="Tabela de clientes" className="min-w-[700px] md:table hidden">
               <TableHeader>
                 <TableColumn>Nome</TableColumn>
                 <TableColumn>Email</TableColumn>
@@ -132,14 +132,7 @@ export default function ClientesTable({ filtros, reload }: { filtros: any, reloa
             </div>
           </div>
           <div className="flex justify-end mt-4">
-            <Pagination
-              total={totalPages}
-              page={pagina}
-              onChange={setPagina}
-              showControls
-              size="sm"
-              className="dark:text-zinc-100"
-            />
+            <Pagination total={totalPages} page={pagina} onChange={setPagina} className="dark:text-zinc-100" />
           </div>
           {/* Modal de edição */}
           <ClienteModal
@@ -153,3 +146,4 @@ export default function ClientesTable({ filtros, reload }: { filtros: any, reloa
     </div>
   );
 } 
+

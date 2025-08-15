@@ -73,14 +73,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let msg = 'Erro desconhecido';
     let details = undefined;
     if (typeof error === 'object' && error !== null) {
-      // @ts-expect-error: AxiosError pode ter response.status não tipado
-      status = (error.response && error.response.status) ? error.response.status : 500;
-      // @ts-expect-error: AxiosError pode ter message não tipado
-      msg = error.message || msg;
-      // @ts-expect-error: AxiosError pode ter response.status não tipado
+      const anyErr = error as any;
+      status = (anyErr.response && anyErr.response.status) ? anyErr.response.status : 500;
+      msg = anyErr.message || msg;
       if (status === 401) msg = 'Chave de API do Asaas inválida ou permissão insuficiente.';
-      // @ts-expect-error: AxiosError pode ter response.data não tipado
-      details = error.response?.data;
+      details = anyErr.response?.data;
     }
     res.status(status).json({ success: false, error: msg, details });
   }

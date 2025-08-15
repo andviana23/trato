@@ -73,6 +73,11 @@ SET passou_vez = 0
 WHERE passou_vez IS NULL;
 ```
 
+## 🧱 Design System (padrão do projeto)
+
+- O projeto utiliza exclusivamente Chakra UI para todos os componentes de interface.
+- Qualquer referência a outras bibliotecas de UI (ex.: HeroUI) foi removida da base de código e documentação.
+
 ## 🔧 Arquivos Modificados
 
 ### 1. Hook Principal

@@ -8,8 +8,9 @@ import {
   ChevronDownIcon,
   Bars3Icon
 } from "@heroicons/react/24/outline";
-import { Button } from "@nextui-org/react";
+import { Button } from "@chakra-ui/react";
 import ProfileDropdown from "@/components/profile/ProfileDropdown";
+import { useRouter } from "next/navigation";
 
 interface HeaderProps {
   isCollapsed: boolean;
@@ -19,17 +20,20 @@ interface HeaderProps {
 
 export default function Header({ isCollapsed, onMobileMenu, unified }: HeaderProps) {
   const { user, signOut } = useAuth();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      try { document.cookie = "tb.unit=; Path=/; Max-Age=0"; } catch {}
+      router.replace('/auth/login');
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
     }
   };
 
   return (
-    <header className={`h-16 flex items-center ${unified ? 'px-0' : 'px-2 md:px-4'} bg-[#171717] text-gray-100 flex-shrink-0 z-50 border-b-0 shadow-none`}>
+    <header className={`h-16 flex items-center ${unified ? 'px-0' : 'px-2 md:px-4'} bg-white text-gray-900 flex-shrink-0 z-50 border-b border-gray-200`}>
       <div className={`flex items-center justify-between h-full w-full ${unified ? 'px-4' : 'px-6'}`}>
         {/* Botão menu mobile */}
         <button
@@ -48,12 +52,7 @@ export default function Header({ isCollapsed, onMobileMenu, unified }: HeaderPro
         {/* Lado direito - Ações */}
         <div className="flex items-center space-x-4">
           {/* Notificações */}
-          <Button
-            isIconOnly
-            variant="light"
-            size="sm"
-            className="relative text-gray-200"
-          >
+          <Button variant="ghost" size="sm" className="relative text-gray-200">
             <BellIcon className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
               3
@@ -61,7 +60,10 @@ export default function Header({ isCollapsed, onMobileMenu, unified }: HeaderPro
           </Button>
           {/* Toggle de Tema */}
           <ThemeToggle />
-          {/* Usuário REMOVIDO do header */}
+          {/* Usuário / Dropdown */}
+          {user && (
+            <ProfileDropdown user={user} signOut={handleSignOut} />
+          )}
         </div>
       </div>
     </header>

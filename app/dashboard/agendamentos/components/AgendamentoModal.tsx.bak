@@ -1,0 +1,138 @@
+﻿"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Select, SelectItem, Checkbox, Textarea, Avatar } from "@/components/ui/chakra-adapters";
+import dayjs from "dayjs";
+import { useUnidade } from "@/components/UnidadeContext";
+import { createAgendamento, updateAgendamento, mapUnidadeToTables } from "@/lib/services/agenda";
+import { createClient } from "@/lib/supabase/client";
+
+type Props = {
+  isOpen: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  defaultDate?: string; // YYYY-MM-DD
+  editing?: any | null;
+  defaultProfessionalId?: string;
+};
+
+export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate, editing, defaultProfessionalId }: Props) {
+  const { unidade } = useUnidade();
+  const supabase = createClient();
+
+  const [date, setDate] = useState<string>(defaultDate || dayjs().format('YYYY-MM-DD'));
+  const [responsavelId, setResponsavelId] = useState<string>(editing?.profissional_id || defaultProfessionalId || "");
+  const [clienteId, setClienteId] = useState<string>(editing?.cliente_id || "");
+  const [clienteNome, setClienteNome] = useState<string>("");
+  const [telefone, setTelefone] = useState<string>("");
+  const [servicoId, setServicoId] = useState<string>(editing?.servico_id || "");
+  const [hora, setHora] = useState<string>(editing ? dayjs(editing.inicio).format('HH:mm') : (typeof window !== 'undefined' ? localStorage.getItem('agenda.defaultHour') || '' : ''));
+  const [tempo, setTempo] = useState<number>(30);
+  const [obs, setObs] = useState<string>(editing?.observacoes || "");
+  const [recorrencia, setRecorrencia] = useState<boolean>(false);
+  const [profissionais, setProfissionais] = useState<any[]>([]);
+  const [servicos, setServicos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setDate(defaultDate || dayjs().format('YYYY-MM-DD'));
+    if (typeof window !== 'undefined') {
+      const h = localStorage.getItem('agenda.defaultHour');
+      if (h) setHora(h);
+    }
+  }, [defaultDate]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: pros } = await supabase.from('profissionais').select('id, nome, avatar_url').eq('funcao', 'barbeiro');
+      setProfissionais(pros || []);
+      const { data: svcs } = await supabase.from('servicos').select('id, nome, duracao_minutos');
+      setServicos(svcs || []);
+    })();
+  }, [supabase]);
+
+  const horasDoDia = useMemo(() => {
+    const base = dayjs(`${date} 07:00`);
+    return new Array(13 * 2).fill(0).map((_, i) => base.add(i * 30, 'minute').format('HH:mm'));
+  }, [date]);
+
+  const handleSave = async () => {
+    if (!responsavelId || !date || !hora) return;
+    setLoading(true);
+    try {
+      const inicio = dayjs(`${date} ${hora}:00`).toISOString();
+      const fim = dayjs(inicio).add(tempo, 'minute').toISOString();
+      const payload = {
+        profissional_id: responsavelId,
+        cliente_id: clienteId || null,
+        servico_id: servicoId || null,
+        titulo: clienteNome || 'Agendamento',
+        observacoes: obs || null,
+        inicio,
+        fim,
+        status: 'confirmado' as const,
+        cor: null,
+      };
+      if (editing?.id) {
+        await updateAgendamento(unidade, editing.id, payload as any);
+      } else {
+        await createAgendamento(unidade, payload as any);
+      }
+      onSaved();
+      onClose();
+    } catch (e) {
+      console.error('Erro ao salvar agendamento', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="3xl" backdrop="blur">
+      <ModalContent>
+        <ModalHeader>{editing ? 'Editar Agendamento' : 'Novo Agendamento'}</ModalHeader>
+        <ModalBody>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input type="date" label="Data" value={date} onChange={(e) => setDate(e.target.value)} isRequired />
+            <Select label="Responsável" selectedKeys={responsavelId ? [responsavelId] : []} onChange={(e) => setResponsavelId(e.target.value)} isRequired>
+              {profissionais.map((p) => (
+                <SelectItem key={p.id} startContent={<Avatar isBordered size="sm" src={p.avatar_url} />}>{p.nome}</SelectItem>
+              ))}
+            </Select>
+
+            <Input label="Nome Cliente" placeholder="Buscar ou cadastrar cliente" value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} />
+            <Input label="Telefone" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+
+            <Select label="Serviço" selectedKeys={servicoId ? [servicoId] : []} onChange={(e) => setServicoId(e.target.value)}>
+              {servicos.map((s) => (
+                <SelectItem key={s.id}>{s.nome}</SelectItem>
+              ))}
+            </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="Hora" selectedKeys={hora ? [hora] : []} onChange={(e) => setHora(e.target.value)} isRequired>
+                {horasDoDia.map((h) => (
+                  <SelectItem key={h}>{h}</SelectItem>
+                ))}
+              </Select>
+              <Select label="Tempo de atendimento" selectedKeys={[String(tempo)]} onChange={(e) => setTempo(Number(e.target.value))}>
+                {[15, 30, 45, 60, 90].map((t) => (
+                  <SelectItem key={String(t)}>{t} min</SelectItem>
+                ))}
+              </Select>
+            </div>
+
+            <Textarea label="Observações" placeholder="Opcional" value={obs} onChange={(e) => setObs(e.target.value)} minRows={2} className="md:col-span-2" />
+            <Checkbox isSelected={recorrencia} onValueChange={setRecorrencia}>Recorrência</Checkbox>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="light" onPress={onClose}>Fechar</Button>
+          <Button color="primary" isLoading={loading} onPress={handleSave}>Salvar</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+
+

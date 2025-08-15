@@ -1,29 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import toast, { Toaster } from "react-hot-toast";
-import { createClient } from "@supabase/supabase-js";
+import { toast } from "sonner";
+import { ProductsTable } from "./components/Table";
+import { Filters } from "./components/Filters";
+import { ActionsBar } from "./components/ActionsBar";
+import { listProducts, deleteProducts, exportCsv, Product, createProduct, updateProduct, updateStock, updateMinStock } from "./actions";
+import { ProductDialog } from "./components/ProductDialog";
+import { StockQuickEdit } from "./components/StockQuickEdit";
+import { LowStockBanner } from "./components/LowStockBanner";
 
-// Configure o Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // Definição dos tipos
 
-type Produto = {
-  id?: string;
-  nome: string;
-  categoria: string;
-  marca: string;
-  quantidade: number;
-  valor: number;
-  comissao: number;
-  valor_profissional: number;
-  criado_em?: string;
-};
+type Produto = Product;
 
 type Unidade = {
   label: string;
@@ -39,23 +30,30 @@ export default function PaginaProdutos() {
   const [search, setSearch] = useState("");
   const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
-  const [unidadeSelecionada, setUnidadeSelecionada] = useState<Unidade>(UNIDADES[0]);
+  const [unidadeSelecionada] = useState<Unidade>(UNIDADES[0]);
   const [modalEditar, setModalEditar] = useState<{ open: boolean, produto?: Produto }>({ open: false });
   const [modalMarcas, setModalMarcas] = useState(false);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [reload, setReload] = useState(0);
+  const [status, setStatus] = useState<"ativos" | "todos">("ativos");
+  const [sortBy, setSortBy] = useState<"nome" | "valor" | "quantidade">("nome");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [total, setTotal] = useState(0);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Carregar produtos da unidade selecionada
-  useEffect(() => {
-    async function fetchProdutos() {
-      const { data } = await supabase
-        .from(unidadeSelecionada.table)
-        .select("*")
-        .order("criado_em", { ascending: false });
-      setProdutos((data as Produto[]) || []);
-    }
-    fetchProdutos();
-  }, [unidadeSelecionada, reload]);
+  async function fetchProdutos() {
+    setLoading(true);
+    try {
+      const { rows, total } = await listProducts({ search, status, page, perPage, sortBy, sortDir });
+      setProdutos(rows as Produto[]);
+      setTotal(total);
+      setSelected([]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao carregar produtos");
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { void fetchProdutos(); }, [reload, page, perPage, sortBy, sortDir]);
 
   // Filtro de produtos
   const produtosFiltrados = produtos.filter((p) =>
@@ -63,37 +61,23 @@ export default function PaginaProdutos() {
     p.categoria.toLowerCase().includes(search.toLowerCase()) ||
     p.marca.toLowerCase().includes(search.toLowerCase())
   );
-  const totalPages = Math.ceil(produtosFiltrados.length / perPage);
-  const produtosPaginados = produtosFiltrados.slice((page - 1) * perPage, page * perPage);
+  const totalPages = Math.ceil(total / perPage);
+  const produtosPaginados = produtos; // já vem paginado do servidor
 
   // Funções dos botões + e -
   async function alterarQuantidade(produto: Produto, delta: number) {
-    const novaQuantidade = Math.max(0, produto.quantidade + delta);
-    const { error } = await supabase
-      .from(unidadeSelecionada.table)
-      .update({ quantidade: novaQuantidade })
-      .eq('id', produto.id);
-    if (error) {
-      toast.error('Erro ao atualizar quantidade!');
-    } else {
-      toast.success('Quantidade atualizada!');
-      setReload(r => r + 1);
-    }
+    const nova = Math.max(0, (produto.quantidade || 0) + delta);
+    await updateStock(produto.id as string, nova);
+    toast.success("Estoque atualizado");
+    setReload(r => r + 1);
   }
 
   // Função de excluir produto
   async function excluirProduto(produto: Produto) {
-    if (!window.confirm(`Tem certeza que deseja excluir o produto "${produto.nome}"?`)) return;
-    const { error } = await supabase
-      .from(unidadeSelecionada.table)
-      .delete()
-      .eq('id', produto.id);
-    if (error) {
-      toast.error('Erro ao excluir produto!');
-    } else {
-      toast.success('Produto excluído!');
-      setReload(r => r + 1);
-    }
+    if (!window.confirm(`Excluir "${produto.nome}"?`)) return;
+    await deleteProducts([produto.id as string]);
+    toast.success("Produto excluído");
+    setReload(r => r + 1);
   }
 
   // Função de editar produto
@@ -122,45 +106,39 @@ export default function PaginaProdutos() {
 
   return (
     <div className="max-w-7xl mx-auto p-4">
-      <Toaster />
-      {/* Filtro de unidade */}
-      <div className="flex flex-wrap gap-2 mb-6 items-center">
-        <span className="font-semibold text-gray-700 mr-2">Unidade:</span>
-        {UNIDADES.map((u) => (
-          <Button
-            key={u.label}
-            variant={unidadeSelecionada.label === u.label ? "default" : "outline"}
-            className={
-              unidadeSelecionada.label === u.label
-                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                : "bg-white text-blue-600 border-blue-600 hover:bg-blue-50"
-            }
-            onClick={() => { setUnidadeSelecionada(u); setPage(1); }}
-          >
-            {u.label}
-          </Button>
-        ))}
-      </div>
+      {/* Filtros superiores */}
+      <Filters
+        search={search}
+        onSearchChange={(v) => setSearch(v)}
+        status={status}
+        onStatusChange={(v) => setStatus(v)}
+        onSubmit={() => { setPage(1); void fetchProdutos(); }}
+        onReset={() => { setSearch(""); setStatus("todos"); setPage(1); void fetchProdutos(); }}
+        isLoading={loading}
+      />
       {/* Topo com botões */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button className="bg-green-600 hover:bg-green-700 text-white font-bold flex items-center gap-2 shadow-md">
-          + Produto
-        </Button>
-        <Button className="bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-md" onClick={() => setModalMarcas(true)}>
-          Marcas
-        </Button>
-        <Button className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-md">Fornecedores</Button>
-        <Button className="bg-gray-600 hover:bg-gray-700 text-white font-bold shadow-md">Adicionar compra ao estoque</Button>
+      <div className="flex flex-wrap gap-2 mb-3 mt-3">
+        <ActionsBar
+          onNew={() => setModalEditar({ open: true })}
+          onBulkDelete={async () => { if (selected.length && window.confirm("Remover selecionados?")) { await deleteProducts(selected); toast.success("Removidos"); setReload(r=>r+1);} }}
+          onImport={() => setModalMarcas(true)}
+          onExport={async () => { const csv = await exportCsv({ search, status, page, perPage, sortBy, sortDir }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'produtos.csv'; a.click(); URL.revokeObjectURL(url); }}
+          isLoading={loading}
+        />
       </div>
+      <LowStockBanner
+        items={produtosPaginados.filter(p => (p.quantidade || 0) <= ((p as any).estoque_minimo || 0)).map(p => ({ id: String(p.id), nome: p.nome, quantidade: p.quantidade, estoque_minimo: (p as any).estoque_minimo }))}
+        onExport={async () => { const csv = await exportCsv({ search, status, page, perPage, sortBy, sortDir, onlyLowStock: true }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'estoque-baixo.csv'; a.click(); URL.revokeObjectURL(url); }}
+      />
       {/* Barra de exportação e filtros */}
-      <div className="flex flex-wrap items-center gap-2 mb-2 bg-gray-50 rounded px-3 py-2 shadow-sm">
-        <Button className="bg-gray-200 text-gray-700 hover:bg-gray-300">Excel</Button>
-        <Button className="bg-gray-200 text-gray-700 hover:bg-gray-300">PDF</Button>
-        <Button className="bg-gray-200 text-gray-700 hover:bg-gray-300">Imprimir</Button>
-        <Button className="bg-gray-200 text-gray-700 hover:bg-gray-300">Colunas</Button>
+      <div className="flex flex-wrap items-center gap-2 mb-2 rounded px-3 py-2 shadow-sm bg-card border border-border">
+        <Button variant="secondary">Excel</Button>
+        <Button variant="secondary">PDF</Button>
+        <Button variant="secondary">Imprimir</Button>
+        <Button variant="secondary">Colunas</Button>
         <div className="ml-auto flex items-center gap-2">
           <select
-            className="border rounded px-2 py-1 text-sm focus:ring focus:ring-blue-200"
+            className="border border-border rounded px-2 py-1 text-sm bg-background"
             value={perPage}
             onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
           >
@@ -168,73 +146,56 @@ export default function PaginaProdutos() {
           </select>
           <span className="text-sm">resultados por página</span>
           <Input
-            className="w-48 border focus:ring focus:ring-blue-200"
+            className="w-48"
             placeholder="Pesquisar"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
       </div>
-      {/* Tabela de produtos */}
-      <div className="overflow-x-auto bg-white rounded shadow mt-4">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 font-bold">Descrição</th>
-              <th className="p-2 font-bold">Categoria</th>
-              <th className="p-2 font-bold">Marca</th>
-              <th className="p-2 font-bold">Qtde</th>
-              <th className="p-2 font-bold">Valor (R$)</th>
-              <th className="p-2 font-bold">Comissão</th>
-              <th className="p-2 font-bold">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {produtosPaginados.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center p-4">Nenhum produto cadastrado.</td>
-              </tr>
-            )}
-            {produtosPaginados.map((p) => (
-              <tr key={p.id} className="border-t hover:bg-blue-50 transition-colors">
-                <td className="p-2">{p.nome}</td>
-                <td className="p-2">{p.categoria}</td>
-                <td className="p-2">{p.marca}</td>
-                <td className="p-2">{p.quantidade}</td>
-                <td className="p-2">{Number(p.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                <td className="p-2">{(Number(p.comissao) * 100).toFixed(2)}%</td>
-                <td className="p-2 flex flex-wrap gap-1">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white shadow" onClick={() => alterarQuantidade(p, +1)}>+</Button>
-                  <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white shadow" onClick={() => alterarQuantidade(p, -1)}>-</Button>
-                  <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white shadow">Movimentações</Button>
-                  <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white shadow" onClick={() => setModalEditar({ open: true, produto: p })}>Editar</Button>
-                  <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white shadow" onClick={() => excluirProduto(p)}>Excluir</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ProductsTable
+        rows={produtosPaginados.map(p => ({ id: p.id as string, nome: p.nome, categoria: p.categoria, valor: p.valor, custo: p.custo ?? 0, quantidade: p.quantidade, estoque_minimo: (p as any).estoque_minimo ?? 0 }))}
+        selectedIds={selected}
+        onToggleRow={(id) => setSelected((arr) => arr.includes(id) ? arr.filter(i => i !== id) : [...arr, id])}
+        onToggleAll={() => setSelected((prev) => prev.length === produtosPaginados.length ? [] : produtosPaginados.map(p => p.id as string))}
+        onEdit={(id) => { const p = produtosPaginados.find(x => x.id === id); if (p) setModalEditar({ open: true, produto: p }); }}
+        onDelete={(id) => { const p = produtosPaginados.find(x => x.id === id); if (p) void excluirProduto(p); }}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onSort={(by) => { if (sortBy === by) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortBy(by); setSortDir('asc'); } setPage(1); void fetchProdutos(); }}
+        onUpdateStock={async (id, v) => { await updateStock(id, v); toast.success('Estoque atualizado'); setReload(r=>r+1); }}
+        onUpdateMin={async (id, v) => { await updateMinStock(id, v); toast.success('Mínimo atualizado'); setReload(r=>r+1); }}
+      />
       {/* Paginação */}
       <div className="flex flex-wrap items-center justify-between mt-4">
-        <span className="text-sm">
-          Mostrando de {(produtosFiltrados.length === 0 ? 0 : (page - 1) * perPage + 1)} até {Math.min(page * perPage, produtosFiltrados.length)} de {produtosFiltrados.length} registros
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Mostrar</span>
+            <select className="border border-border rounded px-2 py-1 text-sm bg-background" value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}>
+              {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span className="text-sm">registros</span>
+          </div>
+          <span className="text-sm">Mostrando de {(total === 0 ? 0 : (page - 1) * perPage + 1)} até {Math.min(page * perPage, total)} de {total} registros</span>
+        </div>
         <div className="flex gap-1">
-          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</Button>
-          {[...Array(totalPages)].map((_, i) => (
-            <Button
-              key={i}
-              size="sm"
-              variant={page === i + 1 ? "default" : "outline"}
-              onClick={() => setPage(i + 1)}
-            >
-              {i + 1}
-            </Button>
-          ))}
-          <Button size="sm" variant="outline" disabled={page === totalPages || totalPages === 0} onClick={() => setPage(page + 1)}>Próximo</Button>
+          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(1)}>Primeira</Button>
+          <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>{'<'}</Button>
+          <Button size="sm" variant="default">{page}</Button>
+          <Button size="sm" variant="outline" disabled={page === totalPages || totalPages === 0} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>{'>'}</Button>
+          <Button size="sm" variant="outline" disabled={page === totalPages || totalPages === 0} onClick={() => setPage(totalPages)}>Última</Button>
         </div>
       </div>
+      <ProductDialog
+        open={modalEditar.open}
+        onOpenChange={(v) => setModalEditar({ open: v, produto: v ? modalEditar.produto : undefined })}
+        initial={modalEditar.produto}
+        onSubmit={async (data) => {
+          if (data.id) { await updateProduct(data as any); toast.success('Produto atualizado'); }
+          else { await createProduct(data as any); toast.success('Produto criado'); }
+          setReload(r => r + 1);
+        }}
+      />
       {/* Modal de edição */}
       {modalEditar.open && modalEditar.produto && (
         <ModalEditarProduto
@@ -259,8 +220,8 @@ function ModalEditarProduto({ produto, onClose, onSave }: { produto: Produto, on
   const [form, setForm] = useState({ ...produto });
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative" onClick={e => e.stopPropagation()}>
-        <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={onClose}>×</button>
+      <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md shadow-lg relative" onClick={e => e.stopPropagation()}>
+        <button className="absolute top-2 right-2 text-muted-foreground hover:opacity-80" onClick={onClose}>×</button>
         <h2 className="text-xl font-bold mb-4">Editar Produto</h2>
         <form className="space-y-3" onSubmit={e => { e.preventDefault(); onSave(form); }}>
           <Input
@@ -310,12 +271,12 @@ function ModalEditarProduto({ produto, onClose, onSave }: { produto: Produto, on
 function ModalMarcas({ marcasResumo, onClose }: { marcasResumo: Record<string, { quantidade: number, valorTotal: number }>, onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative" onClick={e => e.stopPropagation()}>
-        <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={onClose}>×</button>
+      <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md shadow-lg relative" onClick={e => e.stopPropagation()}>
+        <button className="absolute top-2 right-2 text-muted-foreground hover:opacity-80" onClick={onClose}>×</button>
         <h2 className="text-xl font-bold mb-4">Resumo por Marca</h2>
         <table className="min-w-full text-sm mb-4">
           <thead>
-            <tr className="bg-gray-100">
+            <tr className="bg-muted/40">
               <th className="p-2 font-bold">Marca</th>
               <th className="p-2 font-bold">Quantidade</th>
               <th className="p-2 font-bold">Valor Total</th>
@@ -323,7 +284,7 @@ function ModalMarcas({ marcasResumo, onClose }: { marcasResumo: Record<string, {
           </thead>
           <tbody>
             {Object.entries(marcasResumo).map(([marca, info]) => (
-              <tr key={marca} className="border-t">
+              <tr key={marca} className="border-t border-border">
                 <td className="p-2">{marca}</td>
                 <td className="p-2">{info.quantidade}</td>
                 <td className="p-2">{info.valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>

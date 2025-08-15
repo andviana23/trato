@@ -1,6 +1,8 @@
-"use client";
+﻿"use client";
 
-import { Card, CardBody, Chip, Button } from '@nextui-org/react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { CreditCardIcon, UserGroupIcon, BanknotesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAssinantesData } from '../hooks/useAssinantesData';
 
@@ -27,7 +29,7 @@ export default function MetricsCards() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card ASAAS Trato */}
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <CardBody className="p-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm font-medium">ASAAS Trato</p>
@@ -43,21 +45,19 @@ export default function MetricsCards() {
                   </p>
                 )}
                 {metrics.asaasTrato.error && (
-                  <Chip size="sm" color="danger" variant="flat" className="mt-2">
-                    {metrics.asaasTrato.error}
-                  </Chip>
+                  <Badge variant="destructive" className="mt-2">{metrics.asaasTrato.error}</Badge>
                 )}
               </div>
               <div className="bg-blue-400 p-3 rounded-lg">
                 <CreditCardIcon className="w-6 h-6" />
               </div>
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
 
         {/* Card ASAAS Andrey */}
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <CardBody className="p-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm font-medium">ASAAS Andrey</p>
@@ -73,21 +73,19 @@ export default function MetricsCards() {
                   </p>
                 )}
                 {metrics.asaasAndrey.error && (
-                  <Chip size="sm" color="danger" variant="flat" className="mt-2">
-                    {metrics.asaasAndrey.error}
-                  </Chip>
+                  <Badge variant="destructive" className="mt-2">{metrics.asaasAndrey.error}</Badge>
                 )}
               </div>
               <div className="bg-green-400 p-3 rounded-lg">
                 <UserGroupIcon className="w-6 h-6" />
               </div>
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
 
         {/* Card Pagamentos Externos */}
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardBody className="p-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm font-medium">Pagamentos Externos</p>
@@ -103,18 +101,18 @@ export default function MetricsCards() {
                   </p>
                 )}
                 {metrics.external.error && (
-                  <Chip size="sm" color="danger" variant="flat" className="mt-2">
-                    {metrics.external.error}
-                  </Chip>
+                  <Badge variant="destructive" className="mt-2">{metrics.external.error}</Badge>
                 )}
               </div>
               <div className="bg-purple-400 p-3 rounded-lg">
                 <BanknotesIcon className="w-6 h-6" />
               </div>
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
       </div>
     </div>
   );
 } 
+
+

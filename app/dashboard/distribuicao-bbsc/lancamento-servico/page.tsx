@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Avatar } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Avatar } from "@/components/ui/chakra-adapters";
 import { PlusIcon, UserIcon, WrenchScrewdriverIcon, InformationCircleIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -108,33 +108,33 @@ export default function LancamentoServicoPage() {
     <div className="container mx-auto px-4 py-6">
       {/* Cards de totais */}
       <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="shadow-lg border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-          <CardHeader className="flex items-center gap-3 pb-0">
+        <Card.Root className="shadow-lg border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
+          <Card.Header className="flex items-center gap-3 pb-0">
             <ChartBarIcon className="w-7 h-7 text-blue-500" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">Total de Serviços no Mês</span>
-          </CardHeader>
-          <CardBody className="pt-2">
+          </Card.Header>
+          <Card.Body className="pt-2">
             <span className="text-4xl font-extrabold text-blue-700 dark:text-blue-400">{totalServicosMes}</span>
-          </CardBody>
-        </Card>
-        <Card className="shadow-lg border border-green-100 bg-gradient-to-br from-green-50 to-white">
-          <CardHeader className="flex items-center gap-3 pb-0">
+          </Card.Body>
+        </Card.Root>
+        <Card.Root className="shadow-lg border border-green-100 bg-gradient-to-br from-green-50 to-white">
+          <Card.Header className="flex items-center gap-3 pb-0">
             <InformationCircleIcon className="w-7 h-7 text-green-500" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">Média de Serviços por Dia</span>
-          </CardHeader>
-          <CardBody className="pt-2">
+          </Card.Header>
+          <Card.Body className="pt-2">
             <span className="text-4xl font-extrabold text-green-700 dark:text-green-400">{mediaPorDia}</span>
-          </CardBody>
-        </Card>
-        <Card className="shadow-lg border border-purple-100 bg-gradient-to-br from-purple-50 to-white">
-          <CardHeader className="flex items-center gap-3 pb-0">
+          </Card.Body>
+        </Card.Root>
+        <Card.Root className="shadow-lg border border-purple-100 bg-gradient-to-br from-purple-50 to-white">
+          <Card.Header className="flex items-center gap-3 pb-0">
             <WrenchScrewdriverIcon className="w-7 h-7 text-purple-500" />
             <span className="text-lg font-semibold text-gray-900 dark:text-white">Minutos Totais Trabalhados</span>
-          </CardHeader>
-          <CardBody className="pt-2">
+          </Card.Header>
+          <Card.Body className="pt-2">
             <span className="text-4xl font-extrabold text-purple-700 dark:text-purple-400">{totalMinutosMes} min</span>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
         <div className="flex items-end justify-center">
           <Button color="primary" startContent={<PlusIcon className="w-5 h-5" />} onClick={openNovo} className="w-full md:w-auto text-base font-semibold shadow-lg h-14">
             Adicionar Serviço para Barbeiro
@@ -142,11 +142,11 @@ export default function LancamentoServicoPage() {
         </div>
       </div>
       {/* Tabela de barbeiros */}
-      <Card className="shadow-lg mb-8 border border-gray-100">
-        <CardHeader className="bg-gray-50 dark:bg-gray-900 rounded-t-lg">
+      <Card.Root className="shadow-lg mb-8 border border-gray-100">
+        <Card.Header className="bg-gray-50 dark:bg-gray-900 rounded-t-lg">
           <span className="text-lg font-semibold text-gray-900 dark:text-white">Serviços por Barbeiro (Mês Atual)</span>
-        </CardHeader>
-        <CardBody className="p-0">
+        </Card.Header>
+        <Card.Body className="p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
               <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
@@ -190,8 +190,8 @@ export default function LancamentoServicoPage() {
               </tbody>
             </table>
           </div>
-        </CardBody>
-      </Card>
+        </Card.Body>
+      </Card.Root>
       {/* Modal de lançamento manual */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} size="md">
         <ModalContent>
@@ -203,7 +203,7 @@ export default function LancamentoServicoPage() {
                 <Select
                   label="Selecione o barbeiro"
                   selectedKeys={form.barbeiro_id ? [form.barbeiro_id] : []}
-                  onChange={e => setForm(f => ({ ...f, barbeiro_id: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, barbeiro_id: e.target.value }))}
                   isRequired
                 >
                   {barbeiros.map(b => (
@@ -221,7 +221,7 @@ export default function LancamentoServicoPage() {
                 <Select
                   label="Selecione o serviço"
                   selectedKeys={form.servico_id ? [form.servico_id] : []}
-                  onChange={e => setForm(f => ({ ...f, servico_id: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, servico_id: e.target.value }))}
                   isRequired
                 >
                   {servicos.map(s => (
@@ -234,22 +234,11 @@ export default function LancamentoServicoPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Data <span className="text-red-500">*</span></label>
-                  <Input
-                    label="Data"
-                    type="date"
-                    value={form.data}
-                    onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
-                    isRequired
-                  />
+                  <Input type="date" value={form.data} onChange={(e)=>setForm(f=>({...f, data: (e.target as HTMLInputElement).value}))} aria-required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Horário</label>
-                  <Input
-                    label="Horário"
-                    type="time"
-                    value={form.hora}
-                    onChange={e => setForm(f => ({ ...f, hora: e.target.value }))}
-                  />
+                  <Input type="time" value={form.hora} onChange={(e)=>setForm(f=>({...f, hora: (e.target as HTMLInputElement).value}))} />
                 </div>
               </div>
               <div>
@@ -268,11 +257,16 @@ export default function LancamentoServicoPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button color="primary" isLoading={saving} onClick={salvarLancamento}>Adicionar</Button>
+            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button color="primary" loading={saving} onClick={salvarLancamento}>Adicionar</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
     </div>
   );
 } 
+
+
+
+
+

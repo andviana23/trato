@@ -1,39 +1,16 @@
-import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { Providers } from "@/components/Providers";
 import "./globals.css";
-import { Toaster } from 'sonner'
+import Providers from "./providers";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
-
-export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Sistema de Barbearia - Next.js",
-  description: "Sistema completo de gerenciamento para barbearias",
+export const metadata = {
+  title: "Trato de Barbados",
+  description: "Sistema",
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  display: "swap",
-  subsets: ["latin"],
-});
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <head>
-      </head>
-      <body className={`${geistSans.className} antialiased`} suppressHydrationWarning={true}>
-        <Providers>
-          {children}
-        </Providers>
-        <Toaster richColors />
+      <body className="bg-background text-foreground">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

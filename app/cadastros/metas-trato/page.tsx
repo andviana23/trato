@@ -1,707 +1,310 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
-import toast, { Toaster } from "react-hot-toast";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { useUnidade } from "@/components/UnidadeContext";
+import { useAppToast } from "@/hooks/useAppToast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import dayjs from "dayjs";
 
-// Configure o Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+type FaixaRow = { id: string; meta_id: string; quantidade: number; bonificacao: number; tipo: "produtos" | "servicos"; barbeiro_nome?: string; barbeiro_id?: string };
+
+// Ícones inline (sem depender do Chakra Icon)
+const EditSvg = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" {...props}>
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+  </svg>
 );
+const TrashSvg = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" {...props}>
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+  </svg>
+);
+// CloseSvg removido (não utilizado)
 
-// Definição dos tipos
-type Meta = {
-  id?: string;
-  barbeiro_id: string;
-  barbeiro_nome?: string;
-  mes: string;
-  ano: string;
-  meta_venda_produto: number;
-  meta_faturamento: number;
-  tipo_bonificacao: 'fixo' | 'percentual';
-  valor_bonificacao: number;
-  foi_batida: boolean;
-  criado_em?: string;
-  quantidade_produtos?: number; // Adicionado para armazenar a quantidade de produtos
-};
+export default function MetasTratoPage() {
+  const supabase = useMemo(() => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ), []);
+  const toast = useAppToast();
 
-type Barbeiro = {
-  id: string;
-  nome: string;
-};
+  const [faixas, setFaixas] = useState<FaixaRow[]>([]);
+  const [barbeiroIdToNome, setBarbeiroIdToNome] = useState<Record<string, string>>({});
+  const [buscaBarbeiroId, setBuscaBarbeiroId] = useState("all");
+  const [buscaTipo, setBuscaTipo] = useState<"all" | "produtos" | "servicos">("all");
 
-type Faixa = { quantidade: number; bonificacao: number; tipo: 'produtos' | 'servicos' };
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<FaixaRow | null>(null);
+  const [form, setForm] = useState<Omit<FaixaRow, "id">>({ meta_id: "", quantidade: 0, bonificacao: 0, tipo: "produtos" });
 
-type Agrupamento = {
-  [key: string]: {
-    barbeiro_id: string;
-    barbeiro_nome: string;
-    mes: string;
-    ano: string;
-    metaIds: string[];
-    faixasProdutos: Faixa[];
-    faixasServicos: Faixa[];
-  };
-};
+  const load = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("metas_trato_faixas")
+      .select("id, meta_id, quantidade, bonificacao, tipo, barbeiro_nome, barbeiro_id")
+      .order("meta_id");
+    if (error) { console.warn(error); return; }
+    type Row = { id: string | number; meta_id: string | number; quantidade: number; bonificacao: number; tipo: string; barbeiro_nome?: string | null; barbeiro_id?: string | null };
+    const parsed: FaixaRow[] = (data as Row[] | null ?? []).map((d) => ({
+      id: String(d.id),
+      meta_id: String(d.meta_id),
+      quantidade: Number(d.quantidade) || 0,
+      bonificacao: Number(d.bonificacao) || 0,
+      tipo: (d.tipo === "servicos" ? "servicos" : "produtos") as "produtos" | "servicos",
+      barbeiro_nome: d.barbeiro_nome ?? undefined,
+      barbeiro_id: d.barbeiro_id ?? String(d.meta_id),
+    }));
+    setFaixas(parsed);
 
-const MESES = [
-  { value: '01', label: 'Janeiro' },
-  { value: '02', label: 'Fevereiro' },
-  { value: '03', label: 'Março' },
-  { value: '04', label: 'Abril' },
-  { value: '05', label: 'Maio' },
-  { value: '06', label: 'Junho' },
-  { value: '07', label: 'Julho' },
-  { value: '08', label: 'Agosto' },
-  { value: '09', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-];
+    // Construir mapa id->nome a partir das próprias linhas (preferindo a coluna barbeiro_nome)
+    const map: Record<string, string> = {};
+    parsed.forEach((f) => {
+      const id = f.barbeiro_id ?? f.meta_id;
+      if (id) { map[id] = f.barbeiro_nome ?? map[id] ?? ''; }
+    });
+    setBarbeiroIdToNome(map);
+  }, [supabase]);
+  useEffect(() => { void load(); }, [load]);
 
-const ANOS = ['2024', '2025', '2026', '2027', '2028'];
+  const openCreate = () => { setEditing(null); setForm({ meta_id: "", quantidade: 0, bonificacao: 0, tipo: "produtos" }); setOpen(true); };
+  const openEdit = (row: FaixaRow) => { setEditing(row); setForm({ meta_id: row.meta_id, quantidade: row.quantidade, bonificacao: row.bonificacao, tipo: row.tipo }); setOpen(true); };
 
-export default function MetasTrato() {
-  const [metas, setMetas] = useState<Meta[]>([]);
-  const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingMeta, setEditingMeta] = useState<Meta | null>(null);
-  const { unidade: unidadeGlobal } = useUnidade();
-  const [unidadeModal, setUnidadeModal] = useState(unidadeGlobal);
-  const [barbeiroSelecionado, setBarbeiroSelecionado] = useState('');
-
-  // Estado do formulário
-  const [form, setForm] = useState<Omit<Meta, 'id' | 'criado_em' | 'foi_batida'>>({
-    barbeiro_id: '',
-    mes: '',
-    ano: '',
-    meta_venda_produto: 0,
-    meta_faturamento: 0,
-    tipo_bonificacao: 'fixo',
-    valor_bonificacao: 0,
-    quantidade_produtos: 0, // Adicionado para armazenar a quantidade de produtos
-  });
-
-  // Adicione o estado das faixas no início do componente (após o estado do formulário):
-  const [faixas, setFaixas] = useState([{ quantidade: 0, bonificacao: 0 }]);
-
-  // Adicione o estado para armazenar as faixas de cada meta
-  const [faixasPorMeta, setFaixasPorMeta] = useState<Record<string, Faixa[]>>({});
-
-  // Estado para barbeiros adicionados e seleção
-  const [barbeirosAdicionados, setBarbeirosAdicionados] = useState<Barbeiro[]>([]);
-
-  // Estado para tipo de bonificação
-  const [tipoBonificacao, setTipoBonificacao] = useState<'produtos' | 'servicos'>('produtos');
-
-  // Carregar barbeiros da unidade selecionada no modal
-  useEffect(() => {
-    const unidades = {
-      'Trato de Barbados': '244c0543-7108-4892-9eac-48186ad1d5e7',
-      'BARBER BEER SPORT CLUB': '87884040-cafc-4625-857b-6e0402ede7d7',
-    };
-    const unidadeId = unidades[unidadeModal as keyof typeof unidades];
-    console.log("Buscando barbeiros para unidade:", unidadeModal, unidadeId);
-
-    if (!unidadeId) {
-      setBarbeiros([]);
-      return;
-    }
-
-    async function fetchBarbeiros() {
-      const { data, error } = await supabase
-        .from('profissionais')
-        .select('*')
-        .eq('unidade_id', unidadeId)
-        .eq('funcao', 'barbeiro');
-
-      if (error) {
-        console.error("Erro ao buscar barbeiros:", error);
-        setBarbeiros([]);
-        return;
-      }
-
-      console.log("Barbeiros carregados:", data);
-      setBarbeiros(data || []);
-    }
-    fetchBarbeiros();
-  }, [unidadeModal]);
-
-  // Carregar metas
-  useEffect(() => {
-    fetchMetas();
-  }, []);
-
-  // Verificar conexão e tabelas no carregamento
-  useEffect(() => {
-    async function verificarSistema() {
-      try {
-        console.log("🔍 Verificando sistema de Metas...");
-        
-        // Verificar conexão com Supabase
-        // Listar apenas os pagamentos confirmados do mês, com dados completos do cliente
-
-        // Buscar somente pagamentos confirmados no período:
-        
-        // Faça a requisição para a API do Asaas usando o endpoint /v3/payments, filtrando:
-        
-        // status=CONFIRMED (ou RECEIVED, se necessário)
-        
-        // paymentDate[gte]=YYYY-MM-DD (primeiro dia do mês/intervalo)
-        
-        // paymentDate[lte]=YYYY-MM-DD (último dia do mês/intervalo)
-        
-        // Exemplo de endpoint:
-        
-        // bash
-        // Copiar
-        // Editar
-        // https://www.asaas.com/api/v3/payments?status=CONFIRMED&paymentDate[gte]=2025-08-01&paymentDate[lte]=2025-08-31
-        // Isso deve retornar apenas os pagamentos confirmados (pagos) no período selecionado.
-        
-        // Buscar dados completos do cliente:
-        
-        // Para cada pagamento retornado, use o campo customer (ID do cliente).
-        
-        // Faça uma segunda requisição na API do Asaas para /v3/customers/{customerId} e obtenha nome, e-mail, etc.
-        
-        // Utilize Promise.all para buscar todos os clientes em paralelo e não travar a aplicação.
-        
-        // Montar lista final:
-        
-        // Monte a lista final da tabela unindo os dados do pagamento (valor, status, data do pagamento, próxima cobrança) + dados completos do cliente (nome, e-mail, etc).
-        
-        // Exiba apenas esses clientes na tabela, ou seja, somente quem teve pagamento confirmado no período filtrado.
-        
-        // Não inclua clientes que não pagaram no período.
-        
-        // Validação:
-        
-        // Antes de renderizar, faça um console.log do array final da lista para garantir que cada item tem os dados do pagamento e do cliente.
-        
-        // A tabela deve mostrar nome, e-mail, valor pago, status, fonte, data do pagamento e próxima cobrança.
-        
-        // Se não houver pagamentos confirmados no mês, mostrar mensagem clara: “Nenhum assinante efetuou pagamento confirmado neste mês.”
-        
-        // Resumo técnico:
-        
-        // Use o endpoint /v3/payments para filtrar por status=CONFIRMED e intervalo de datas.
-        
-        // Use /v3/customers/{customerId} para buscar os dados completos dos clientes listados nos pagamentos.
-        
-        // Não mostre outros clientes ou pagamentos fora do período, e não busque toda a base — só o resultado filtrado.
-        
-        // Não finalize até garantir que:
-        
-        // Só aparecem clientes que realmente pagaram (status CONFIRMED) no mês/período filtrado.
-        
-        // Todos os dados do cliente estão sendo exibidos corretamente na tabela.
-        
-        // O filtro por mês/período funciona sem erros.
-        
-        // Se não souber implementar o fetch duplo (pagamento + cliente), peça ajuda ou explique a limitação antes de finalizar.
-        
-        console.log("✅ Conexão com Supabase OK");
-        
-        // Verificar tabela de metas
-        const { error: errorMetas } = await supabase
-          .from('metas_trato')
-          .select('count')
-          .limit(1);
-        
-        if (errorMetas) {
-          console.error("❌ Tabela metas_trato não encontrada:", errorMetas);
-          toast.error("Tabela de Metas não encontrada. Execute o script SQL primeiro.");
-          return;
-        }
-        
-        console.log("✅ Tabela metas_trato OK");
-      } catch (error) {
-        console.error("❌ Erro ao verificar sistema:", error);
-        toast.error("Erro ao verificar sistema");
-      }
-    }
-    
-    verificarSistema();
-  }, []);
-
-  async function fetchMetas() {
-    const { data } = await supabase
-      .from('metas_trato')
-      .select(`
-        *,
-        profissionais!inner(nome)
-      `)
-      .order('criado_em', { ascending: false });
-    
-    if (data) {
-      const metasComNome = data.map(meta => ({
-        ...meta,
-        barbeiro_nome: meta.profissionais?.nome
-      }));
-      setMetas(metasComNome);
-      // Buscar faixas para cada meta
-      const faixasObj: Record<string, Faixa[]> = {};
-      for (const meta of metasComNome) {
-        const { data: faixas } = await supabase
-          .from('metas_trato_faixas')
-          .select('*')
-          .eq('meta_id', meta.id);
-        faixasObj[meta.id] = faixas || [];
-      }
-      setFaixasPorMeta(faixasObj);
-    }
-  }
-
-  // Salvar meta
-  async function salvarMeta() {
-    if (!barbeirosAdicionados.length || !form.mes || !form.ano) {
-      toast.error('Adicione pelo menos um barbeiro e preencha os campos obrigatórios!');
-      return;
-    }
-    if (faixas.length === 0 || faixas.some(f => f.quantidade <= 0 || f.bonificacao <= 0)) {
-      toast.error('Adicione pelo menos uma faixa válida!');
-      return;
-    }
-
+  const save = async () => {
     try {
-      for (const b of barbeirosAdicionados) {
-        const { data, error } = await supabase
-          .from('metas_trato')
-          .insert({ ...form, barbeiro_id: b.id })
-          .select();
+      if (!form.meta_id) { toast.error({ title: "Informe meta_id" }); return; }
+      if (editing) {
+        const { error } = await supabase.from("metas_trato_faixas").update(form).eq("id", editing.id);
         if (error) throw error;
-        const metaId = data[0].id;
-        for (const faixa of faixas) {
-          await supabase.from('metas_trato_faixas').insert({
-            meta_id: metaId,
-            quantidade: faixa.quantidade,
-            bonificacao: faixa.bonificacao,
-            tipo: tipoBonificacao // novo campo
-          });
-        }
+        toast.success({ title: "Faixa atualizada" });
+      } else {
+        const { error } = await supabase.from("metas_trato_faixas").insert(form);
+        if (error) throw error;
+        toast.success({ title: "Faixa criada" });
       }
-      toast.success('Meta(s) criada(s) com sucesso!');
-      setModalOpen(false);
-      setEditingMeta(null);
-      resetForm();
-      setFaixas([{ quantidade: 0, bonificacao: 0 }]);
-      setBarbeirosAdicionados([]);
-      setBarbeiroSelecionado('');
-      fetchMetas();
-    } catch (error) {
-      console.error('Erro ao salvar meta:', error);
-      toast.error('Erro ao salvar meta!');
-    }
-  }
+      setOpen(false);
+      await load();
+    } catch (e) { console.warn(e); toast.error({ title: "Erro ao salvar" }); }
+  };
 
-  // Excluir meta
-  async function excluirMeta(id: string) {
-    if (!confirm('Tem certeza que deseja excluir esta meta?')) return;
-
+  const remove = async (row: FaixaRow) => {
     try {
-      const { error } = await supabase
-        .from('metas_trato')
-        .delete()
-        .eq('id', id);
-      
+      const { error } = await supabase.from("metas_trato_faixas").delete().eq("id", row.id);
       if (error) throw error;
-      toast.success('Meta excluída com sucesso!');
-      fetchMetas();
-    } catch (error) {
-      console.error('Erro ao excluir meta:', error);
-      toast.error('Erro ao excluir meta!');
-    }
-  }
+      toast.success({ title: "Faixa removida" });
+      await load();
+    } catch (e) { console.warn(e); toast.error({ title: "Erro ao excluir" }); }
+  };
 
-  // Editar meta
-  function editarMeta(meta: Meta) {
-    setEditingMeta(meta);
-    setForm({
-      barbeiro_id: meta.barbeiro_id,
-      mes: meta.mes,
-      ano: meta.ano,
-      meta_venda_produto: meta.meta_venda_produto,
-      meta_faturamento: meta.meta_faturamento,
-      tipo_bonificacao: meta.tipo_bonificacao,
-      valor_bonificacao: meta.valor_bonificacao,
-      quantidade_produtos: meta.quantidade_produtos || 0, // Adicionado para carregar a quantidade de produtos
+  const filtered = faixas.filter(f => (buscaBarbeiroId === "all" || (f.barbeiro_id ?? f.meta_id) === buscaBarbeiroId) && (buscaTipo === "all" || f.tipo === buscaTipo));
+  const periodoStr = `${dayjs().startOf("month").format("DD/MM/YYYY")} - ${dayjs().endOf("month").format("DD/MM/YYYY")}`;
+  const profissionaisList = useMemo(() => {
+    const entries = Object.entries(barbeiroIdToNome).map(([id, nome]) => ({ id, nome: nome || `Barbeiro ${id.slice(0,6)}…` }));
+    return entries.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [barbeiroIdToNome]);
+
+  // Agrupamento por profissional
+  const gruposPorProfissional = useMemo(() => {
+    const mapa = new Map<string, { id: string; nome: string; rows: FaixaRow[] }>();
+    filtered.forEach((f) => {
+      const id = f.barbeiro_id ?? f.meta_id;
+      const nome = f.barbeiro_nome || barbeiroIdToNome[id] || `Barbeiro ${id.slice(0,6)}…`;
+      const grupo = mapa.get(id) ?? { id, nome, rows: [] };
+      grupo.rows.push(f);
+      mapa.set(id, grupo);
     });
-    setModalOpen(true);
-  }
+    return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [filtered, barbeiroIdToNome]);
 
-  // Resetar formulário
-  function resetForm() {
-    setForm({
-      barbeiro_id: '',
-      mes: '',
-      ano: '',
-      meta_venda_produto: 0,
-      meta_faturamento: 0,
-      tipo_bonificacao: 'fixo',
-      valor_bonificacao: 0,
-      quantidade_produtos: 0, // Resetar a quantidade de produtos
-    });
-  }
+  const [limPorProf, setLimPorProf] = useState<Record<string, number>>({});
+  const getLimite = (id: string) => limPorProf[id] ?? 10;
+  const carregarMaisDoProf = (id: string) => setLimPorProf((prev) => ({ ...prev, [id]: getLimite(id) + 10 }));
+  const [filtroTipoPorProf, setFiltroTipoPorProf] = useState<Record<string, 'all' | 'produtos' | 'servicos'>>({});
+  const getFiltroTipo = (id: string): 'all' | 'produtos' | 'servicos' => filtroTipoPorProf[id] ?? 'all';
+  const setFiltroTipo = (id: string, v: 'all' | 'produtos' | 'servicos') => setFiltroTipoPorProf((prev) => ({ ...prev, [id]: v }));
 
-  // Abrir modal para nova meta
-  function abrirModalNovaMeta() {
-    setEditingMeta(null);
-    resetForm();
-    setFaixas([{ quantidade: 0, bonificacao: 0 }]);
-    setBarbeirosAdicionados([]);
-    setBarbeiroSelecionado('');
-    setTipoBonificacao('produtos'); // Resetar o tipo de bonificação
-    setModalOpen(true);
-  }
-
-  // Fechar modal
-  function fecharModal() {
-    setModalOpen(false);
-    setEditingMeta(null);
-    resetForm();
-  }
-
-  // Obter nome do mês
-  function getNomeMes(mes: string) {
-    return MESES.find(m => m.value === mes)?.label || mes;
-  }
-
-  // Agrupamento por barbeiro, mês e ano
-  const metasAgrupadas: Array<{ barbeiro_id: string; barbeiro_nome: string; mes: string; ano: string; metaIds: string[]; faixasProdutos: Faixa[]; faixasServicos: Faixa[] }> = [];
-  const agrupamento: Agrupamento = {};
-  metas.forEach(meta => {
-    if (!meta.id) return;
-    const key = `${meta.barbeiro_id}_${meta.mes}_${meta.ano}`;
-    if (!agrupamento[key]) {
-      agrupamento[key] = {
-        barbeiro_id: meta.barbeiro_id,
-        barbeiro_nome: barbeiros.find(b => b.id === meta.barbeiro_id)?.nome || meta.barbeiro_nome || '-',
-        mes: meta.mes,
-        ano: meta.ano,
-        metaIds: [meta.id],
-        faixasProdutos: [],
-        faixasServicos: []
-      };
-    } else {
-      agrupamento[key].metaIds.push(meta.id);
-    }
-    // Adiciona faixas de produtos e serviços desse meta
-    const faixas = faixasPorMeta[meta.id] || [];
-    agrupamento[key].faixasProdutos.push(...faixas.filter(f => f.tipo === 'produtos'));
-    agrupamento[key].faixasServicos.push(...faixas.filter(f => f.tipo === 'servicos'));
-  });
-  for (const key in agrupamento) {
-    metasAgrupadas.push(agrupamento[key]);
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto p-4">
-      <Toaster />
-      
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Metas - Trato de Barbados</h1>
-          <p className="text-gray-600">Gerencie as metas individuais dos barbeiros</p>
-        </div>
-        <Button onClick={abrirModalNovaMeta} className="bg-blue-600 hover:bg-blue-700">
-          <PlusIcon className="w-4 h-4 mr-2" />
-          Adicionar Meta
-        </Button>
-      </div>
-
-
-      {/* Cards de metas cadastradas */}
-      <div className="mt-8">
-        <h3 className="text-2xl font-bold mb-6 text-gray-900">Metas Cadastradas</h3>
-        <div className="flex flex-col gap-4">
-          {metasAgrupadas.length === 0 && (
-            <div className="text-center text-gray-400 py-8">Nenhuma meta cadastrada.</div>
-          )}
-          {/* Cabeçalho da lista */}
-          <div className="hidden md:grid grid-cols-5 gap-4 px-6 py-2 font-semibold text-gray-700 bg-gray-50 rounded-t-xl">
-            <div>Barbeiro</div>
-            <div>Período</div>
-            <div className="text-green-800">Produtos 🛒</div>
-            <div className="text-blue-800">Serviços ✂️</div>
-            <div className="text-center">Ações</div>
-          </div>
-          {metasAgrupadas.map(grupo => (
-            <div
-              key={grupo.barbeiro_id + grupo.mes + grupo.ano}
-              className="bg-white rounded-xl shadow flex flex-col md:grid md:grid-cols-5 gap-4 px-6 py-4 items-center border border-gray-100 hover:shadow-lg transition"
-            >
-              <div className="font-bold text-gray-900 w-full md:w-auto">{grupo.barbeiro_nome}</div>
-              <div className="text-gray-600 w-full md:w-auto">{getNomeMes(grupo.mes)}/{grupo.ano}</div>
-              {/* Produtos */}
-              <div className="bg-green-50 rounded-lg p-3 w-full md:w-auto min-w-[150px]">
-                {grupo.faixasProdutos.length > 0 ? (
-                  <ul className="space-y-1">
-                    {grupo.faixasProdutos.map((f: Faixa, idx: number) => (
-                      <li key={idx} className="flex flex-col">
-                        <span className="text-gray-700 text-xs">{f.quantidade} un.</span>
-                        <span className="font-bold text-green-700 text-base leading-tight">{`R$ ${Number(f.bonificacao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : <span className="text-gray-400">-</span>}
-              </div>
-              {/* Serviços */}
-              <div className="bg-blue-50 rounded-lg p-3 w-full md:w-auto min-w-[150px]">
-                {grupo.faixasServicos.length > 0 ? (
-                  <ul className="space-y-1">
-                    {grupo.faixasServicos.map((f: Faixa, idx: number) => (
-                      <li key={idx} className="flex flex-col">
-                        <span className="text-gray-700 text-xs">{f.quantidade} un.</span>
-                        <span className="font-bold text-blue-700 text-base leading-tight">{`R$ ${Number(f.bonificacao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : <span className="text-gray-400">-</span>}
-              </div>
-              <div className="flex gap-2 justify-center w-full md:w-auto">
-                <Button size="sm" variant="outline" onClick={() => { const metaObj = metas.find(m => m.id === grupo.metaIds[0]); if (metaObj) editarMeta(metaObj); }} className="hover:bg-blue-100 focus:ring-2 focus:ring-blue-400">
-                  <PencilIcon className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => excluirMeta(grupo.metaIds[0])} className="text-red-600 hover:bg-red-100 focus:ring-2 focus:ring-red-400">
-                  <TrashIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+  const renderTable = (rows: FaixaRow[], limit?: number) => (
+    <div className="border border-border rounded-md bg-card overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border">
+            <th className="text-left px-3 py-2">tipo</th>
+            <th className="text-right px-3 py-2">quantidade</th>
+            <th className="text-right px-3 py-2">bonificação (R$)</th>
+            <th className="text-left px-3 py-2">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(limit ? rows.slice(0, limit) : rows).map((f) => (
+            <tr key={f.id} className="border-b border-border last:border-0">
+              <td className="px-3 py-2">{f.tipo}</td>
+              <td className="px-3 py-2 text-right">{f.quantidade}</td>
+              <td className="px-3 py-2 text-right">{Number(f.bonificacao).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(f)} aria-label="Editar"><EditSvg /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => remove(f)} aria-label="Excluir"><TrashSvg /></Button>
+                </div>
+              </td>
+            </tr>
           ))}
-        </div>
-      </div>
-
-      {/* Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8 relative">
-            <h2 className="text-2xl font-bold mb-2 text-gray-900">Nova Meta Progressiva</h2>
-            <p className="text-gray-500 mb-6">Cadastre faixas de bonificação para o barbeiro selecionado.</p>
-            <form className="space-y-5" autoComplete="off">
-              {/* Unidade e Barbeiros */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-1" htmlFor="unidade">Unidade *</label>
-                  <select
-                    id="unidade"
-                    className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    value={unidadeModal}
-                    onChange={e => setUnidadeModal(e.target.value)}
-                    required
-                  >
-                    <option value="">Selecione a unidade</option>
-                    <option value="Trato de Barbados">Trato de Barbados</option>
-                    <option value="BARBER BEER SPORT CLUB">BARBER BEER SPORT CLUB</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-1" htmlFor="barbeiros">Barbeiros *</label>
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <select
-                        id="barbeiro"
-                        className="border border-gray-300 rounded-lg px-3 py-2 w-full"
-                        value={barbeiroSelecionado}
-                        onChange={e => setBarbeiroSelecionado(e.target.value)}
-                      >
-                        <option value="">Selecione o barbeiro</option>
-                        {barbeiros
-                          .filter(b => !barbeirosAdicionados.some(ad => ad.id === b.id))
-                          .map(barbeiro => (
-                            <option key={barbeiro.id} value={barbeiro.id}>{barbeiro.nome}</option>
-                          ))}
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      className="bg-blue-600 text-white rounded-lg px-4 py-2 font-bold hover:bg-blue-700 transition"
-                      disabled={!barbeiroSelecionado}
-                      onClick={() => {
-                        const b = barbeiros.find(b => b.id === barbeiroSelecionado);
-                        if (b && !barbeirosAdicionados.some(ad => ad.id === b.id)) {
-                          setBarbeirosAdicionados([...barbeirosAdicionados, b]);
-                          setBarbeiroSelecionado('');
-                        }
-                      }}
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-                  {barbeirosAdicionados.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {barbeirosAdicionados.map(b => (
-                        <span key={b.id} className="flex items-center bg-gray-100 rounded px-2 py-1 text-sm">
-                          {b.nome}
-                          <button
-                            type="button"
-                            className="ml-2 text-red-600 hover:text-red-800"
-                            onClick={() => setBarbeirosAdicionados(barbeirosAdicionados.filter(ad => ad.id !== b.id))}
-                            aria-label={`Remover ${b.nome}`}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Período */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-1" htmlFor="mes">Mês *</label>
-                  <select
-                    id="mes"
-                    className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    value={form.mes}
-                    onChange={e => setForm({ ...form, mes: e.target.value })}
-                    required
-                  >
-                    <option value="">Selecione o mês</option>
-                    {MESES.map(mes => (
-                      <option key={mes.value} value={mes.value}>{mes.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-1" htmlFor="ano">Ano *</label>
-                  <select
-                    id="ano"
-                    className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    value={form.ano}
-                    onChange={e => setForm({ ...form, ano: e.target.value })}
-                    required
-                  >
-                    <option value="">Selecione o ano</option>
-                    {ANOS.map(ano => (
-                      <option key={ano} value={ano}>{ano}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {/* Tipo de Bonificação */}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold mb-2">Tipo de Bonificação *</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="tipoBonificacao"
-                      value="produtos"
-                      checked={tipoBonificacao === 'produtos'}
-                      onChange={() => setTipoBonificacao('produtos')}
-                    />
-                    Produtos
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="tipoBonificacao"
-                      value="servicos"
-                      checked={tipoBonificacao === 'servicos'}
-                      onChange={() => setTipoBonificacao('servicos')}
-                    />
-                    Serviços
-                  </label>
-                </div>
-              </div>
-              {/* Faixas Progressivas */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">Faixas Progressivas *</label>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm border rounded-lg">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="p-2 text-left">Quantidade</th>
-                        <th className="p-2 text-left">Bonificação (R$)</th>
-                        <th className="p-2 text-left">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {faixas.map((faixa, idx) => (
-                        <tr key={idx} className="border-b">
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              min={1}
-                              className="border border-gray-300 rounded-lg px-3 py-2 w-24 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                              value={faixa.quantidade}
-                              onChange={e => {
-                                const novo = [...faixas];
-                                novo[idx].quantidade = Number(e.target.value);
-                                setFaixas(novo);
-                              }}
-                              aria-label="Quantidade"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              min={0}
-                              className="border border-gray-300 rounded-lg px-3 py-2 w-24 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                              value={faixa.bonificacao}
-                              onChange={e => {
-                                const novo = [...faixas];
-                                novo[idx].bonificacao = Number(e.target.value);
-                                setFaixas(novo);
-                              }}
-                              aria-label="Bonificação"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <button
-                              type="button"
-                              className="text-red-600 hover:text-red-800 font-semibold"
-                              onClick={() => setFaixas(faixas.filter((_, i) => i !== idx))}
-                              aria-label="Excluir faixa"
-                            >
-                              Excluir
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      <tr>
-                        <td colSpan={3} className="p-2">
-                          <button
-                            type="button"
-                            className="text-blue-600 hover:text-blue-800 font-semibold"
-                            onClick={() => setFaixas([...faixas, { quantidade: 0, bonificacao: 0 }])}
-                          >
-                            + Adicionar faixa
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {/* Botões */}
-              <div className="flex gap-2 mt-6">
-                <button
-                  type="button"
-                  className="flex-1 bg-blue-600 text-white rounded-lg py-2 font-bold hover:bg-blue-700 transition"
-                  onClick={salvarMeta}
-                >
-                  {editingMeta ? 'Atualizar' : 'Salvar'}
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 border border-gray-300 rounded-lg py-2 font-bold text-gray-700 hover:bg-gray-100 transition"
-                  onClick={fecharModal}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={4} className="px-3 py-3 text-center text-muted-foreground">Nenhum registro encontrado.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
-} 
+
+  return (
+    <div data-page="metas-trato" className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold">Faixas de Metas</h1>
+            <p className="text-sm text-muted-foreground">Gerencie registros na tabela metas_trato_faixas</p>
+          </div>
+          <Button onClick={openCreate}>Nova Faixa</Button>
+        </div>
+
+        {/* Cards de contexto: Profissional e Período vigente */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="border rounded-lg p-4">
+            <div className="text-xs text-muted-foreground">Profissional</div>
+              <div className="text-xl font-semibold mt-1">{buscaBarbeiroId !== "all" ? (barbeiroIdToNome[buscaBarbeiroId] ?? `Barbeiro ${buscaBarbeiroId.slice(0,6)}…`) : "Todos"}</div>
+          </div>
+          <div className="border rounded-lg p-4 md:col-span-2">
+            <div className="text-xs text-muted-foreground">Período vigente da meta</div>
+            <div className="text-xl font-semibold mt-1">{periodoStr}</div>
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="mb-6 p-4 border border-border rounded-md bg-card">
+          <div className="flex gap-3 items-end flex-wrap">
+            <div className="min-w-[260px]">
+              <div className="text-sm mb-1">Barbeiro</div>
+              <Select value={buscaBarbeiroId} onValueChange={setBuscaBarbeiroId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecionar barbeiro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {profissionaisList.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[180px]">
+              <div className="text-sm mb-1">Tipo</div>
+              <Select value={buscaTipo} onValueChange={(v: "all" | "produtos" | "servicos") => setBuscaTipo(v)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="produtos">Produtos</SelectItem>
+                  <SelectItem value="servicos">Serviços</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Cards por profissional */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {gruposPorProfissional
+            .filter((g) => g.rows.length > 0)
+            .map((g) => {
+            const rows = g.rows;
+            const tipoLocal = getFiltroTipo(g.id);
+            const rowsFiltradas = rows.filter(r => tipoLocal === 'all' || r.tipo === tipoLocal);
+            const totalQ = rowsFiltradas.reduce((s, r) => s + (r.quantidade || 0), 0);
+            const totalB = rowsFiltradas.reduce((s, r) => s + (r.bonificacao || 0), 0);
+            const lim = getLimite(g.id);
+            const podeCarregar = lim < rowsFiltradas.length;
+            return (
+              <Card key={g.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="text-base">{g.nome}</CardTitle>
+                    <div className="min-w-[150px]">
+                      <Select value={tipoLocal} onValueChange={(v: 'all' | 'produtos' | 'servicos') => setFiltroTipo(g.id, v)}>
+                        <SelectTrigger className="w-full h-8">
+                          <SelectValue placeholder="Tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="produtos">Produtos</SelectItem>
+                          <SelectItem value="servicos">Serviços</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Metas: {rowsFiltradas.length} • Quantidade: {totalQ} • Bonificação: {totalB.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                </CardHeader>
+                <CardContent>
+                  {renderTable(rowsFiltradas, lim)}
+                  {podeCarregar && (
+                    <div className="flex justify-center pt-3">
+                      <Button variant="secondary" onClick={() => carregarMaisDoProf(g.id)}>Carregar mais</Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+          {gruposPorProfissional.length === 0 && (
+            <div className="col-span-full text-center text-sm text-gray-500 border rounded-md p-6">Nenhum registro encontrado.</div>
+          )}
+        </div>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editing ? "Editar Faixa" : "Nova Faixa"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm mb-1">meta_id</div>
+                <Input value={form.meta_id} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, meta_id: e.target.value })} placeholder="uuid ou identificador" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <div className="text-sm mb-1">Tipo</div>
+                  <Select value={form.tipo} onValueChange={(v: 'produtos' | 'servicos') => setForm({ ...form, tipo: v })}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="produtos">Produtos</SelectItem>
+                      <SelectItem value="servicos">Serviços</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <div className="text-sm mb-1">Quantidade</div>
+                  <Input type="number" value={form.quantidade} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, quantidade: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <div className="text-sm mb-1">Bonificação (R$)</div>
+                  <Input type="number" value={form.bonificacao} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, bonificacao: Number(e.target.value) })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button onClick={save}>{editing ? "Atualizar" : "Salvar"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
+

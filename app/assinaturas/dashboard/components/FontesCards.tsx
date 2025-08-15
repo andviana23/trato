@@ -1,6 +1,7 @@
-"use client"
+﻿"use client"
 
-import { Card, CardBody, Progress } from '@nextui-org/react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { DashboardData } from '@/lib/types/dashboard'
 
 interface Props {
@@ -51,7 +52,7 @@ export default function FontesCards({ data, loading }: Props) {
 
         return (
           <Card key={fonte.key} className="bg-white dark:bg-gray-800">
-            <CardBody className="p-4">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-2xl">{fonte.icon}</span>
@@ -71,10 +72,11 @@ export default function FontesCards({ data, loading }: Props) {
                 color={fonte.color}
                 className="h-2"
               />
-            </CardBody>
+            </CardContent>
           </Card>
         )
       })}
     </div>
   )
 } 
+

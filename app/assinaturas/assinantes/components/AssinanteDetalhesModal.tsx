@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Chip, Spinner } from '@nextui-org/react';
+﻿import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/chakra-adapters';
 import { 
   UserIcon, 
   CreditCardIcon, 
@@ -13,12 +15,40 @@ import {
 } from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 
+interface AssinanteLike {
+  customerName?: string;
+  nome?: string;
+  customerEmail?: string;
+  email?: string;
+  telefone?: string;
+  mobilePhone?: string;
+  plan_value?: number;
+  value?: number;
+  price?: number;
+  nextDueDate?: string;
+  vencimento?: string;
+  current_period_end?: string;
+  plan_next_due_date?: string;
+  source?: string;
+  payment_method?: string;
+  status?: string;
+  plan_status?: string;
+  plan_name?: string;
+  plan?: string;
+  plano?: string;
+  description?: string;
+  plan_created_at?: string;
+  created_at?: string;
+  asaas_subscription_id?: string;
+  asaas_customer_id?: string;
+}
+
 interface AssinanteDetalhesModalProps {
   open: boolean;
   onClose: () => void;
-  assinante: any | null;
-  onCancelar: (assinante: any) => void;
-  onConfirmarPagamento: (assinante: any) => void;
+  assinante: AssinanteLike | null;
+  onCancelar: (assinante: AssinanteLike) => void;
+  onConfirmarPagamento: (assinante: AssinanteLike) => void;
   confirmandoPagamento?: boolean;
   cancelandoAssinatura?: boolean;
   onUpdate?: () => void; // Callback para atualizar lista após ações
@@ -62,7 +92,7 @@ const BotaoCancelar = ({
   onClose, 
   statusAtual 
 }: { 
-  assinante: any; 
+  assinante: AssinanteLike; 
   onUpdate?: () => void; 
   onClose: () => void; 
   statusAtual: string;
@@ -98,7 +128,8 @@ const BotaoCancelar = ({
       } else {
         toast.error(result.error || 'Erro ao cancelar assinatura');
       }
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error('Erro ao cancelar assinatura');
     } finally {
       setLoading(false);
@@ -147,7 +178,7 @@ const BotaoCancelar = ({
 };
 
 // Componente para botão de link de pagamento
-const BotaoLinkPagamento = ({ assinante }: { assinante: any }) => {
+const BotaoLinkPagamento = ({ assinante }: { assinante: AssinanteLike }) => {
   const [loading, setLoading] = useState(false);
 
   const handleAbrirLink = async () => {
@@ -167,7 +198,8 @@ const BotaoLinkPagamento = ({ assinante }: { assinante: any }) => {
       } else {
         toast.info(result.error || 'Nenhum pagamento pendente encontrado');
       }
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error('Erro ao obter link de pagamento');
     } finally {
       setLoading(false);
@@ -252,10 +284,9 @@ export default function AssinanteDetalhesModal({
   };
 
   return (
-    <Modal isOpen={open} onOpenChange={onClose} size="2xl" scrollBehavior="inside">
-      <ModalContent className="max-w-4xl">
-        {/* Header com gradiente */}
-        <ModalHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+    <Dialog open={open} onOpenChange={(open)=> { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -273,14 +304,14 @@ export default function AssinanteDetalhesModal({
               <XMarkIcon className="w-5 h-5" />
             </button>
           </div>
-        </ModalHeader>
+        </DialogHeader>
 
-        <ModalBody className="p-6 space-y-6">
+        <div>
           {/* Cards de informação */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* Card Cliente */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="rounded-xl p-4 border border-white/20 bg-white/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   <UserIcon className="w-4 h-4 text-blue-600" />
@@ -304,7 +335,7 @@ export default function AssinanteDetalhesModal({
             </div>
 
             {/* Card Plano */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="rounded-xl p-4 border border-white/20 bg-white/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                   <CreditCardIcon className="w-4 h-4 text-green-600" />
@@ -330,7 +361,7 @@ export default function AssinanteDetalhesModal({
           </div>
 
           {/* Card de Informações Adicionais */}
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <div className="rounded-xl p-4 border border-white/20 bg-white/5">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                 <CalendarIcon className="w-4 h-4 text-purple-600" />
@@ -340,17 +371,7 @@ export default function AssinanteDetalhesModal({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Fonte:</span>
-                <Chip 
-                  size="sm" 
-                  variant="flat" 
-                  color={
-                    origem === 'ASAAS_TRATO' ? 'primary' :
-                    origem === 'ASAAS_ANDREY' ? 'success' :
-                    isPagamentoExterno ? 'secondary' : 'default'
-                  }
-                >
-                  {origem}
-                </Chip>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-foreground/80">{origem}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Próx. Vencimento:</span>
@@ -365,7 +386,7 @@ export default function AssinanteDetalhesModal({
 
           {/* Seção de Opções Asaas */}
           {isPagamentoAsaas && (
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+            <div className="rounded-xl p-4 border border-white/20 bg-white/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   <CloudIcon className="w-4 h-4 text-blue-600" />
@@ -381,7 +402,7 @@ export default function AssinanteDetalhesModal({
 
           {/* Seção de Pagamentos Externos */}
           {isPagamentoExterno && (
-            <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+            <div className="rounded-xl p-4 border border-white/20 bg-white/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                   <CurrencyDollarIcon className="w-4 h-4 text-orange-600" />
@@ -416,19 +437,18 @@ export default function AssinanteDetalhesModal({
             </div>
           )}
 
-        </ModalBody>
+        </div>
 
-        <ModalFooter className="border-t bg-gray-50 p-6">
+        <DialogFooter>
           <div className="flex items-center justify-between w-full">
             <div className="text-sm text-gray-600">
               <span>Assinatura criada em: {formatarData(createdAt)}</span>
             </div>
-            <Button variant="light" onPress={onClose}>
-              Fechar
-            </Button>
+            <Button variant="secondary" onClick={onClose}>Fechar</Button>
           </div>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 } 
+

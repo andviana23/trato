@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from 'react';
-import { Card, CardBody, Progress, Chip } from '@nextui-org/react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { 
   LineChart, 
   Line, 
@@ -67,10 +68,7 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
 
   useEffect(() => {
-    fetchTimelineData();
-  }, [selectedYear]);
-
-  const fetchTimelineData = async () => {
+    const fetchTimelineData = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -83,12 +81,14 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
       } else {
         setError(result.error || 'Erro ao carregar dados');
       }
-    } catch (error) {
+    } catch {
       setError('Erro ao conectar com o servidor');
     } finally {
       setLoading(false);
     }
-  };
+    };
+    fetchTimelineData();
+  }, [selectedYear]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -104,14 +104,14 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
   if (loading) {
     return (
       <Card>
-        <CardBody className="p-6">
+        <CardContent className="p-6">
           <div className="h-[400px] flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-500">Carregando linha do tempo...</p>
             </div>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
     );
   }
@@ -119,7 +119,7 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
   if (error) {
     return (
       <Card>
-        <CardBody className="p-6">
+        <CardContent className="p-6">
           <div className="h-[400px] flex items-center justify-center">
             <div className="text-center">
               <p className="text-red-500 mb-4">Erro: {error}</p>
@@ -131,7 +131,7 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </button>
             </div>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
     );
   }
@@ -155,7 +155,7 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
       {/* Resumo Anual */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <CardBody className="p-4">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm">Receita Total</p>
@@ -163,11 +163,11 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </div>
               <CurrencyDollarIcon className="w-8 h-8 text-blue-200" />
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <CardBody className="p-4">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">Média Mensal</p>
@@ -175,11 +175,11 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </div>
               <ArrowTrendingUpIcon className="w-8 h-8 text-green-200" />
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardBody className="p-4">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm">Total Pagamentos</p>
@@ -187,11 +187,11 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </div>
               <CalendarIcon className="w-8 h-8 text-purple-200" />
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
-          <CardBody className="p-4">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-red-100 text-sm">Inadimplentes</p>
@@ -199,14 +199,14 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </div>
               <ArrowTrendingDownIcon className="w-8 h-8 text-red-200" />
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
       </div>
 
       {/* Melhor e Pior Mês */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-green-200 bg-green-50">
-          <CardBody className="p-4">
+          <CardContent className="p-4">
             <h3 className="font-semibold text-green-800 mb-2">Melhor Mês</h3>
             <div className="flex items-center justify-between">
               <div>
@@ -220,11 +220,11 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </div>
               <ArrowTrendingUpIcon className="w-8 h-8 text-green-600" />
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
 
         <Card className="border-red-200 bg-red-50">
-          <CardBody className="p-4">
+          <CardContent className="p-4">
             <h3 className="font-semibold text-red-800 mb-2">Pior Mês</h3>
             <div className="flex items-center justify-between">
               <div>
@@ -238,13 +238,13 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </div>
               <ArrowTrendingDownIcon className="w-8 h-8 text-red-600" />
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
       </div>
 
       {/* Gráfico */}
       <Card>
-        <CardBody className="p-6">
+        <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold">Linha do Tempo - {selectedYear}</h3>
             <div className="flex space-x-2">
@@ -316,12 +316,12 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               )}
             </ResponsiveContainer>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
       {/* Detalhamento Mensal */}
       <Card>
-        <CardBody className="p-6">
+        <CardContent className="p-6">
           <h3 className="text-lg font-semibold mb-4">Detalhamento Mensal</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -342,12 +342,7 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
                     <td className="py-2 px-4 text-right">{formatCurrency(item.revenue)}</td>
                     <td className="py-2 px-4 text-right">{formatCurrency(item.goal)}</td>
                     <td className="py-2 px-4 text-right">
-                      <Chip
-                        color={item.goalAchievement >= 100 ? 'success' : item.goalAchievement >= 80 ? 'warning' : 'danger'}
-                        size="sm"
-                      >
-                        {formatPercentage(item.goalAchievement)}
-                      </Chip>
+                      <Badge variant="secondary">{formatPercentage(item.goalAchievement)}</Badge>
                     </td>
                     <td className="py-2 px-4 text-right">{item.paymentsCount}</td>
                     <td className="py-2 px-4 text-right">
@@ -360,8 +355,10 @@ export default function RevenueTimeline({ selectedYear }: RevenueTimelineProps) 
               </tbody>
             </table>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
     </div>
   );
 } 
+
+

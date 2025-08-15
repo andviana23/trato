@@ -170,6 +170,10 @@ CREATE TABLE queue (
    - Deve permitir ativar/desativar profissionais
    - Deve permitir reorganizar (apenas admin)
 
+## 🔍 Design System
+
+- O sistema utiliza exclusivamente Chakra UI. Quaisquer referências a HeroUI foram removidas.
+
 ## 🔍 Troubleshooting
 
 ### Se ainda houver loop infinito:

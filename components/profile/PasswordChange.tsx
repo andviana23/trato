@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Input, Button } from "@nextui-org/react";
+﻿import React, { useState } from "react";
+import { Input, Button } from "@chakra-ui/react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -53,44 +53,50 @@ const PasswordChange: React.FC<PasswordChangeProps> = ({ user }) => {
         name="currentPassword"
         control={control}
         render={({ field }) => (
-          <Input
-            {...field}
-            label="Senha atual"
-            type="password"
-            isInvalid={!!errors.currentPassword}
-            errorMessage={errors.currentPassword?.message}
-          />
+          <div>
+            <label className="block text-xs mb-1">Senha atual</label>
+            <Input
+              {...field}
+              type="password"
+              aria-invalid={!!errors.currentPassword}
+            />
+            {errors.currentPassword?.message && <div className="text-red-500 text-xs mt-1">{errors.currentPassword.message}</div>}
+          </div>
         )}
       />
       <Controller
         name="newPassword"
         control={control}
         render={({ field }) => (
-          <Input
-            {...field}
-            label="Nova senha"
-            type="password"
-            isInvalid={!!errors.newPassword}
-            errorMessage={errors.newPassword?.message}
-          />
+          <div>
+            <label className="block text-xs mb-1">Nova senha</label>
+            <Input
+              {...field}
+              type="password"
+              aria-invalid={!!errors.newPassword}
+            />
+            {errors.newPassword?.message && <div className="text-red-500 text-xs mt-1">{errors.newPassword.message}</div>}
+          </div>
         )}
       />
       <Controller
         name="confirmPassword"
         control={control}
         render={({ field }) => (
-          <Input
-            {...field}
-            label="Confirmar nova senha"
-            type="password"
-            isInvalid={!!errors.confirmPassword}
-            errorMessage={errors.confirmPassword?.message}
-          />
+          <div>
+            <label className="block text-xs mb-1">Confirmar nova senha</label>
+            <Input
+              {...field}
+              type="password"
+              aria-invalid={!!errors.confirmPassword}
+            />
+            {errors.confirmPassword?.message && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</div>}
+          </div>
         )}
       />
       {error && <div className="text-red-500 text-xs">{error}</div>}
       {success && <div className="text-green-600 text-xs">Senha alterada com sucesso!</div>}
-      <Button type="submit" color="primary" isLoading={loading} disabled={loading} className="mt-2 w-full">
+      <Button type="submit" color="primary" loading={loading} disabled={loading} className="mt-2 w-full">
         Alterar Senha
       </Button>
     </form>
@@ -98,3 +104,4 @@ const PasswordChange: React.FC<PasswordChangeProps> = ({ user }) => {
 };
 
 export default PasswordChange; 
+

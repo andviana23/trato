@@ -1,8 +1,11 @@
-"use client"
+﻿"use client"
 
 import { useState } from 'react'
-import { Card, CardBody, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@nextui-org/react'
-import { PencilIcon, CheckIcon, XMarkIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 import { DashboardData } from '@/lib/types/dashboard'
 import { toast } from 'sonner'
 
@@ -13,7 +16,7 @@ interface Props {
 }
 
 export default function MetaCard({ data, loading, onUpdate }: Props) {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure()
+  const [isOpen, setOpen] = useState(false)
   const [goalAmount, setGoalAmount] = useState('')
   const [description, setDescription] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -85,7 +88,7 @@ export default function MetaCard({ data, loading, onUpdate }: Props) {
   return (
     <>
       <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-        <CardBody className="p-6">
+        <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-blue-100 text-sm font-medium">Meta Mensal</p>
@@ -100,69 +103,41 @@ export default function MetaCard({ data, loading, onUpdate }: Props) {
               <div className="bg-blue-400 p-3 rounded-lg">
                 <ArrowTrendingUpIcon className="w-6 h-6" />
               </div>
-              <Button
-                size="sm"
-                variant="light"
-                className="text-white"
-                startContent={<PencilIcon className="w-4 h-4" />}
-                onPress={onOpen}
-              >
+              <Button size="sm" variant="secondary" className="text-white" onClick={() => setOpen(true)}>
                 Editar
               </Button>
             </div>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                Definir Meta Mensal
-              </ModalHeader>
-              <ModalBody>
-                <Input
-                  label="Valor da Meta"
-                  placeholder="50000.00"
-                  type="number"
-                  step="0.01"
-                  value={goalAmount}
-                  onValueChange={setGoalAmount}
-                  startContent={
-                    <div className="pointer-events-none flex items-center">
-                      <span className="text-default-400 text-small">R$</span>
-                    </div>
-                  }
-                />
-                <Input
-                  label="Descrição (opcional)"
-                  placeholder="Meta Janeiro 2025"
-                  value={description}
-                  onValueChange={setDescription}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button 
-                  color="danger" 
-                  variant="light" 
-                  onPress={handleDelete}
-                  isLoading={isSaving}
-                >
-                  Remover Meta
-                </Button>
-                <Button 
-                  color="primary" 
-                  onPress={handleSave}
-                  isLoading={isSaving}
-                >
-                  Salvar Meta
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <Dialog open={isOpen} onOpenChange={(o)=>!o&&setOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Definir Meta Mensal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Valor da Meta (ex.: 50000.00)"
+              type="number"
+              step="0.01"
+              value={goalAmount}
+              onChange={(e)=>setGoalAmount(e.target.value)}
+            />
+            <Input
+              placeholder="Descrição (opcional)"
+              value={description}
+              onChange={(e)=>setDescription(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="destructive" onClick={handleDelete} disabled={isSaving}>Remover Meta</Button>
+            <Button onClick={handleSave} disabled={isSaving}>Salvar Meta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 } 
+
+

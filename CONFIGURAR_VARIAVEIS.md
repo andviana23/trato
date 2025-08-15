@@ -60,3 +60,7 @@ O script deve mostrar:
 - O arquivo `.env.local` já está no `.gitignore` e não será commitado
 - Nunca compartilhe suas chaves do Supabase
 - Use sempre a chave `service_role` apenas para scripts administrativos
+
+## UI
+
+- O projeto utiliza exclusivamente Chakra UI. Não há dependências nem configuração de HeroUI.

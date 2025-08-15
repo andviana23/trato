@@ -1,0 +1,129 @@
+﻿"use client";
+
+import dayjs from "dayjs";
+import { Profissional, Evento } from "../types";
+import { INICIO_DIA, FIM_DIA, SLOT_MIN, PX_POR_MIN, totalMinutosDia } from "../utils/time";
+import SchedulerColumn from "./SchedulerColumn";
+import { createClient } from "@/lib/supabase/client";
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Input, Select, SelectItem } from "@/components/ui/chakra-adapters";
+import * as React from "react";
+
+type Props = {
+  data: string; // YYYY-MM-DD
+  profissionais: Profissional[];
+  eventos: Evento[];
+};
+
+export default function DailyScheduler({ data, profissionais, eventos }: Props) {
+  const totalMin = totalMinutosDia();
+
+  // Eventos por profissional
+  const eventosByPro = profissionais.reduce<Record<string, Evento[]>>((acc, p) => {
+    acc[p.id] = [];
+    return acc;
+  }, {});
+  for (const ev of eventos) {
+    if (eventosByPro[ev.proId]) eventosByPro[ev.proId].push(ev);
+  }
+
+  // Estado modal
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [modalIso, setModalIso] = React.useState<string | null>(null);
+  const [modalPro, setModalPro] = React.useState<string | null>(null);
+  const [cliente, setCliente] = React.useState("");
+  const [servico, setServico] = React.useState("");
+  const [duracao, setDuracao] = React.useState(30);
+  const supabase = createClient();
+
+  const handleSlotClick = (iso: string, proId: string) => {
+    setModalIso(iso);
+    setModalPro(proId);
+    setModalOpen(true);
+  };
+
+  const handleSalvar = async () => {
+    try {
+      if (!modalIso || !modalPro) return;
+      const inicio = dayjs(modalIso);
+      const fim = inicio.add(duracao, "minute");
+      // TODO: substituir por createAgendamento + tabela por unidade
+      console.log("Salvar agendamento:", { modalPro, inicio: inicio.toISOString(), fim: fim.toISOString(), cliente, servico });
+      setModalOpen(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      {/* Header principal */}
+      <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-white">
+        <div className="text-sm text-gray-700 font-medium">{dayjs(data).format("dddd, DD [de] MMMM YYYY")}</div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div>Início: {INICIO_DIA}</div>
+          <div>Fim: {FIM_DIA}</div>
+          <div>Slot: {SLOT_MIN}m</div>
+        </div>
+      </div>
+
+      {/* Grade */}
+      <div className="grid" style={{ gridTemplateColumns: `120px repeat(${profissionais.length}, 1fr)` }}>
+        {/* Régua de horários */}
+        <div className="relative bg-white border-r border-gray-200">
+          <div className="sticky top-0 z-10 px-2 py-2 text-sm font-semibold bg-white border-b border-gray-200">Horários</div>
+          <div className="relative" style={{ height: totalMin * PX_POR_MIN }}>
+            {Array.from({ length: Math.ceil(totalMin / SLOT_MIN) }).map((_, i) => {
+              const min = i * SLOT_MIN;
+              const isHoraCheia = min % 60 === 0;
+              const top = min * PX_POR_MIN;
+              const label = dayjs().startOf("day").add(5, "hour").add(min, "minute").format("HH:mm");
+              return (
+                <div key={i} className="absolute left-0 right-0" style={{ top }}>
+                  <div className={isHoraCheia ? "border-t border-gray-300" : "border-t border-gray-100"} />
+                  {isHoraCheia && <div className="absolute -top-2 left-2 text-[11px] text-gray-500 bg-white px-1">{label}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Colunas por profissional */}
+        {profissionais.map((pro) => (
+          <SchedulerColumn key={pro.id} profissionalId={pro.id} profissionalNome={pro.nome} eventos={eventosByPro[pro.id] || []} onSlotClick={handleSlotClick} />
+        ))}
+      </div>
+
+      {/* Modal novo agendamento */}
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} backdrop="blur">
+        <ModalContent>
+          <ModalHeader>Novo Agendamento</ModalHeader>
+          <ModalBody>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input label="Data/Hora" value={modalIso ? dayjs(modalIso).format("DD/MM/YYYY HH:mm") : ""} isReadOnly />
+              <Select label="Profissional" selectedKeys={modalPro ? [modalPro] : []} onChange={(e) => setModalPro(e.target.value)}>
+                {profissionais.map((p) => (
+                  <SelectItem value={p.id}>{p.nome}</SelectItem>
+                ))}
+              </Select>
+              <Input label="Cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} />
+              <Input label="Serviço" value={servico} onChange={(e) => setServico(e.target.value)} />
+              <Select label="Duração" value={String(duracao)} onChange={(e) => setDuracao(Number(e.target.value))}>
+                {[15, 30, 45, 60, 90].map((m) => (
+                  <SelectItem value={String(m)}>{m} min</SelectItem>
+                ))}
+              </Select>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setModalOpen(false)}>Cancelar</Button>
+            <Button color="primary" onPress={handleSalvar}>Salvar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+}
+
+
+
+

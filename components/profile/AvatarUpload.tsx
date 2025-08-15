@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from "react";
-import { Avatar, Button } from "@nextui-org/react";
+﻿import React, { useRef, useState, useEffect } from "react";
+import { chakra, Button } from "@chakra-ui/react";
 
 interface AvatarUploadProps {
   value?: File;
@@ -53,10 +53,12 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl
       tabIndex={0}
       aria-label="Upload de avatar"
     >
-      <Avatar
+      <chakra.img
         src={preview || DEFAULT_AVATAR}
-        name="Avatar"
-        size="lg"
+        alt="Avatar"
+        width="80px"
+        height="80px"
+        borderRadius="full"
         className="ring-2 ring-primary border-2 border-white shadow-md"
       />
       <input
@@ -71,10 +73,11 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ value, onChange, currentUrl
           }
         }}
       />
-      <Button size="sm" variant="bordered" className="mt-1">Trocar foto</Button>
+      <Button size="sm" variant="outline" className="mt-1">Trocar foto</Button>
       <span className="text-xs text-gray-400">PNG, JPG, JPEG até 2MB</span>
     </div>
   );
 };
 
 export default AvatarUpload; 
+

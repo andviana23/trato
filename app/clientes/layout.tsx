@@ -1,30 +1,30 @@
 "use client";
-import { useState, ReactNode } from "react";
-import Sidebar from "@/components/layout/Sidebar";
-import MainContainer from "@/components/layout/MainContainer";
 
-interface ClientesLayoutProps {
-  children: ReactNode;
-}
+import { ReactNode, useEffect } from "react";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import AppShell from "@/components/layout/AppShell";
 
-export default function ClientesLayout({ children }: ClientesLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export default function ClientesLayout({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+  useEffect(() => {
+    if (!loading && !user) router.push("/auth/login");
+  }, [loading, user, router]);
 
-  return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-800">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={isCollapsed} onToggle={toggleSidebar} />
-      {/* Conteúdo principal */}
-      <div className="flex-1 flex flex-col">
-        {/* Main Container */}
-        <MainContainer isCollapsed={isCollapsed}>
-          {children}
-        </MainContainer>
+  if (loading) {
+    return (
+      <div className="min-h-[100vh] grid place-items-center">
+        <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="animate-spin rounded-full border-2 border-muted w-5 h-5 border-t-transparent" />
+          Carregando...
+        </div>
       </div>
-    </div>
-  );
-} 
+    );
+  }
+
+  if (!user) return null;
+
+  return <AppShell>{children}</AppShell>;
+}

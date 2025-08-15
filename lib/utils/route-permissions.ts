@@ -33,6 +33,9 @@ export const protectedRoutes: RoutePermission[] = [
   
   // Rotas de agenda
   { path: '/agenda', roles: ['admin', 'recepcionista', 'barbershop_owner', 'professional'] },
+
+  // Rota mobile para o barbeiro (acesso do profissional)
+  { path: '/profissional', roles: ['professional', 'admin', 'barbershop_owner'] },
   
   // Rotas de configurações
   { path: '/configuracoes', roles: ['admin', 'barbershop_owner'] },

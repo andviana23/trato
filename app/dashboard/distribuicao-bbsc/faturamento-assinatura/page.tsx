@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Button, Input } from "@/components/ui/chakra-adapters";
 import { CurrencyDollarIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useFaturamentoAssinatura, Lancamento } from './useFaturamentoAssinatura';
 
@@ -46,33 +46,33 @@ export default function FaturamentoAssinaturaPage() {
       {/* Cards de Faturamento e Comissão */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Card Faturamento Total */}
-        <Card className="shadow-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
-          <CardHeader className="flex items-center gap-3">
+        <Card.Root className="shadow-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
+          <Card.Header className="flex items-center gap-3">
             <CurrencyDollarIcon className="h-7 w-7 text-amber-500" />
             <span className="text-lg font-semibold text-amber-800 dark:text-amber-300">
               Faturamento Total do Mês
             </span>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Body>
             <span className="text-3xl font-bold text-amber-700 dark:text-amber-400">
               R$ {faturamentoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
         {/* Card Comissão */}
-        <Card className="shadow-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
-          <CardHeader className="flex items-center gap-3">
+        <Card.Root className="shadow-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
+          <Card.Header className="flex items-center gap-3">
             <CurrencyDollarIcon className="h-7 w-7 text-orange-500" />
             <span className="text-lg font-semibold text-orange-800 dark:text-orange-300">
               Comissão
             </span>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Body>
             <span className="text-3xl font-bold text-orange-700 dark:text-orange-400">
               R$ {comissao.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
-          </CardBody>
-        </Card>
+          </Card.Body>
+        </Card.Root>
       </div>
 
       {/* Formulário de novo faturamento */}
@@ -81,36 +81,22 @@ export default function FaturamentoAssinaturaPage() {
         className="flex flex-col md:flex-row gap-4 items-stretch md:items-end mb-8"
       >
         <div className="flex-1">
-          <Input
-            type="number"
-            label="Valor"
-            placeholder="0,00"
-            value={valor}
-            onChange={e => setValor(e.target.value)}
-            min={0}
-            step={0.01}
-            required
-            startContent={<CurrencyDollarIcon className="w-5 h-5 text-amber-400" />}
-          />
+          <div>
+            <label className="block text-xs mb-1">Valor</label>
+            <Input type="number" placeholder="0,00" value={valor} onChange={e=>setValor(e.target.value)} min={0} step={0.01} required />
+          </div>
         </div>
         <div className="flex-1">
-          <Input
-            type="text"
-            label="Descrição"
-            placeholder="Ex: Corte, Barba, etc."
-            value={descricao}
-            onChange={e => setDescricao(e.target.value)}
-            required
-          />
+          <div>
+            <label className="block text-xs mb-1">Descrição</label>
+            <Input type="text" placeholder="Ex: Corte, Barba, etc." value={descricao} onChange={e=>setDescricao(e.target.value)} required />
+          </div>
         </div>
         <div className="flex-1">
-          <Input
-            type="date"
-            label="Data"
-            value={data}
-            onChange={e => setData(e.target.value)}
-            required
-          />
+          <div>
+            <label className="block text-xs mb-1">Data</label>
+            <Input type="date" value={data} onChange={e=>setData(e.target.value)} required />
+          </div>
         </div>
         <Button
           type="submit"
@@ -123,13 +109,13 @@ export default function FaturamentoAssinaturaPage() {
       </form>
 
       {/* Lista de lançamentos do mês */}
-      <Card className="shadow border border-amber-200">
-        <CardHeader className="bg-amber-50 dark:bg-amber-900">
+      <Card.Root className="shadow border border-amber-200">
+        <Card.Header className="bg-amber-50 dark:bg-amber-900">
           <span className="text-lg font-semibold text-amber-800 dark:text-amber-300">
             Lançamentos do Mês
           </span>
-        </CardHeader>
-        <CardBody>
+        </Card.Header>
+        <Card.Body>
           {loading ? (
             <div className="text-center text-amber-500">Carregando...</div>
           ) : erro ? (
@@ -169,8 +155,13 @@ export default function FaturamentoAssinaturaPage() {
               </table>
             </div>
           )}
-        </CardBody>
-      </Card>
+        </Card.Body>
+      </Card.Root>
     </>
   );
 } 
+
+
+
+
+

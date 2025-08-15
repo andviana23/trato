@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
-import { Input, Button } from "@nextui-org/react";
+import { Input, Button } from "@chakra-ui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
 interface FiltroClientes {
@@ -47,3 +47,4 @@ export default function FiltrosClientes({
     </div>
   );
 } 
+
