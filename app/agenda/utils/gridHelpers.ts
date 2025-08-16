@@ -13,8 +13,8 @@ export function getSlotHeightPx(slotHeightPx?: number, slotMinutes: number = 10)
     if (!isNaN(parsed)) return parsed;
   }
   
-  // Default fallback
-  return 14;
+  // Default fallback para 31px (10 minutos)
+  return 31;
 }
 
 /**

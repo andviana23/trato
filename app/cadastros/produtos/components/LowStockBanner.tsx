@@ -21,3 +21,13 @@ export function LowStockBanner({ items, onExport }: { items: { id: string; nome:
 
 
 
+
+
+
+
+
+
+
+
+
+

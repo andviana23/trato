@@ -2,7 +2,7 @@
 
 ## 🎯 **Visão Arquitetural**
 
-O sistema Trato de Barbados segue uma arquitetura **serverless híbrida** baseada em Next.js com Supabase como Backend-as-a-Service, utilizando padrões modernos de desenvolvimento React.
+O sistema Trato de Barbados segue uma arquitetura **serverless híbrida** baseada em Next.js com Supabase como Backend-as-a-Service, utilizando padrões modernos de desenvolvimento React e um sistema robusto de filas assíncronas com BullMQ.
 
 ---
 
@@ -22,6 +22,8 @@ C4Context
     System_Ext(asaas, "ASAAS", "Gateway de pagamentos")
     System_Ext(whatsapp, "WhatsApp API", "Notificações")
     System_Ext(supabase, "Supabase", "Backend-as-a-Service")
+    System_Ext(redis, "Redis", "Message Broker para filas")
+    System_Ext(google, "Google Calendar", "Sincronização de agenda")
 
     Rel(cliente, trato, "Agenda serviços", "HTTPS")
     Rel(barbeiro, trato, "Consulta agenda e metas", "HTTPS")
@@ -31,8 +33,11 @@ C4Context
     Rel(trato, asaas, "Processa pagamentos", "REST API")
     Rel(trato, whatsapp, "Envia notificações", "REST API")
     Rel(trato, supabase, "Persiste dados", "PostgREST")
+    Rel(trato, redis, "Gerencia filas assíncronas", "Redis Protocol")
+    Rel(trato, google, "Sincroniza agenda", "REST API")
 
     Rel(asaas, trato, "Webhooks pagamento", "HTTPS")
+    Rel(redis, trato, "Processa jobs", "Redis Protocol")
 ```
 
 ---
@@ -49,24 +54,36 @@ C4Container
         Container(web, "Web Application", "Next.js 15, React 19", "Interface do usuário")
         Container(api, "API Routes", "Next.js Server Actions", "Lógica de negócio")
         Container(auth, "Authentication", "Supabase Auth", "Autenticação e autorização")
+        Container(queues, "Queue System", "BullMQ + Redis", "Processamento assíncrono")
+        Container(dashboard, "Queue Dashboard", "React Components", "Monitoramento de filas")
     }
 
     ContainerDb(db, "Database", "PostgreSQL", "Dados do sistema")
     Container(storage, "File Storage", "Supabase Storage", "Arquivos e imagens")
+    ContainerDb(redis, "Redis", "Redis", "Message broker e cache")
 
     System_Ext(asaas, "ASAAS API", "Pagamentos e assinaturas")
     System_Ext(notifications, "WhatsApp/SMS", "Serviços de notificação")
+    System_Ext(google, "Google Calendar", "Sincronização de agenda")
 
     Rel(users, web, "Usa", "HTTPS")
     Rel(web, api, "Chama", "HTTP/JSON")
     Rel(web, auth, "Autentica", "JWT")
+    Rel(web, dashboard, "Monitora", "React Components")
 
     Rel(api, db, "Lê/Escreve", "PostgREST")
     Rel(api, storage, "Upload/Download", "REST API")
     Rel(api, asaas, "Integra", "REST API")
     Rel(api, notifications, "Envia", "REST API")
+    Rel(api, queues, "Adiciona jobs", "BullMQ API")
+    Rel(api, google, "Sincroniza", "REST API")
+
+    Rel(queues, redis, "Persiste jobs", "Redis Protocol")
+    Rel(queues, notifications, "Processa", "REST API")
+    Rel(queues, google, "Sincroniza", "REST API")
 
     Rel(asaas, api, "Webhooks", "HTTPS")
+    Rel(redis, queues, "Processa", "Redis Protocol")
 ```
 
 ---
@@ -85,431 +102,324 @@ C4Component
         Component(charts, "Charts", "Chart.js + Recharts", "Gráficos e relatórios")
         Component(contexts, "Contexts", "React Context", "Estado global")
         Component(hooks, "Custom Hooks", "React Hooks", "Lógica reutilizável")
+        Component(queueDashboard, "Queue Dashboard", "React + BullMQ Hooks", "Monitoramento de filas")
     }
 
     ContainerDb(db, "Supabase", "PostgreSQL + Auth")
+    ContainerDb(redis, "Redis", "Message Broker")
 
     Rel(pages, components, "Renderiza")
     Rel(pages, agenda, "Usa")
     Rel(pages, forms, "Inclui")
     Rel(pages, charts, "Exibe")
+    Rel(pages, queueDashboard, "Monitora")
 
     Rel(components, contexts, "Consome")
     Rel(agenda, hooks, "Usa")
     Rel(forms, hooks, "Usa")
+    Rel(queueDashboard, hooks, "Usa")
 
-    Rel(hooks, db, "Busca dados")
-    Rel(forms, db, "Persiste")
+    Rel(hooks, redis, "Monitora", "BullMQ API")
 ```
 
 ---
 
-## 🔧 **Camadas da Aplicação**
-
-### **1. Apresentação (Frontend)**
-
-```
-📁 app/                    # Next.js App Router
-├── 📁 (auth)/            # Grupo de rotas de autenticação
-├── 📁 agenda/            # Sistema de agendamentos
-├── 📁 dashboard/         # Painéis administrativos
-├── 📁 clientes/          # Gestão de clientes
-├── 📁 assinaturas/       # Gestão de assinaturas
-└── 📁 api/              # API Routes (Backend)
-
-📁 components/            # Componentes reutilizáveis
-├── 📁 ui/               # Componentes base (Chakra UI)
-├── 📁 auth/             # Componentes de autenticação
-├── 📁 layout/           # Layouts e navegação
-└── 📁 forms/            # Formulários específicos
-```
-
-### **2. Lógica de Negócio (API Routes + Server Actions)**
-
-```
-📁 app/api/              # API Routes
-├── 📁 auth/             # Autenticação
-├── 📁 appointments/     # Agendamentos
-├── 📁 asaas/           # Integração ASAAS
-├── 📁 dashboard/       # Dados de dashboard
-└── 📁 webhooks/        # Webhooks externos
-
-📁 lib/                  # Lógica compartilhada
-├── 📁 services/        # Serviços de integração
-├── 📁 supabase/        # Cliente Supabase
-└── 📁 utils/           # Utilitários
-```
-
-### **3. Dados (Supabase)**
-
-```
-🗄️ PostgreSQL           # Banco principal
-├── 📊 Tables           # Tabelas do sistema
-├── 🔒 RLS Policies     # Row Level Security
-├── 🔍 Views            # Views materializadas
-└── ⚡ Functions        # Stored procedures
-
-🔐 Supabase Auth        # Sistema de autenticação
-├── 👤 Users            # Usuários do sistema
-├── 🎭 Roles            # Perfis e permissões
-└── 🔑 Sessions         # Sessões ativas
-```
-
----
-
-## 🧩 **Padrões Arquiteturais**
-
-### **1. Multi-tenancy com RLS**
-
-```sql
--- Exemplo de política RLS
-CREATE POLICY "Users can only see their unit data"
-ON appointments FOR SELECT
-USING (unidade_id = current_unidade());
-
--- Função para unidade atual
-CREATE OR REPLACE FUNCTION current_unidade()
-RETURNS UUID AS $$
-BEGIN
-  RETURN (current_setting('app.current_unidade', true))::UUID;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### **2. Component-Driven Development**
-
-```typescript
-// Estrutura padrão de componente
-interface ComponentProps {
-  // Props tipadas com TypeScript
-}
-
-export function Component({ prop }: ComponentProps) {
-  // Hooks na ordem: estado, efeitos, callbacks
-  const [state, setState] = useState();
-
-  // Lógica de negócio extraída em hooks customizados
-  const { data, loading } = useCustomHook();
-
-  // JSX limpo com Chakra UI
-  return <ChakraComponent>{/* Conteúdo */}</ChakraComponent>;
-}
-```
-
-### **3. Server Actions Pattern**
-
-```typescript
-// app/actions/appointments.ts
-"use server";
-
-export async function createAppointment(data: CreateAppointmentData) {
-  const supabase = await createClient();
-
-  // Validação
-  const validated = appointmentSchema.parse(data);
-
-  // Lógica de negócio
-  const result = await supabase.from("appointments").insert(validated);
-
-  // Notificações
-  await scheduleNotifications(result.data.id);
-
-  return result;
-}
-```
-
-### **4. State Management**
-
-```typescript
-// Context + Reducer pattern
-const AppContext = createContext();
-
-function AppProvider({ children }) {
-  const [state, dispatch] = useReducer(appReducer, initialState);
-
-  return (
-    <AppContext.Provider value={{ state, dispatch }}>
-      {children}
-    </AppContext.Provider>
-  );
-}
-
-// Custom hooks para encapsular lógica
-function useAppointments() {
-  const { state, dispatch } = useContext(AppContext);
-
-  const createAppointment = useCallback(
-    async (data) => {
-      dispatch({ type: "CREATE_APPOINTMENT_START" });
-      // ... lógica
-    },
-    [dispatch]
-  );
-
-  return { appointments: state.appointments, createAppointment };
-}
-```
-
----
-
-## 🎨 **Design System Arquitetura**
-
-### **Token-based Design**
-
-```typescript
-// theme/tokens.ts
-export const tokens = {
-  colors: {
-    brand: {
-      50: "#f0f9ff",
-      500: "#3b82f6",
-      900: "#1e3a8a",
-    },
-  },
-  space: {
-    1: "0.25rem",
-    4: "1rem",
-    // ...
-  },
-};
-
-// Uso nos componentes
-<Box p={4} bg="brand.50">
-  <Text color="brand.900">Content</Text>
-</Box>;
-```
-
-### **Component Composition**
-
-```typescript
-// Composição vs herança
-function Card({ children, ...props }) {
-  return <ChakraCard {...props}>{children}</ChakraCard>;
-}
-
-function CardHeader({ children }) {
-  return <CardBody>{children}</CardBody>;
-}
-
-// Uso
-<Card>
-  <CardHeader>Title</CardHeader>
-  <CardBody>Content</CardBody>
-</Card>;
-```
-
----
-
-## 🔄 **Fluxo de Dados**
-
-### **Unidirecional com Server State**
+## 📐 **Diagrama C4 - Nível 3 (Component) - Backend**
 
 ```mermaid
-flowchart TD
-    A[User Action] --> B[Component Event]
-    B --> C[Server Action]
-    C --> D[Supabase Operation]
-    D --> E[Database Update]
-    E --> F[Realtime Notification]
-    F --> G[Component Re-render]
+C4Component
+    title Component Diagram - Backend
 
-    C --> H[Client State Update]
-    H --> G
-```
-
-### **Error Boundaries**
-
-```typescript
-class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
-    // Log to monitoring service
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return <ErrorFallback />;
+    Container_Boundary(api, "API Layer") {
+        Component(serverActions, "Server Actions", "Next.js", "Lógica de negócio")
+        Component(validators, "Validators", "Zod", "Validação de dados")
+        Component(errorHandler, "Error Handler", "Custom", "Tratamento de erros")
+        Component(services, "Services", "Business Logic", "Camada de serviços")
+        Component(queueService, "Queue Service", "BullMQ", "Gestão de filas")
+        Component(workers, "Queue Workers", "BullMQ", "Processamento de jobs")
     }
 
-    return this.props.children;
+    ContainerDb(db, "Supabase", "PostgreSQL")
+    ContainerDb(redis, "Redis", "Message Broker")
+    System_Ext(asaas, "ASAAS", "Pagamentos")
+    System_Ext(whatsapp, "WhatsApp", "Notificações")
+
+    Rel(serverActions, validators, "Valida")
+    Rel(serverActions, errorHandler, "Trata erros")
+    Rel(serverActions, services, "Chama")
+    Rel(serverActions, queueService, "Adiciona jobs")
+
+    Rel(services, db, "Persiste")
+    Rel(services, asaas, "Integra")
+    Rel(services, whatsapp, "Notifica")
+
+    Rel(queueService, redis, "Persiste jobs")
+    Rel(workers, redis, "Consome jobs")
+    Rel(workers, whatsapp, "Processa")
+    Rel(workers, asaas, "Sincroniza")
+```
+
+---
+
+## 🏗️ **Arquitetura de Camadas**
+
+### **1. Camada de Apresentação (Presentation Layer)**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (Next.js)                      │
+├─────────────────────────────────────────────────────────────┤
+│ • Pages (App Router)                                       │
+│ • Components (Chakra UI + React)                           │
+│ • Hooks Customizados                                       │
+│ • Contexts (Estado Global)                                 │
+│ • Queue Dashboard (Monitoramento)                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **2. Camada de API (API Layer)**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Server Actions                           │
+├─────────────────────────────────────────────────────────────┤
+│ • Controllers de Negócio                                   │
+│ • Validação com Zod                                        │
+│ • Tratamento de Erros                                      │
+│ • Autenticação/Autorização                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **3. Camada de Serviços (Service Layer)**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Business Services                       │
+├─────────────────────────────────────────────────────────────┤
+│ • AppointmentService (Agendamentos)                       │
+│ • PaymentService (Pagamentos ASAAS)                       │
+│ • NotificationService (Notificações)                      │
+│ • ReportService (Relatórios)                              │
+│ • QueueService (Sistema de Filas)                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **4. Camada de Dados (Data Layer)**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Data Access                          │
+├─────────────────────────────────────────────────────────────┤
+│ • Supabase Client (PostgreSQL)                            │
+│ • Redis Client (Message Broker)                           │
+│ • Storage Client (Arquivos)                               │
+│ • Queue Client (BullMQ)                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 **Sistema de Filas (Queue System)**
+
+### **Arquitetura das Filas**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Queue System                            │
+├─────────────────────────────────────────────────────────────┤
+│ • Notification Queue (Alta Prioridade)                     │
+│ • Report Queue (Média Prioridade)                          │
+│ • Cleanup Queue (Baixa Prioridade)                         │
+│ • Sync Queue (Média Prioridade)                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Fluxo de Processamento**
+
+```
+1. Job Creation → 2. Queue Storage → 3. Worker Processing → 4. Result Storage
+     ↓                    ↓                    ↓                    ↓
+Server Action         Redis (BullMQ)      Queue Workers        Database/Logs
+```
+
+### **Componentes das Filas**
+
+- **Queues**: Instâncias BullMQ para diferentes tipos de tarefas
+- **Workers**: Processadores de jobs com retry automático
+- **Scheduler**: Agendamento de tarefas recorrentes
+- **Dashboard**: Interface de monitoramento em tempo real
+- **Hooks**: Integração React com o sistema de filas
+
+---
+
+## 🔐 **Segurança e Autenticação**
+
+### **Row Level Security (RLS)**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    RLS Policies                           │
+├─────────────────────────────────────────────────────────────┤
+│ • users: can_read_own_profile()                           │
+│ • appointments: can_manage_own_unit()                      │
+│ • payments: can_access_own_unit()                          │
+│ • reports: can_view_own_unit()                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Autenticação Multi-nível**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Auth Levels                               │
+├─────────────────────────────────────────────────────────────┤
+│ • Public Routes (Landing, Login)                          │
+│ • Protected Routes (Dashboard, Agenda)                     │
+│ • Role-based Routes (Admin, Reports)                       │
+│ • Unit-based Access (Multi-tenant)                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 **Monitoramento e Observabilidade**
+
+### **Sistema de Logs**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Logging Strategy                        │
+├─────────────────────────────────────────────────────────────┤
+│ • Application Logs (Console + File)                        │
+│ • Error Logs (Structured + Context)                        │
+│ • Queue Logs (Job processing + Metrics)                    │
+│ • Audit Logs (User actions + Changes)                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Métricas de Performance**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Performance Metrics                     │
+├─────────────────────────────────────────────────────────────┤
+│ • Queue Health (Jobs waiting, active, failed)              │
+│ • Response Times (API endpoints)                           │
+│ • Database Performance (Query times)                       │
+│ • User Experience (Page load times)                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔄 **Padrões Arquiteturais**
+
+### **1. Server Actions Pattern**
+
+```typescript
+// Exemplo de Server Action
+export async function createAppointment(formData: FormData) {
+  try {
+    // 1. Validação
+    const data = appointmentSchema.parse(Object.fromEntries(formData));
+
+    // 2. Lógica de negócio
+    const appointment = await appointmentService.create(data);
+
+    // 3. Adicionar à fila de notificações
+    await addNotificationJob({
+      type: "whatsapp",
+      recipient: appointment.clientPhone,
+      message: `Agendamento confirmado para ${appointment.date}`,
+    });
+
+    return { success: true, appointment };
+  } catch (error) {
+    return handleError(error);
   }
 }
 ```
 
----
-
-## 🔐 **Segurança Arquitetural**
-
-### **Autenticação Multi-layer**
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as App
-    participant S as Supabase
-    participant D as Database
-
-    C->>A: Login Request
-    A->>S: Authenticate
-    S->>A: JWT Token
-    A->>C: Set Secure Cookie
-
-    C->>A: Protected Request
-    A->>A: Verify JWT
-    A->>S: Query with RLS
-    S->>D: Execute with user context
-    D->>S: Filtered Results
-    S->>A: Response
-    A->>C: Safe Data
-```
-
-### **RLS Implementation**
-
-```sql
--- Política para agendamentos
-CREATE POLICY "appointment_access" ON appointments
-FOR ALL
-USING (
-  unidade_id = current_unidade() AND
-  (
-    barbeiro_id = auth.uid() OR           -- Barbeiro vê seus agendamentos
-    cliente_id = auth.uid() OR            -- Cliente vê seus agendamentos
-    EXISTS (                              -- Admin/Recepcionista vê todos
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid()
-      AND role IN ('admin', 'barbershop_owner', 'recepcionista')
-    )
-  )
-);
-```
-
----
-
-## ⚡ **Performance e Otimização**
-
-### **Code Splitting**
+### **2. Service Layer Pattern**
 
 ```typescript
-// Lazy loading de páginas pesadas
-const AgendaPage = lazy(() => import("./agenda/page"));
-const DashboardPage = lazy(() => import("./dashboard/page"));
+// Exemplo de Service Layer
+export class AppointmentService {
+  async create(data: CreateAppointmentData) {
+    // Validações de negócio
+    await this.validateAvailability(data);
 
-// Suspense boundaries
-<Suspense fallback={<Loading />}>
-  <AgendaPage />
-</Suspense>;
-```
+    // Persistência
+    const appointment = await this.repository.create(data);
 
-### **Data Fetching Strategy**
+    // Eventos de domínio
+    await this.eventBus.emit("appointment.created", appointment);
 
-```typescript
-// Server-side rendering para SEO
-export async function generateStaticParams() {
-  return [{ slug: "trato" }, { slug: "barberbeer" }];
+    return appointment;
+  }
 }
+```
 
-// Client-side com React Query (inferido)
-function useAppointments(date: Date) {
-  return useSWR(["appointments", date], () => fetchAppointments(date), {
-    revalidateOnFocus: false,
+### **3. Queue Pattern**
+
+```typescript
+// Exemplo de Queue Pattern
+export async function addNotificationJob(data: NotificationJob) {
+  return await notificationQueue.add("notification", data, {
+    priority: 1, // Alta prioridade
+    attempts: 3, // Retry automático
+    backoff: { type: "exponential", delay: 2000 },
   });
 }
 ```
 
-### **Database Optimization**
+---
 
-```sql
--- Índices estratégicos
-CREATE INDEX CONCURRENTLY idx_appointments_barbeiro_date
-ON appointments(barbeiro_id, DATE(start_at));
+## 🚀 **Escalabilidade e Performance**
 
-CREATE INDEX CONCURRENTLY idx_appointments_search
-ON appointments USING GIN(to_tsvector('portuguese', observacoes));
+### **Estratégias de Cache**
 
--- Views materializadas para relatórios
-CREATE MATERIALIZED VIEW vw_monthly_revenue AS
-SELECT
-  DATE_TRUNC('month', created_at) as month,
-  SUM(valor) as total_revenue
-FROM assinantes
-WHERE status = 'ATIVO'
-GROUP BY month;
-```
+- **React Query**: Cache de dados do servidor
+- **Redis**: Cache de sessões e filas
+- **Browser Cache**: Assets estáticos e dados locais
+
+### **Otimizações de Banco**
+
+- **Índices otimizados** para consultas frequentes
+- **RLS policies** para segurança e performance
+- **Connection pooling** para Supabase
+
+### **Processamento Assíncrono**
+
+- **Filas de jobs** para tarefas pesadas
+- **Workers distribuídos** para processamento paralelo
+- **Retry inteligente** com backoff exponencial
 
 ---
 
-## 🔧 **DevOps e Deploy**
+## 🔮 **Roadmap Arquitetural**
 
-### **Build Pipeline**
+### **Fase 1: ✅ Implementado**
 
-```yaml
-# .github/workflows/deploy.yml (inferido)
-name: Deploy
-on:
-  push:
-    branches: [main]
+- Arquitetura base Next.js + Supabase
+- Sistema de autenticação e autorização
+- RLS policies e segurança
+- Sistema de filas com BullMQ
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npm run build
-      - run: npm run test
-      - uses: vercel/action@v1
-```
+### **Fase 2: 🚧 Em Desenvolvimento**
 
-### **Monitoring Architecture**
+- Microserviços para funcionalidades críticas
+- API Gateway para roteamento
+- Load balancing e auto-scaling
 
-```mermaid
-flowchart LR
-    A[Next.js App] --> B[Vercel Analytics]
-    A --> C[Supabase Metrics]
-    A --> D[Error Tracking]
+### **Fase 3: 📋 Planejado**
 
-    B --> E[Performance Dashboard]
-    C --> F[Database Dashboard]
-    D --> G[Alert System]
-```
+- Arquitetura de eventos (Event Sourcing)
+- CQRS para separação de leitura/escrita
+- Monitoramento avançado com APM
 
 ---
 
-## ⚠️ **Pontos de Atenção Arquiteturais**
-
-### **Débitos Técnicos**
-
-- **Cache Layer**: Falta implementação de cache Redis/Memcached
-- **Event Sourcing**: Não há auditoria de mudanças críticas
-- **Message Queue**: Notificações são síncronas (pode travar)
-- **CDN**: Assets não estão em CDN dedicado
-
-### **Riscos**
-
-- **Single Point of Failure**: Dependência total do Supabase
-- **Rate Limiting**: Não há proteção contra DDoS
-- **Data Backup**: Estratégia de backup não documentada
-- **Disaster Recovery**: Plano de recuperação não implementado
-
-### **Melhorias Recomendadas**
-
-1. **Implementar Circuit Breaker** para integrações externas
-2. **Adicionar observability** com OpenTelemetry
-3. **Criar strategy de cache** multi-layer
-4. **Implementar feature flags** para releases graduais
-
----
-
-**Última atualização**: Dezembro 2024  
-**Versão**: 1.0  
-**Arquiteto**: Time de Desenvolvimento
+**Status**: ✅ **Arquitetura Atualizada com Sistema de Filas**  
+**Última Revisão**: Dezembro 2024  
+**Próxima Revisão**: Janeiro 2025

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Select, Checkbox, Textarea } from "@/components/ui/chakra-adapters";
 import dayjs from "dayjs";
 import { useUnidade } from "@/components/UnidadeContext";
-import { createAgendamento, updateAgendamento } from "@/lib/services/agenda";
+import { createAgendamento, updateAgendamento, getClientesByUnidade, getProfissionaisByUnidade, getServicosByUnidade } from "@/lib/services/agenda";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -16,15 +16,14 @@ type Props = {
     id?: string;
     profissional_id?: string;
     cliente_id?: string | null;
-    servico_id?: string | null;
-    observacoes?: string | null;
-    inicio?: string;
+    titulo?: string | null;
+    data_inicio?: string;
   } | null;
   defaultProfessionalId?: string;
 };
 
 export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate, editing, defaultProfessionalId }: Props) {
-  const { unidade } = useUnidade();
+  const { unidade, setUnidade } = useUnidade();
   const supabase = createClient();
 
   const [date, setDate] = useState<string>(defaultDate || dayjs().format('YYYY-MM-DD'));
@@ -32,15 +31,15 @@ export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate
   const [clienteId, setClienteId] = useState<string>(editing?.cliente_id || "");
   const [clienteNome, setClienteNome] = useState<string>("");
   const [telefone, setTelefone] = useState<string>("");
-  const [servicoId, setServicoId] = useState<string>(editing?.servico_id || "");
-  const [hora, setHora] = useState<string>(editing ? dayjs(editing.inicio).format('HH:mm') : (typeof window !== 'undefined' ? localStorage.getItem('agenda.defaultHour') || '' : ''));
+  const [servicoId, setServicoId] = useState<string>("");
+  const [hora, setHora] = useState<string>(editing ? dayjs(editing.data_inicio).format('HH:mm') : (typeof window !== 'undefined' ? localStorage.getItem('agenda.defaultHour') || '' : ''));
   const [tempo, setTempo] = useState<number>(30);
-  const [obs, setObs] = useState<string>(editing?.observacoes || "");
+  const [obs, setObs] = useState<string>("");
   const [recorrencia, setRecorrencia] = useState<boolean>(false);
   const [lembrete, setLembrete] = useState<boolean>(false);
   const [tab, setTab] = useState<'agendar'|'bloquear'|'fila'>('agendar');
   type Profissional = { id: string; nome: string; avatar_url?: string | null };
-  type Servico = { id: string; nome: string; duracao_minutos?: number | null };
+  type Servico = { id: string; nome: string; tempo_minutos?: number | null };
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [servicoBusca, setServicoBusca] = useState<string>("");
@@ -60,16 +59,22 @@ export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate
 
   useEffect(() => {
     (async () => {
-      const { data: pros } = await supabase.from('profissionais').select('id, nome, avatar_url').eq('funcao', 'barbeiro');
-      setProfissionais(pros || []);
-      // Buscar serviços de acordo com a unidade via tabela servicos_avulsos
-      const unidadeNome = unidade;
-      const isBB = (unidadeNome || '').toUpperCase().includes('BARBER');
-      const tabela = isBB ? 'servicos_avulsos_barberbeer' : 'servicos_avulsos_trato';
-      const { data: svcs } = await supabase.from(tabela).select('id, nome, duracao_minutos');
-      setServicos((svcs || []) as Array<{ id: string; nome: string; duracao_minutos?: number | null }>);
-      const { data: cls } = await supabase.from('clientes').select('id, nome, telefone').order('nome');
-      setClientes((cls || []) as Array<{ id: string; nome: string; telefone?: string | null }>);
+      console.log('Modal de agendamento - Unidade atual:', unidade);
+      
+      // Buscar profissionais da unidade selecionada
+      const profissionaisUnidade = await getProfissionaisByUnidade(unidade);
+      console.log('Profissionais encontrados:', profissionaisUnidade.length);
+      setProfissionais(profissionaisUnidade);
+      
+      // Buscar serviços da unidade selecionada
+      const servicosUnidade = await getServicosByUnidade(unidade);
+      console.log('Serviços encontrados:', servicosUnidade.length);
+      setServicos(servicosUnidade);
+      
+      // Buscar clientes da unidade selecionada
+      const clientesUnidade = await getClientesByUnidade(unidade);
+      console.log('Clientes encontrados:', clientesUnidade.length);
+      setClientes(clientesUnidade);
     })();
   }, [supabase, unidade]);
 
@@ -92,23 +97,19 @@ export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate
       const payload: {
         profissional_id: string;
         cliente_id: string | null;
-        servico_id: string | null;
         titulo: string;
-        observacoes: string | null;
-        inicio: string;
-        fim: string;
+        data_inicio: string;
+        data_fim: string;
         status: 'confirmado';
-        cor: string | null;
+        unidade: string;
       } = {
         profissional_id: responsavelId,
         cliente_id: clienteId || null,
-        servico_id: servicoId || null,
         titulo: clienteNome || 'Agendamento',
-        observacoes: obs || null,
-        inicio,
-        fim,
+        data_inicio: inicio,
+        data_fim: fim,
         status: 'confirmado' as const,
-        cor: null,
+        unidade: unidade || 'trato',
       };
       if (editing?.id) {
         await updateAgendamento(unidade, editing.id, payload);
@@ -128,10 +129,25 @@ export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate
     <Modal isOpen={isOpen} onOpenChange={(open:boolean)=>!open&&onClose()}>
       <ModalContent className="w-full max-w-[1200px] p-0">
         <ModalHeader className="px-6 py-4 border-b">
-          <div className="flex items-center gap-2">
-            <Button variant={tab==='agendar' ? 'default' : 'secondary'} onClick={()=>setTab('agendar')}>Novo Agendamento</Button>
-            <Button variant={tab==='bloquear' ? 'default' : 'secondary'} onClick={()=>setTab('bloquear')}>Bloquear Agenda</Button>
-            <Button variant={tab==='fila' ? 'default' : 'secondary'} onClick={()=>setTab('fila')}>Fila de Espera</Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant={tab==='agendar' ? 'default' : 'secondary'} onClick={()=>setTab('agendar')}>Novo Agendamento</Button>
+              <Button variant={tab==='bloquear' ? 'default' : 'secondary'} onClick={()=>setTab('bloquear')}>Bloquear Agenda</Button>
+              <Button variant={tab==='fila' ? 'default' : 'secondary'} onClick={()=>setTab('fila')}>Fila de Espera</Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Unidade:</span>
+              <Select 
+                value={unidade} 
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setUnidade(e.target.value);
+                }}
+                className="min-w-[200px]"
+              >
+                <option value="Trato de Barbados">Trato de Barbados</option>
+                <option value="BARBER BEER SPORT CLUB">BARBER BEER SPORT CLUB</option>
+              </Select>
+            </div>
           </div>
         </ModalHeader>
         <ModalBody className="px-6 py-5">
@@ -205,7 +221,7 @@ export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate
                         const id = e.target.value;
                         setServicoId(id);
                         const svc = servicos.find(s => s.id === id);
-                        if (svc?.duracao_minutos) setTempo(Number(svc.duracao_minutos));
+                        if (svc?.tempo_minutos) setTempo(Number(svc.tempo_minutos));
                       }}
                     >
                       <option value="">Selecione o serviço</option>
@@ -232,19 +248,16 @@ export default function AgendamentoModal({ isOpen, onClose, onSaved, defaultDate
                         <Button
                           onClick={async () => {
                             if (!novoServicoNome.trim()) return;
-                            const unidadeNome = unidade;
-                            const isBB = (unidadeNome || '').toUpperCase().includes('BARBER');
-                            const tabela = isBB ? 'servicos_avulsos_barberbeer' : 'servicos_avulsos_trato';
                             const { data, error } = await supabase
-                              .from(tabela)
-                              .insert({ nome: novoServicoNome.trim(), duracao_minutos: novoServicoDuracao })
-                              .select('id, nome, duracao_minutos')
+                              .from('servicos_avulsos')
+                              .insert({ nome: novoServicoNome.trim(), tempo_minutos: novoServicoDuracao })
+                              .select('id, nome, tempo_minutos')
                               .single();
                             if (!error && data) {
-                              const novo = { id: String((data as { id: string }).id), nome: (data as { nome: string }).nome, duracao_minutos: (data as { duracao_minutos: number | null }).duracao_minutos };
-                              setServicos((prev) => [...prev, novo]);
-                              setServicoId(novo.id);
-                              if (novo.duracao_minutos) setTempo(Number(novo.duracao_minutos));
+                                                          const novo = { id: String((data as { id: string }).id), nome: (data as { nome: string }).nome, tempo_minutos: (data as { tempo_minutos: number | null }).tempo_minutos };
+                            setServicos((prev) => [...prev, novo]);
+                            setServicoId(novo.id);
+                            if (novo.tempo_minutos) setTempo(Number(novo.tempo_minutos));
                               setNovoServicoNome('');
                               setNovoServicoDuracao(30);
                               setCriandoServico(false);

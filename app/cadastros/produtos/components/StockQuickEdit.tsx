@@ -39,3 +39,13 @@ export function StockQuickEdit({ value, onConfirm }: StockQuickEditProps) {
 
 
 
+
+
+
+
+
+
+
+
+
+

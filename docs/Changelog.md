@@ -339,3 +339,12 @@ Este projeto está licenciado sob MIT License - veja o arquivo LICENSE para deta
 - **Major** (X.0.0): Mudanças que quebram compatibilidade
 - **Minor** (0.X.0): Novas funcionalidades compatíveis
 - **Patch** (0.0.X): Correções de bugs compatíveis
+
+
+
+
+
+
+
+
+

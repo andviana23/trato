@@ -161,8 +161,11 @@ function EventBlock({ event, date, startHour, pxPerMinute, onClick, onDragStart,
 			}}
 		>
 			{/* Header com horário - Estilo AppBarber */}
-			<div className="bg-black/20 px-2 py-1 text-xs font-semibold flex items-center justify-between border-b border-white/10">
-				<span>{start.format("HH:mm")} – {end.format("HH:mm")}</span>
+			<div className="px-2 py-1 text-xs font-semibold flex items-center justify-between border-b" style={{
+				backgroundColor: 'hsl(var(--agenda-zebra))',
+				borderColor: 'hsl(var(--agenda-border))'
+			}}>
+				<span style={{ color: 'hsl(var(--agenda-text))' }}>{start.format("HH:mm")} – {end.format("HH:mm")}</span>
 				<div className="flex items-center gap-1">
 					{isNewClient && <span>⭐</span>}
 					{isBlocked && <span>🔒</span>}
@@ -171,8 +174,8 @@ function EventBlock({ event, date, startHour, pxPerMinute, onClick, onDragStart,
 			
 			{/* Corpo do cartão */}
 			<div className="p-2 text-xs">
-				<div className="font-medium truncate">{event.clientName || event.title || "Cliente"}</div>
-				<div className="text-white/80 truncate">{event.serviceName || "Serviço"}</div>
+				<div className="font-medium truncate" style={{ color: 'hsl(var(--agenda-text))' }}>{event.clientName || event.title || "Cliente"}</div>
+				<div className="truncate" style={{ color: 'hsl(var(--agenda-text-muted))' }}>{event.serviceName || "Serviço"}</div>
 			</div>
 			
 			{/* Handles de resize - Estilo AppBarber */}
@@ -453,13 +456,27 @@ export default function AgendaGrid({ date, view, events, resources, blockedRange
 
 	// Dia com colunas por profissional - Estilo AppBarber
 	return (
-		<div className="h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#0F1115]">
+		<div className="h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border" style={{
+			borderColor: 'hsl(var(--agenda-border))',
+			backgroundColor: 'hsl(var(--agenda-bg))'
+		}}>
 			{/* Cabeçalho recursos - PONTO 2 - GRID E STICKY */}
-			<div className="grid sticky top-0 z-30 bg-[#0F1115] border-b border-white/10" style={{ gridTemplateColumns: `64px repeat(${resources.length}, minmax(240px,1fr))` }}>
+			<div className="grid sticky top-0 z-30 border-b" style={{ 
+				gridTemplateColumns: `64px repeat(${resources.length}, minmax(240px,1fr))`,
+				backgroundColor: 'hsl(var(--agenda-card-bg))',
+				borderColor: 'hsl(var(--agenda-border))'
+			}}>
                 {/* Coluna de horas fixa */}
-                <div className="p-3 text-xs font-semibold text-white/60 bg-[#0F1115]">Horário</div>
+                <div className="p-3 text-xs font-semibold" style={{
+					color: 'hsl(var(--agenda-text-muted))',
+					backgroundColor: 'hsl(var(--agenda-card-bg))'
+				}}>Horário</div>
                 {resources.map((r) => (
-					<div key={String(r.resourceId)} className="px-3 py-3 font-semibold text-sm border-l border-white/10 flex items-center gap-2 bg-[#0F1115] text-white">
+					<div key={String(r.resourceId)} className="px-3 py-3 font-semibold text-sm border-l flex items-center gap-2" style={{
+						borderColor: 'hsl(var(--agenda-border))',
+						backgroundColor: 'hsl(var(--agenda-card-bg))',
+						color: 'hsl(var(--agenda-text))'
+					}}>
                         <span
                             className={`inline-block w-3 h-3 rounded-full ${r.color ? '' : 'bg-green-500'}`}
                             style={r.color ? { background: r.color } : undefined}
@@ -473,29 +490,36 @@ export default function AgendaGrid({ date, view, events, resources, blockedRange
 				className="relative"
 				style={{ 
 					height: (endHour - startHour) * (realSlotHeight * (60 / slotMinutes)),
-					// Background com linhas finas a cada 10min
-					background: `repeating-linear-gradient(to bottom, rgba(255,255,255,.06) 0 1px, transparent 1px ${realSlotHeight}px)`
+					// Background com linhas finas a cada 10min usando CSS vars para tema
+					background: `repeating-linear-gradient(to bottom, hsl(var(--agenda-grid-line)) 0 1px, transparent 1px ${realSlotHeight}px)`
 				}}
 			>
 				{/* Zebra de fundo a cada 30min - PONTO 1 */}
 				<div 
 					className="absolute inset-0 pointer-events-none"
 					style={{
-						background: `repeating-linear-gradient(to bottom, rgba(255,255,255,.03) 0 ${realSlotHeight * 3}px, transparent ${realSlotHeight * 3}px ${realSlotHeight * 6}px)`
+						background: `repeating-linear-gradient(to bottom, hsl(var(--agenda-zebra)) 0 ${realSlotHeight * 3}px, transparent ${realSlotHeight * 3}px ${realSlotHeight * 6}px)`
 					}}
 				/>
 				{/* Linhas da hora cheia - PONTO 1 */}
 				<div 
 					className="absolute inset-0 pointer-events-none"
 					style={{
-						background: `repeating-linear-gradient(to bottom, rgba(255,255,255,.15) 0 2px, transparent 2px ${realSlotHeight * 6}px)`
+						background: `repeating-linear-gradient(to bottom, hsl(var(--agenda-grid-line-strong)) 0 2px, transparent 2px ${realSlotHeight * 6}px)`
 					}}
 				/>
 				<div className="absolute inset-0 grid" style={{ gridTemplateColumns: `64px repeat(${resources.length}, minmax(240px,1fr))` }}>
 					{/* Gutter de horas - PONTO 4 - GUTTER DE HORAS */}
-					<div className="relative bg-[#0F1115] sticky left-0 z-20 border-r border-white/10">
+					<div className="relative sticky left-0 z-20 border-r" style={{ 
+						backgroundColor: 'hsl(var(--agenda-card-bg))',
+						borderColor: 'hsl(var(--agenda-border))'
+					}}>
 						{slots.map((s, idx) => (
-							<div key={idx} className="text-[11px] text-slate-300/80 pr-3 pt-1 select-none text-right" style={{ height: realSlotHeight }}>
+							<div key={idx} className="pr-3 pt-1 select-none text-right font-medium" style={{ 
+								height: realSlotHeight,
+								fontSize: '13px',
+								color: 'hsl(var(--agenda-text-muted))'
+							}}>
 								{s.label}
 							</div>
 						))}
@@ -504,7 +528,8 @@ export default function AgendaGrid({ date, view, events, resources, blockedRange
                     {resources.map((r) => (
                         <div
                             key={String(r.resourceId)}
-                            className="relative border-l border-white/10 bg-transparent"
+                            className="relative border-l bg-transparent"
+                            style={{ borderColor: 'hsl(var(--agenda-border))' }}
                             onMouseDown={(e) => {
                                 // PONTO 6 - SELEÇÃO/DRAG/RESIZE
                                 if (!(e.target as HTMLElement).closest('[data-event]')) {
@@ -579,11 +604,22 @@ export default function AgendaGrid({ date, view, events, resources, blockedRange
 			</div>
 			
 			{/* PONTO 2 - FOOTER STICKY - Rodapé com nomes dos barbeiros */}
-			<div className="grid sticky bottom-0 z-30 bg-[#0F1115] border-t border-white/10" style={{ gridTemplateColumns: `64px repeat(${resources.length}, minmax(240px,1fr))` }}>
+			<div className="grid sticky bottom-0 z-30 border-t" style={{ 
+				gridTemplateColumns: `64px repeat(${resources.length}, minmax(240px,1fr))`,
+				backgroundColor: 'hsl(var(--agenda-card-bg))',
+				borderColor: 'hsl(var(--agenda-border))'
+			}}>
                 {/* Coluna de horas fixa */}
-                <div className="p-2 text-xs font-semibold text-white/40 bg-[#0F1115]"></div>
+                <div className="p-2 text-xs font-semibold" style={{ 
+					color: 'hsl(var(--agenda-text-muted))',
+					backgroundColor: 'hsl(var(--agenda-card-bg))'
+				}}></div>
                 {resources.map((r) => (
-					<div key={`footer-${String(r.resourceId)}`} className="px-3 py-2 font-medium text-xs border-l border-white/10 text-center bg-[#0F1115] text-white/80">
+					<div key={`footer-${String(r.resourceId)}`} className="px-3 py-2 font-medium text-xs border-l text-center" style={{
+						borderColor: 'hsl(var(--agenda-border))',
+						backgroundColor: 'hsl(var(--agenda-card-bg))',
+						color: 'hsl(var(--agenda-text))'
+					}}>
 						<span className="truncate">{r.resourceTitle}</span>
 					</div>
 				))}

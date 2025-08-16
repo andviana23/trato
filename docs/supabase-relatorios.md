@@ -211,3 +211,13 @@ select * from public.vw_financeiro_diario where unidade = current_unidade() orde
 
 
 
+
+
+
+
+
+
+
+
+
+

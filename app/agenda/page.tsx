@@ -2,15 +2,12 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
-const AgendaClient = dynamic(() => import("./ui/AgendaCalendar"), { ssr: false });
+const ResponsiveAgenda = dynamic(() => import("./components/ResponsiveAgenda"), { ssr: false });
 
 export default function AgendaPage() {
   return (
     <Suspense fallback={<div className="p-6">Carregando…</div>}>
-      <AgendaClient />
+      <ResponsiveAgenda />
     </Suspense>
   );
 }
-
-
-

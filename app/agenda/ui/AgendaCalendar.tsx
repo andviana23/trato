@@ -170,6 +170,3 @@ export default function AgendaCalendar() {
     </div>
   );
 }
-
-
-

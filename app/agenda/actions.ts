@@ -176,3 +176,105 @@ export async function getAppointments(date: string) {
   
   return { data: appointments };
 }
+
+// Tipos para o AgendaCalendar
+export type Evento = {
+  id: string;
+  proId: string; // profissional_id
+  titulo: string;
+  inicio: string; // ISO string
+  fim: string; // ISO string
+  tipo: 'agendado' | 'cancelado' | 'bloqueio' | 'confirmado';
+  clienteName?: string;
+  serviceName?: string;
+  isNewClient?: boolean;
+};
+
+export type Resource = {
+  resourceId: string | number;
+  resourceTitle: string;
+  color?: string;
+};
+
+export interface ListEventosParams {
+  start: string;
+  end: string;
+  view: 'day' | 'week';
+  profissionalIds?: string[];
+}
+
+export async function listEventos(params: ListEventosParams) {
+  const supabase = await createClient();
+  const unidade = await getCurrentUnidade();
+  
+  try {
+    // Buscar agendamentos no período
+    let query = supabase
+      .from('agendamentos')
+      .select(`
+        id,
+        profissional_id,
+        cliente_id,
+        data_inicio,
+        data_fim,
+        status,
+        titulo
+      `)
+      .eq('unidade', unidade)
+      .gte('data_inicio', params.start)
+      .lte('data_inicio', params.end)
+      .order('data_inicio', { ascending: true });
+
+    // Filtrar por profissionais se especificado
+    if (params.profissionalIds && params.profissionalIds.length > 0) {
+      query = query.in('profissional_id', params.profissionalIds);
+    }
+
+    const { data: agendamentos, error } = await query;
+    
+    if (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+      // Retornar dados vazios em caso de erro
+      return { eventos: [], resources: [] };
+    }
+
+    // Converter agendamentos para formato Evento
+    const eventos: Evento[] = (agendamentos || []).map((ag) => {
+      return {
+        id: ag.id,
+        proId: ag.profissional_id,
+        titulo: ag.titulo || 'Agendamento',
+        inicio: ag.data_inicio,
+        fim: ag.data_fim,
+        tipo: ag.status as 'agendado' | 'cancelado' | 'bloqueio' | 'confirmado',
+        clienteName: undefined, // TODO: buscar informações do cliente
+        serviceName: undefined, // TODO: buscar informações do serviço
+        isNewClient: false // TODO: implementar lógica para detectar novos clientes
+      };
+    });
+
+    // Buscar profissionais/barbeiros da unidade para resources
+    const { data: profissionais, error: profError } = await supabase
+      .from('profissionais')
+      .select('id, nome, funcao, unidade')
+      .eq('unidade', unidade)
+      .eq('funcao', 'barbeiro')
+      .order('nome', { ascending: true });
+
+    if (profError) {
+      console.error('Erro ao buscar profissionais:', profError);
+    }
+
+    const resources: Resource[] = (profissionais || []).map((prof) => ({
+      resourceId: prof.id,
+      resourceTitle: prof.nome,
+      color: undefined // Sem cor por enquanto
+    }));
+
+    return { eventos, resources };
+
+  } catch (error) {
+    console.error('Erro geral na listEventos:', error);
+    return { eventos: [], resources: [] };
+  }
+}

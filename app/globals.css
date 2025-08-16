@@ -4,8 +4,18 @@
 
 :root {
   /* Altura padrão de um slot de 10 minutos no grid da agenda */
-  /* Ajuste entre 12-16px conforme necessário para calibrar o alinhamento */
-  --slot-10m: 14px;
+  /* 31px por 10 minutos para alinhamento visual exato */
+  --slot-10m: 31px;
+  
+  /* Cores específicas da agenda para modo light */
+  --agenda-bg: 0 0% 100%;
+  --agenda-card-bg: 0 0% 100%;
+  --agenda-border: 214.3 31.8% 91.4%;
+  --agenda-text: 222.2 84% 4.9%;
+  --agenda-text-muted: 215.4 16.3% 46.9%;
+  --agenda-grid-line: 214.3 31.8% 91.4%;
+  --agenda-grid-line-strong: 214.3 31.8% 91.4%;
+  --agenda-zebra: 210 40% 96.1%;
 }
 
 /* Tokens base (shadcn) */
@@ -61,6 +71,16 @@
     --border: 220 14% 12%;   /* ~#1C1F25 */
     --input: 220 14% 12%;
     --ring: 224 76% 48%;
+    
+    /* Cores específicas da agenda para modo dark */
+    --agenda-bg: 220 16% 7%; /* #0F1115 */
+    --agenda-card-bg: 220 16% 7%;
+    --agenda-border: 220 14% 12%; /* #1C1F25 */
+    --agenda-text: 218 25% 97%; /* #F5F6F8 */
+    --agenda-text-muted: 218 9% 65%; /* #A4A7AE */
+    --agenda-grid-line: 220 14% 12%;
+    --agenda-grid-line-strong: 220 14% 12%;
+    --agenda-zebra: 220 15% 9%;
   }
   * { @apply border-border; }
   body { @apply bg-background text-foreground; }

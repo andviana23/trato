@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/AuthContext";
-import AppShell from "@/components/layout/AppShell";
+import ResponsiveAppShell from "@/components/layout/ResponsiveAppShell";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  return <AppShell>{children}</AppShell>;
+  return <ResponsiveAppShell>{children}</ResponsiveAppShell>;
 }
 
 

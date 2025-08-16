@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "supabase.supabase",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-typescript-next",
+    "esbenp.prettier-vscode"
+  ]
+}

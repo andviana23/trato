@@ -1,6 +1,6 @@
 # 📚 Documentação Completa - Trato de Barbados
 
-Sistema completo de gestão para barbearias com Next.js 15, React 19, TypeScript, Chakra UI 3, Supabase e integrações ASAAS.
+Sistema completo de gestão para barbearias com Next.js 15, React 19, TypeScript, Chakra UI 3, Supabase, integrações ASAAS e sistema de filas robusto com BullMQ.
 
 ---
 
@@ -33,6 +33,12 @@ Sistema completo de gestão para barbearias com Next.js 15, React 19, TypeScript
 - [**Ambiente e Deploy**](./Env_Deploy.md) - Variáveis, build, deploy, scripts
 - [**Segurança e Privacidade**](./Seguranca_Privacidade.md) - Auth, RLS, CORS, logs
 
+### **🚀 Sistema de Filas (Queue System)**
+
+- [**Sistema de Filas - BullMQ**](./SISTEMA_FILAS_IMPLEMENTADO.md) - Sistema completo de filas assíncronas
+- [**Server Actions - Filas**](./SERVER_ACTIONS_QUEUE.md) - Integração com Server Actions
+- [**Integrações Críticas**](./INTEGRACOES_CRITICAS.md) - APIs externas e webhooks
+
 ### **🧪 Desenvolvimento**
 
 - [**Contribuição**](./Contribuicao.md) - Como desenvolver, padrões, workflow
@@ -45,6 +51,7 @@ Sistema completo de gestão para barbearias com Next.js 15, React 19, TypeScript
 - [**ADR-0002**](./ADRs/ADR-0002.md) - Arquitetura Multi-unidade com RLS
 - [**ADR-0003**](./ADRs/ADR-0003.md) - Sistema de Agenda com AgendaGrid
 - [**ADR-0004**](./ADRs/ADR-0004.md) - Integração ASAAS para Pagamentos
+- [**ADR-0005**](./ADRs/ADR-0005.md) - Sistema de Filas com BullMQ
 
 ---
 
@@ -92,6 +99,17 @@ Sistema completo de gestão para barbearias com Next.js 15, React 19, TypeScript
 - Integração com vendas de produtos
 - Fechamento mensal automatizado
 
+### **🚀 Sistema de Filas Assíncronas**
+
+- **4 Filas Especializadas** com BullMQ
+- **Processamento de Notificações** (WhatsApp, SMS, Email)
+- **Geração Automática de Relatórios** (diário, semanal, mensal)
+- **Limpeza Programada** de logs e cache
+- **Sincronização Externa** com APIs (Google Calendar, ASAAS)
+- **Dashboard de Monitoramento** em tempo real
+- **Retry Inteligente** com backoff exponencial
+- **Agendamento de Tarefas** recorrentes
+
 ---
 
 ## 🛠️ **Stack Tecnológico**
@@ -113,6 +131,13 @@ Sistema completo de gestão para barbearias com Next.js 15, React 19, TypeScript
 - **Server Actions** (Next.js)
 - **Webhooks** ASAAS
 
+### **Sistema de Filas**
+
+- **BullMQ** (Redis-based job queue)
+- **Redis** (message broker)
+- **Hooks React** especializados
+- **Dashboard** de monitoramento
+
 ### **Ferramentas**
 
 - **ESLint** + **TypeScript** (qualidade)
@@ -131,14 +156,21 @@ npm install
 
 # 2. Configure .env.local
 cp env-exemplo.txt .env.local
-# Preencha com suas chaves Supabase e ASAAS
+# Preencha com suas chaves Supabase, ASAAS e Redis
 
-# 3. Execute as migrações
+# 3. Configure Redis (para sistema de filas)
+# Instale Redis localmente ou use Redis Cloud
+# Configure as variáveis REDIS_HOST, REDIS_PORT, etc.
+
+# 4. Execute as migrações
 # Acesse Supabase Dashboard > SQL Editor
 # Execute os arquivos em supabase/migrations/
 
-# 4. Inicie o desenvolvimento
+# 5. Inicie o desenvolvimento
 npm run dev
+
+# 6. Acesse o dashboard de filas
+# http://localhost:3000/admin/queues
 ```
 
 ---
@@ -159,6 +191,7 @@ npm run dev
 - **Deploy**: [Vercel/Production](#)
 - **Supabase**: [Dashboard](https://supabase.com/dashboard)
 - **ASAAS**: [Dashboard](https://www.asaas.com)
+- **Dashboard de Filas**: `/admin/queues`
 
 ---
 
@@ -169,9 +202,10 @@ Para dúvidas sobre a documentação ou sistema:
 1. Consulte o [Glossário](./Glossario.md) para termos técnicos
 2. Verifique os [ADRs](./ADRs/) para decisões arquiteturais
 3. Consulte o [Troubleshooting](#) para problemas comuns
+4. Acesse o [Dashboard de Filas](./SISTEMA_FILAS_IMPLEMENTADO.md) para monitoramento
 
 ---
 
 **Última atualização**: Dezembro 2024  
-**Versão da documentação**: 1.0  
-**Status**: ✅ Completa e atualizada
+**Versão da documentação**: 2.0  
+**Status**: ✅ Completa e atualizada com Sistema de Filas
