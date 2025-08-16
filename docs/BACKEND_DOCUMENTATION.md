@@ -1098,6 +1098,1414 @@ export async function shiftQueueItems(
 }
 ```
 
+#### Sistema Financeiro - Módulo DRE e Relatórios
+
+O módulo financeiro implementa um sistema completo de contabilidade com DRE (Demonstrativo de Resultado do Exercício), processamento automático de receitas via ASAAS, e validação robusta de dados.
+
+##### Estrutura de Dados Financeiros
+
+```typescript
+// Tabelas principais do módulo financeiro
+interface ContaContabil {
+  id: string;
+  codigo: string; // Ex: "4.1.1.1" para Receita de Vendas
+  nome: string; // Ex: "Receita de Vendas"
+  tipo:
+    | "ativo"
+    | "passivo"
+    | "receita"
+    | "despesa"
+    | "custo"
+    | "patrimonio_liquido";
+  categoria: string; // Ex: "Receitas Operacionais"
+  nivel: number; // Nível hierárquico da conta
+  ativo: boolean;
+}
+
+interface LancamentoContabil {
+  id: string;
+  conta_id: string; // Referência à conta contábil
+  data_competencia: string; // Data do lançamento
+  valor: string; // Valor em decimal
+  tipo_lancamento: "debito" | "credito";
+  descricao: string;
+  unidade_id: string;
+  status: "pendente" | "confirmado" | "cancelado";
+}
+
+interface ReceitaAutomatica {
+  id: string;
+  payment_id: string; // ID do pagamento ASAAS
+  customer_id: string; // ID do cliente
+  value: number; // Valor em centavos
+  description: string;
+  lancamento_id: string; // Referência ao lançamento contábil
+  unidade_id: string;
+  status: "processado" | "erro" | "reprocessando";
+}
+```
+
+##### Server Actions Principais
+
+```typescript
+// 1. Geração de DRE
+export async function getDREData(input: {
+  period: Period;
+  unidade_id?: string;
+  include_audit_trail?: boolean;
+}): Promise<ActionResult<DREData>> {
+  try {
+    const validation = dreRequestSchema.safeParse(input);
+    if (!validation.success) {
+      return { success: false, error: "Dados de entrada inválidos" };
+    }
+
+    const { period, unidade_id, include_audit_trail } = validation.data;
+    const supabase = await createClient();
+
+    // Verificar autenticação
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Usuário não autenticado" };
+    }
+
+    // Chamar função SQL para cálculo do DRE
+    const { data: rawData, error: dreError } = await supabase.rpc(
+      "calculate_dre",
+      {
+        p_data_inicio: period.from,
+        p_data_fim: period.to,
+        p_unidade_id: unidade_id || "trato",
+      }
+    );
+
+    if (dreError) {
+      console.error("❌ Erro ao calcular DRE:", dreError);
+      return { success: false, error: "Erro ao calcular DRE" };
+    }
+
+    // Processar e formatar dados
+    const dreData = processDRERawData(rawData, period, unidade_id);
+
+    // Log de auditoria
+    await logAuditEvent({
+      action: "dre_generated",
+      table: "dre",
+      record_id: `dre_${period.from}_${period.to}_${unidade_id}`,
+      user_id: user.id,
+      details: { period, unidade_id, include_audit_trail },
+    });
+
+    return { success: true, data: dreData };
+  } catch (error) {
+    console.error("❌ Erro inesperado ao gerar DRE:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Erro interno do servidor",
+    };
+  }
+}
+
+// 2. Processamento Automático de Receitas ASAAS
+export async function processAutomaticRevenue(
+  paymentData: PaymentWebhookData
+): Promise<ActionResult<AutomaticRevenueResult>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Verificar se a receita já foi processada
+    const { data: existingRevenue } = await supabase
+      .from("receitas_automaticas")
+      .select("id")
+      .eq("payment_id", paymentData.payment.id)
+      .single();
+
+    if (existingRevenue) {
+      return {
+        success: false,
+        error: "Receita já processada para este pagamento",
+      };
+    }
+
+    // 2. Buscar conta contábil padrão para receitas
+    const { data: contaReceita } = await supabase
+      .from("contas_contabeis")
+      .select("id, codigo, nome")
+      .eq("codigo", "4.1.1.1")
+      .eq("ativo", true)
+      .single();
+
+    // 3. Buscar conta contábil para caixa/bancos
+    const { data: contaCaixa } = await supabase
+      .from("contas_contabeis")
+      .select("id, codigo, nome")
+      .eq("codigo", "1.1.1.1")
+      .eq("ativo", true)
+      .single();
+
+    // 4. Criar lançamento contábil
+    const lancamentoData: LancamentoContabilInsert = {
+      conta_id: contaReceita.id,
+      data_competencia: new Date().toISOString().split("T")[0],
+      valor: (paymentData.payment.value / 100).toString(), // Converter centavos para reais
+      tipo_lancamento: "credito",
+      descricao: `Receita automática: ${paymentData.payment.description}`,
+      unidade_id: "trato",
+      status: "confirmado",
+    };
+
+    const { data: lancamento } = await supabase
+      .from("lancamentos_contabeis")
+      .insert(lancamentoData)
+      .select("id")
+      .single();
+
+    // 5. Criar registro de receita automática
+    const receitaData = {
+      payment_id: paymentData.payment.id,
+      customer_id: paymentData.payment.customer,
+      value: paymentData.payment.value,
+      description: paymentData.payment.description,
+      lancamento_id: lancamento.id,
+      unidade_id: "trato",
+      status: "processado",
+      webhook_data: paymentData,
+    };
+
+    const { data: receita } = await supabase
+      .from("receitas_automaticas")
+      .insert(receitaData)
+      .select(
+        "id, payment_id, customer_id, value, description, lancamento_id, created_at"
+      )
+      .single();
+
+    // 6. Log de auditoria
+    await logAuditEvent({
+      action: "revenue_processed",
+      table: "receitas_automaticas",
+      record_id: receita.id,
+      user_id: "system",
+      details: {
+        payment_id: paymentData.payment.id,
+        value: paymentData.payment.value,
+      },
+    });
+
+    // 7. Revalidar cache
+    revalidatePath("/relatorios/financeiro");
+    revalidatePath("/dashboard");
+
+    return {
+      success: true,
+      data: {
+        id: receita.id,
+        payment_id: receita.payment_id,
+        customer_id: receita.customer_id,
+        value: receita.value,
+        description: receita.description,
+        lancamento_id: receita.lancamento_id,
+        created_at: receita.created_at,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Erro ao processar receita automática:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Erro interno do servidor",
+    };
+  }
+}
+```
+
+##### Validação e Auditoria
+
+```typescript
+// Validação completa de dados financeiros
+export async function validateFinancialData(input: {
+  period: Period;
+  unidade_id?: string;
+  include_detailed_audit?: boolean;
+}): Promise<ActionResult<DataValidationResult>> {
+  try {
+    const { period, unidade_id } = input;
+    const supabase = await createClient();
+
+    const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
+    let totalChecks = 0;
+
+    // 1. Integridade Referencial
+    totalChecks++;
+    const referentialErrors = await validateReferentialIntegrity(
+      supabase,
+      period,
+      unidade_id || "trato"
+    );
+    errors.push(...referentialErrors);
+
+    // 2. Balanceamento Contábil
+    totalChecks++;
+    const balanceErrors = await validateAccountingBalance(
+      supabase,
+      period,
+      unidade_id || "trato"
+    );
+    errors.push(...balanceErrors);
+
+    // 3. Consistência de Valores
+    totalChecks++;
+    const valueErrors = await validateValueConsistency(
+      supabase,
+      period,
+      unidade_id || "trato"
+    );
+    errors.push(...valueErrors);
+
+    // 4. Consistência de Datas
+    totalChecks++;
+    const dateErrors = await validateDateConsistency(
+      supabase,
+      period,
+      unidade_id || "trato"
+    );
+    errors.push(...dateErrors);
+
+    // 5. Detecção de Anomalias
+    totalChecks++;
+    const anomalyWarnings = await detectAnomalies(
+      supabase,
+      period,
+      unidade_id || "trato"
+    );
+    warnings.push(...anomalyWarnings);
+
+    // 6. Completude dos Dados
+    totalChecks++;
+    const completenessWarnings = await validateDataCompleteness(
+      supabase,
+      period,
+      unidade_id || "trato"
+    );
+    warnings.push(...completenessWarnings);
+
+    const passedChecks = totalChecks - errors.length;
+    const dataQualityScore = Math.round((passedChecks / totalChecks) * 100);
+
+    const result: DataValidationResult = {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      summary: {
+        total_checks: totalChecks,
+        passed_checks: passedChecks,
+        failed_checks: errors.length,
+        warning_checks: warnings.length,
+      },
+      data_quality_score: dataQualityScore,
+    };
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("❌ Erro ao validar dados financeiros:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Erro interno do servidor",
+    };
+  }
+}
+
+// Validação de balanceamento contábil
+async function validateAccountingBalance(
+  supabase: any,
+  period: Period,
+  unidade_id: string
+): Promise<ValidationError[]> {
+  const errors: ValidationError[] = [];
+
+  try {
+    const { data: totals } = await supabase
+      .from("lancamentos_contabeis")
+      .select("valor, tipo_lancamento")
+      .gte("data_competencia", period.from)
+      .lte("data_competencia", period.to)
+      .eq("unidade_id", unidade_id)
+      .eq("status", "confirmado");
+
+    if (totals && totals.length > 0) {
+      const totalDebitos = totals
+        .filter((l) => l.tipo_lancamento === "debito")
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+      const totalCreditos = totals
+        .filter((l) => l.tipo_lancamento === "credito")
+        .reduce((sum, l) => sum + parseFloat(l.valor), 0);
+
+      const diferenca = Math.abs(totalDebitos - totalCreditos);
+
+      if (diferenca > 0.01) {
+        // Tolerância de 1 centavo
+        errors.push({
+          code: "ACCOUNTING_IMBALANCE",
+          message: `Desbalanceamento contábil detectado: diferença de R$ ${diferenca.toFixed(
+            2
+          )}`,
+          severity: "critical",
+          affected_data: {
+            total_debitos: totalDebitos,
+            total_creditos: totalCreditos,
+            diferenca,
+          },
+          suggested_fix:
+            "Revisar lançamentos contábeis para identificar inconsistências",
+        });
+      }
+    }
+  } catch (error) {
+    console.warn("⚠️ Erro ao validar balanceamento:", error);
+  }
+
+  return errors;
+}
+```
+
+##### Integração ASAAS + BullMQ
+
+```typescript
+// Configuração da fila de processamento financeiro
+export const financialRevenueQueue = new Queue("financial-revenue-processing", {
+  connection: redis,
+  defaultJobOptions: {
+    removeOnComplete: 100,
+    removeOnFail: 50,
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+  },
+});
+
+// Worker para processar jobs financeiros
+const financialRevenueWorker = new Worker(
+  "financial-revenue-processing",
+  async (job: Job<FinancialJobData>) => {
+    const { type, data } = job.data;
+
+    try {
+      console.log(
+        `🔄 Processando job financeiro: ${type} - Pagamento ${data.payment.id}`
+      );
+
+      switch (type) {
+        case "process-payment":
+          const result = await processAutomaticRevenue(data);
+
+          if (result.success) {
+            console.log(
+              `✅ Receita processada com sucesso para pagamento ${data.payment.id}`
+            );
+            await logAuditEvent({
+              action: "revenue_job_success",
+              table: "receitas_automaticas",
+              record_id: result.data?.id || "unknown",
+              user_id: "system",
+              details: { payment_id: data.payment.id, job_id: job.id },
+            });
+
+            return {
+              success: true,
+              paymentId: data.payment.id,
+              revenueId: result.data?.id,
+              message: "Receita processada com sucesso",
+            };
+          } else {
+            throw new Error(`Falha ao processar receita: ${result.error}`);
+          }
+
+        default:
+          throw new Error(`Tipo de job desconhecido: ${type}`);
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao processar job financeiro ${job.id}:`, error);
+
+      await logAuditEvent({
+        action: "revenue_job_failed",
+        table: "receitas_automaticas",
+        record_id: "unknown",
+        user_id: "system",
+        details: {
+          payment_id: data.payment.id,
+          job_id: job.id,
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        },
+      });
+
+      throw error;
+    }
+  },
+  {
+    connection: redis,
+    concurrency: 3,
+    removeOnComplete: 100,
+    removeOnFail: 50,
+  }
+);
+```
+
+##### Schemas de Validação Zod
+
+```typescript
+// Schemas para validação de entrada
+const periodSchema = z.object({
+  from: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), "Data de início inválida"),
+  to: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), "Data de fim inválida"),
+});
+
+const dreRequestSchema = z.object({
+  period: periodSchema,
+  unidade_id: z.string().min(1, "ID da unidade é obrigatório").optional(),
+  include_audit_trail: z.boolean().default(false),
+});
+
+const dreComparisonSchema = z.object({
+  current: periodSchema,
+  previous: periodSchema,
+  unidade_id: z.string().min(1, "ID da unidade é obrigatório").optional(),
+});
+
+const exportRequestSchema = z.object({
+  period: periodSchema,
+  format: z.enum(["json", "csv"], {
+    message: "Formato deve ser 'json' ou 'csv'",
+  }),
+  unidade_id: z.string().min(1, "ID da unidade é obrigatório").optional(),
+});
+```
+
+##### Função SQL para Cálculo do DRE
+
+```sql
+-- Função principal para cálculo do DRE
+CREATE OR REPLACE FUNCTION calculate_dre(
+  p_data_inicio DATE,
+  p_data_fim DATE,
+  p_unidade_id TEXT DEFAULT 'trato'
+)
+RETURNS TABLE (
+  conta_id UUID,
+  conta_codigo TEXT,
+  conta_nome TEXT,
+  conta_tipo TEXT,
+  conta_categoria TEXT,
+  saldo_inicial DECIMAL(15,2),
+  movimentos_debito DECIMAL(15,2),
+  movimentos_credito DECIMAL(15,2),
+  saldo_final DECIMAL(15,2)
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    cc.id as conta_id,
+    cc.codigo as conta_codigo,
+    cc.nome as conta_nome,
+    cc.tipo as conta_tipo,
+    cc.categoria as conta_categoria,
+    COALESCE(saldo_inicial.saldo, 0) as saldo_inicial,
+    COALESCE(movimentos.debito, 0) as movimentos_debito,
+    COALESCE(movimentos.credito, 0) as movimentos_credito,
+    COALESCE(saldo_inicial.saldo, 0) +
+    COALESCE(movimentos.credito, 0) -
+    COALESCE(movimentos.debito, 0) as saldo_final
+  FROM contas_contabeis cc
+  LEFT JOIN LATERAL (
+    -- Saldo inicial
+    SELECT
+      SUM(
+        CASE
+          WHEN lc.tipo_lancamento = 'credito' THEN lc.valor::DECIMAL
+          ELSE -lc.valor::DECIMAL
+        END
+      ) as saldo
+    FROM lancamentos_contabeis lc
+    WHERE lc.conta_id = cc.id
+      AND lc.unidade_id = p_unidade_id
+      AND lc.data_competencia < p_data_inicio
+      AND lc.status = 'confirmado'
+  ) saldo_inicial ON true
+  LEFT JOIN LATERAL (
+    -- Movimentos do período
+    SELECT
+      SUM(CASE WHEN lc.tipo_lancamento = 'debito' THEN lc.valor::DECIMAL ELSE 0 END) as debito,
+      SUM(CASE WHEN lc.tipo_lancamento = 'credito' THEN lc.valor::DECIMAL ELSE 0 END) as credito
+    FROM lancamentos_contabeis lc
+    WHERE lc.conta_id = cc.id
+      AND lc.unidade_id = p_unidade_id
+      AND lc.data_competencia BETWEEN p_data_inicio AND p_data_fim
+      AND lc.status = 'confirmado'
+  ) movimentos ON true
+  WHERE cc.ativo = true
+    AND cc.unidade_id = p_unidade_id
+  ORDER BY cc.codigo;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+##### Implementação Frontend - Guia Técnico
+
+###### 1. Estrutura de Páginas e Componentes
+
+```typescript
+// Estrutura de pastas para o módulo financeiro
+app/
+├── relatorios/
+│   └── financeiro/
+│       ├── page.tsx                    // Página principal
+│       ├── dre/
+│       │   └── page.tsx               // Página do DRE
+│       ├── fluxo-caixa/
+│       │   └── page.tsx               // Página de fluxo de caixa
+│       ├── lucratividade/
+│       │   └── page.tsx               // Página de análise de lucratividade
+│       └── validacao/
+│           └── page.tsx               // Página de validação de dados
+├── configuracoes/
+│   ├── contas-contabeis/
+│   │   └── page.tsx                   // Gestão de contas contábeis
+│   └── centros-custo/
+│       └── page.tsx                   // Gestão de centros de custo
+└── components/
+    └── financeiro/
+        ├── FinancialReportCard.tsx     // Card de relatório
+        ├── PeriodSelector.tsx          // Seletor de período
+        ├── DREChart.tsx                // Gráfico do DRE
+        ├── CashFlowChart.tsx           // Gráfico de fluxo de caixa
+        ├── ValidationStatus.tsx        // Status de validação
+        ├── FinancialSummary.tsx        // Resumo financeiro
+        └── RevenueProcessingStatus.tsx // Status de processamento de receitas
+```
+
+###### 2. Hooks Customizados para Estado e Lógica
+
+```typescript
+// Hook para gerenciar dados do DRE
+export const useDREData = (period: Period, unidade_id?: string) => {
+  const [data, setData] = useState<DREData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchDRE = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await getDREData({
+        period,
+        unidade_id,
+        include_audit_trail: true,
+      });
+
+      if (result.success) {
+        setData(result.data);
+        setLastUpdated(new Date());
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Erro ao buscar dados do DRE");
+      console.error("Erro ao buscar DRE:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshDRE = () => {
+    fetchDRE();
+  };
+
+  // Auto-refresh a cada 5 minutos se houver dados
+  useEffect(() => {
+    if (data && !loading) {
+      const interval = setInterval(refreshDRE, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [data, loading]);
+
+  return {
+    data,
+    loading,
+    error,
+    lastUpdated,
+    fetchDRE,
+    refreshDRE,
+  };
+};
+
+// Hook para validação de dados financeiros
+export const useFinancialValidation = (period: Period, unidade_id?: string) => {
+  const [validation, setValidation] = useState<DataValidationResult | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const [lastValidated, setLastValidated] = useState<Date | null>(null);
+
+  const validateData = async () => {
+    setLoading(true);
+
+    try {
+      const result = await validateFinancialData({
+        period,
+        unidade_id,
+        include_detailed_audit: true,
+      });
+
+      if (result.success) {
+        setValidation(result.data);
+        setLastValidated(new Date());
+      }
+    } catch (error) {
+      console.error("Erro na validação:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getValidationStatus = () => {
+    if (!validation) return "not_validated";
+    if (validation.isValid) return "valid";
+    if (validation.errors.some((e) => e.severity === "critical"))
+      return "critical";
+    return "warning";
+  };
+
+  return {
+    validation,
+    loading,
+    lastValidated,
+    validateData,
+    getValidationStatus,
+  };
+};
+
+// Hook para processamento de receitas
+export const useRevenueProcessing = () => {
+  const [processingStatus, setProcessingStatus] = useState<
+    "idle" | "processing" | "success" | "error"
+  >("idle");
+  const [lastProcessed, setLastProcessed] = useState<Date | null>(null);
+  const [stats, setStats] = useState<RevenueStats | null>(null);
+
+  const getRevenueStats = async (unidade_id: string) => {
+    try {
+      const result = await getAutomaticRevenueStats({ unidade_id });
+      if (result.success) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar estatísticas:", error);
+    }
+  };
+
+  const reprocessRevenue = async (filters: RevenueFilters) => {
+    setProcessingStatus("processing");
+
+    try {
+      const result = await recalculateAutomaticRevenues(filters);
+      if (result.success) {
+        setProcessingStatus("success");
+        setLastProcessed(new Date());
+        // Atualizar estatísticas
+        await getRevenueStats(filters.unidade_id || "trato");
+      } else {
+        setProcessingStatus("error");
+      }
+    } catch (error) {
+      setProcessingStatus("error");
+      console.error("Erro ao reprocessar receitas:", error);
+    }
+  };
+
+  return {
+    processingStatus,
+    lastProcessed,
+    stats,
+    getRevenueStats,
+    reprocessRevenue,
+  };
+};
+```
+
+###### 3. Contexto para Estado Global Financeiro
+
+```typescript
+// Context para dados financeiros
+interface FinancialContextType {
+  currentPeriod: Period;
+  setCurrentPeriod: (period: Period) => void;
+  selectedUnidade: string;
+  setSelectedUnidade: (id: string) => void;
+  dreData: DREData | null;
+  refreshDRE: () => void;
+  validationStatus: DataValidationResult | null;
+  validateData: () => void;
+  revenueStats: RevenueStats | null;
+  refreshRevenueStats: () => void;
+}
+
+const FinancialContext = createContext<FinancialContextType | undefined>(
+  undefined
+);
+
+// Provider do contexto
+export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [currentPeriod, setCurrentPeriod] = useState<Period>({
+    from: new Date().toISOString().split("T")[0].substring(0, 7) + "-01",
+    to: new Date().toISOString().split("T")[0],
+  });
+
+  const [selectedUnidade, setSelectedUnidade] = useState("trato");
+
+  // Hooks para dados
+  const { data: dreData, refreshDRE } = useDREData(
+    currentPeriod,
+    selectedUnidade
+  );
+  const { validation: validationStatus, validateData } = useFinancialValidation(
+    currentPeriod,
+    selectedUnidade
+  );
+  const { stats: revenueStats, getRevenueStats } = useRevenueProcessing();
+
+  // Atualizar estatísticas quando mudar unidade
+  useEffect(() => {
+    getRevenueStats(selectedUnidade);
+  }, [selectedUnidade]);
+
+  const contextValue: FinancialContextType = {
+    currentPeriod,
+    setCurrentPeriod,
+    selectedUnidade,
+    setSelectedUnidade,
+    dreData,
+    refreshDRE,
+    validationStatus,
+    validateData,
+    revenueStats,
+    refreshRevenueStats: () => getRevenueStats(selectedUnidade),
+  };
+
+  return (
+    <FinancialContext.Provider value={contextValue}>
+      {children}
+    </FinancialContext.Provider>
+  );
+};
+
+// Hook para usar o contexto
+export const useFinancial = () => {
+  const context = useContext(FinancialContext);
+  if (context === undefined) {
+    throw new Error("useFinancial deve ser usado dentro de FinancialProvider");
+  }
+  return context;
+};
+```
+
+###### 4. Componentes de Formulário e Validação
+
+```typescript
+// Formulário de seleção de período
+const PeriodSelector: React.FC<{ onSubmit: (period: Period) => void }> = ({
+  onSubmit,
+}) => {
+  const form = useForm<PeriodFormData>({
+    resolver: zodResolver(periodFormSchema),
+    defaultValues: {
+      from: new Date().toISOString().split("T")[0].substring(0, 7) + "-01",
+      to: new Date().toISOString().split("T")[0],
+    },
+  });
+
+  const handleSubmit = (data: PeriodFormData) => {
+    onSubmit({
+      from: data.from,
+      to: data.to,
+    });
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="from"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data de Início</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="to"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data de Fim</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <Button type="submit" className="w-full">
+        Gerar Relatório
+      </Button>
+    </form>
+  );
+};
+
+// Componente de status de validação
+const ValidationStatus: React.FC<{ validation: DataValidationResult }> = ({
+  validation,
+}) => {
+  const getStatusColor = () => {
+    if (validation.isValid) return "text-green-600";
+    if (validation.errors.some((e) => e.severity === "critical"))
+      return "text-red-600";
+    return "text-yellow-600";
+  };
+
+  const getStatusIcon = () => {
+    if (validation.isValid) return "✅";
+    if (validation.errors.some((e) => e.severity === "critical")) return "❌";
+    return "⚠️";
+  };
+
+  return (
+    <div className="p-4 border rounded-lg">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Status de Validação</h3>
+        <span className={`text-2xl ${getStatusColor()}`}>
+          {getStatusIcon()}
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <span>Score de Qualidade:</span>
+          <span className="font-semibold">
+            {validation.data_quality_score}%
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span>Verificações:</span>
+          <span>
+            {validation.summary.passed_checks}/{validation.summary.total_checks}
+          </span>
+        </div>
+
+        {validation.errors.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-medium text-red-600 mb-2">Erros Críticos:</h4>
+            <ul className="space-y-1 text-sm">
+              {validation.errors
+                .filter((e) => e.severity === "critical")
+                .map((error, index) => (
+                  <li key={index} className="text-red-600">
+                    • {error.message}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        {validation.warnings.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-medium text-yellow-600 mb-2">Avisos:</h4>
+            <ul className="space-y-1 text-sm">
+              {validation.warnings.map((warning, index) => (
+                <li key={index} className="text-yellow-600">
+                  • {warning.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+###### 5. Gráficos e Visualizações
+
+```typescript
+// Componente de gráfico DRE
+const DREChart: React.FC<{ data: DREData }> = ({ data }) => {
+  const chartData = [
+    {
+      name: "Receita Líquida",
+      value: data.receitas.receita_liquida,
+      color: "#10b981",
+      type: "receita",
+    },
+    {
+      name: "Custos",
+      value: data.custos.custos_servicos,
+      color: "#ef4444",
+      type: "custo",
+    },
+    {
+      name: "Despesas Operacionais",
+      value: data.despesas.despesas_operacionais,
+      color: "#f59e0b",
+      type: "despesa",
+    },
+    {
+      name: "Despesas Financeiras",
+      value: data.despesas.despesas_financeiras,
+      color: "#8b5cf6",
+      type: "despesa",
+    },
+    {
+      name: "Lucro Líquido",
+      value: data.resultado.lucro_liquido,
+      color: "#3b82f6",
+      type: "resultado",
+    },
+  ];
+
+  const options = {
+    chart: {
+      type: "bar" as const,
+      height: 400,
+      toolbar: {
+        show: true,
+        tools: {
+          download: true,
+          selection: false,
+          zoom: false,
+          zoomin: false,
+          zoomout: false,
+          pan: false,
+          reset: false,
+        },
+      },
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: "55%",
+        endingShape: "rounded",
+      },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    stroke: {
+      show: true,
+      width: 2,
+      colors: ["transparent"],
+    },
+    xaxis: {
+      categories: chartData.map((item) => item.name),
+      labels: {
+        style: {
+          colors: "#6b7280",
+          fontSize: "12px",
+        },
+      },
+    },
+    yaxis: {
+      title: {
+        text: "Valor (R$)",
+        style: {
+          color: "#6b7280",
+          fontSize: "14px",
+        },
+      },
+      labels: {
+        formatter: (value: number) => formatCurrency(value),
+        style: {
+          colors: "#6b7280",
+          fontSize: "12px",
+        },
+      },
+    },
+    fill: {
+      opacity: 1,
+    },
+    tooltip: {
+      y: {
+        formatter: (value: number) => formatCurrency(value),
+      },
+    },
+    colors: chartData.map((item) => item.color),
+  };
+
+  const series = [
+    {
+      name: "Valor",
+      data: chartData.map((item) => item.value),
+    },
+  ];
+
+  return (
+    <div className="w-full">
+      <h3 className="text-lg font-semibold mb-4">
+        Demonstrativo de Resultados
+      </h3>
+      <ReactApexChart
+        options={options}
+        series={series}
+        type="bar"
+        height={400}
+      />
+    </div>
+  );
+};
+
+// Componente de gráfico de fluxo de caixa
+const CashFlowChart: React.FC<{
+  data: CashFlowData;
+  groupBy: "day" | "week" | "month";
+}> = ({ data, groupBy }) => {
+  const options = {
+    chart: {
+      type: "area" as const,
+      height: 400,
+      stacked: false,
+      toolbar: {
+        show: true,
+      },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    stroke: {
+      curve: "smooth",
+      width: 2,
+    },
+    fill: {
+      type: "gradient",
+      gradient: {
+        opacityFrom: 0.6,
+        opacityTo: 0.1,
+      },
+    },
+    xaxis: {
+      categories: data.periods.map((p) => p.label),
+      labels: {
+        style: {
+          colors: "#6b7280",
+          fontSize: "12px",
+        },
+      },
+    },
+    yaxis: [
+      {
+        title: {
+          text: "Entradas (R$)",
+          style: {
+            color: "#10b981",
+            fontSize: "14px",
+          },
+        },
+        labels: {
+          formatter: (value: number) => formatCurrency(value),
+          style: {
+            colors: "#10b981",
+            fontSize: "12px",
+          },
+        },
+      },
+      {
+        opposite: true,
+        title: {
+          text: "Saídas (R$)",
+          style: {
+            color: "#ef4444",
+            fontSize: "14px",
+          },
+        },
+        labels: {
+          formatter: (value: number) => formatCurrency(value),
+          style: {
+            colors: "#ef4444",
+            fontSize: "12px",
+          },
+        },
+      },
+    ],
+    tooltip: {
+      y: [
+        {
+          formatter: (value: number) => `Entradas: ${formatCurrency(value)}`,
+        },
+        {
+          formatter: (value: number) => `Saídas: ${formatCurrency(value)}`,
+        },
+      ],
+    },
+    colors: ["#10b981", "#ef4444"],
+  };
+
+  const series = [
+    {
+      name: "Entradas",
+      data: data.periods.map((p) => p.entradas),
+    },
+    {
+      name: "Saídas",
+      data: data.periods.map((p) => p.saidas),
+    },
+  ];
+
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Fluxo de Caixa</h3>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Agrupar por:</span>
+          <select
+            value={groupBy}
+            onChange={(e) =>
+              setGroupBy(e.target.value as "day" | "week" | "month")
+            }
+            className="text-sm border rounded px-2 py-1"
+          >
+            <option value="day">Dia</option>
+            <option value="week">Semana</option>
+            <option value="month">Mês</option>
+          </select>
+        </div>
+      </div>
+
+      <ReactApexChart
+        options={options}
+        series={series}
+        type="area"
+        height={400}
+      />
+    </div>
+  );
+};
+```
+
+###### 6. Página Principal do Módulo Financeiro
+
+```typescript
+// Página principal do módulo financeiro
+export default function FinanceiroPage() {
+  const {
+    currentPeriod,
+    setCurrentPeriod,
+    selectedUnidade,
+    dreData,
+    validationStatus,
+  } = useFinancial();
+  const [activeTab, setActiveTab] = useState<
+    "dre" | "fluxo-caixa" | "lucratividade" | "validacao"
+  >("dre");
+
+  const tabs = [
+    { id: "dre", label: "DRE", icon: "📊" },
+    { id: "fluxo-caixa", label: "Fluxo de Caixa", icon: "💰" },
+    { id: "lucratividade", label: "Lucratividade", icon: "📈" },
+    { id: "validacao", label: "Validação", icon: "🔍" },
+  ];
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Módulo Financeiro
+        </h1>
+        <p className="text-gray-600">
+          Relatórios financeiros, análise de lucratividade e validação de dados
+        </p>
+      </div>
+
+      {/* Seletor de Período */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
+        <h2 className="text-lg font-semibold mb-4">Período de Análise</h2>
+        <PeriodSelector onSubmit={setCurrentPeriod} />
+      </div>
+
+      {/* Status de Validação */}
+      {validationStatus && (
+        <div className="mb-6">
+          <ValidationStatus validation={validationStatus} />
+        </div>
+      )}
+
+      {/* Tabs de Navegação */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Conteúdo das Tabs */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        {activeTab === "dre" && (
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4">
+              Demonstrativo de Resultados
+            </h2>
+            {dreData ? (
+              <div className="space-y-6">
+                <DREChart data={dreData} />
+                <FinancialSummary data={dreData} />
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">
+                  Selecione um período para gerar o DRE
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "fluxo-caixa" && (
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Fluxo de Caixa</h2>
+            <CashFlowAnalysis
+              period={currentPeriod}
+              unidade_id={selectedUnidade}
+            />
+          </div>
+        )}
+
+        {activeTab === "lucratividade" && (
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4">
+              Análise de Lucratividade
+            </h2>
+            <ProfitabilityAnalysis
+              period={currentPeriod}
+              unidade_id={selectedUnidade}
+            />
+          </div>
+        )}
+
+        {activeTab === "validacao" && (
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Validação de Dados</h2>
+            <DataValidationPanel
+              period={currentPeriod}
+              unidade_id={selectedUnidade}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+###### 7. Utilitários e Helpers
+
+```typescript
+// Funções utilitárias para formatação
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
+export const formatPercentage = (value: number): string => {
+  return `${value.toFixed(2)}%`;
+};
+
+export const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "Data Inválida";
+  return date.toLocaleDateString("pt-BR");
+};
+
+export const calculateGrowth = (current: number, previous: number): number => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+};
+
+export const getGrowthColor = (growth: number): string => {
+  if (growth > 0) return "text-green-600";
+  if (growth < 0) return "text-red-600";
+  return "text-gray-600";
+};
+
+export const getGrowthIcon = (growth: number): string => {
+  if (growth > 0) return "↗️";
+  if (growth < 0) return "↘️";
+  return "→";
+};
+
+// Constantes para o sistema financeiro
+export const FINANCIAL_CONSTANTS = {
+  ACCOUNT_TYPES: {
+    ATIVO: "ativo",
+    PASSIVO: "passivo",
+    RECEITA: "receita",
+    DESPESA: "despesa",
+    CUSTO: "custo",
+    PATRIMONIO_LIQUIDO: "patrimonio_liquido",
+  },
+
+  DEFAULT_ACCOUNTS: {
+    RECEITA_VENDAS: "4.1.1.1",
+    CAIXA_BANCOS: "1.1.1.1",
+    DESPESAS_OPERACIONAIS: "6.1.1.1",
+    CUSTOS_SERVICOS: "3.1.1.1",
+  },
+
+  VALIDATION_TOLERANCE: 0.01, // 1 centavo
+
+  REFRESH_INTERVALS: {
+    DRE: 5 * 60 * 1000, // 5 minutos
+    VALIDATION: 10 * 60 * 1000, // 10 minutos
+    REVENUE_STATS: 2 * 60 * 1000, // 2 minutos
+  },
+} as const;
+```
+
+````
+
 #### Sistema de Metas
 
 ```typescript
@@ -1144,7 +2552,7 @@ export async function checkBonusEligibility(
 
   return !absences || absences.length === 0;
 }
-```
+````
 
 ### 6.3 Validações de Dados
 

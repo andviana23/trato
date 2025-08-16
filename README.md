@@ -1,174 +1,158 @@
-# Trato de Barbados — Sistema de Gestão para Barbearias (Next.js + Chakra UI)
+# 🏪 Sistema Trato de Barbados
 
-Sistema completo para gestão de barbearias, incluindo assinaturas, clientes, profissionais, agendamentos, distribuição de comissões, metas e integrações financeiras.
+Sistema completo de gestão para barbearias, desenvolvido com Next.js 15, Supabase e TypeScript.
 
----
+## 🚀 Tecnologias
 
-## 🚀 Principais funcionalidades
+- **Frontend**: Next.js 15, React 18, TypeScript
+- **Backend**: Supabase (PostgreSQL), Server Actions
+- **UI**: Chakra UI, Radix UI
+- **Autenticação**: Supabase Auth
+- **Banco de Dados**: PostgreSQL via Supabase
+- **Deploy**: Vercel
 
-- Autenticação (login, cadastro, recuperação de senha) com Supabase
-- Gestão de assinaturas (planos, assinantes, cancelamento)
-- Dashboard financeiro e de clientes
-- Integração ASAAS (assinaturas e pagamentos) e pagamentos externos
-- Cadastros: profissionais, serviços, produtos
-- Fila de atendimento inteligente (lista da vez) com reorganização automática
-- Sistema de metas por unidade (Trato/BarberBeer) e bonificações
-- Distribuição de comissão mensal (assinaturas + avulsos + vendas de produtos)
-- UI responsiva com Chakra UI 3 (100% dos componentes de UI são Chakra) e Tailwind como utilitário
-- Tema claro/escuro
+## 📋 Funcionalidades
 
----
+- **Gestão de Profissionais**: Cadastro, horários, especialidades
+- **Agendamentos**: Sistema completo de marcação de horários
+- **Clientes**: Cadastro e histórico de clientes
+- **Fila de Atendimento**: Sistema de filas para barbearias
+- **Metas e Comissões**: Controle de metas e cálculo de comissões
+- **Relatórios Financeiros**: DRE, fluxo de caixa, balanço patrimonial
+- **Multiunidade**: Suporte a múltiplas filiais
+- **Autenticação**: Sistema de login com diferentes níveis de acesso
 
-## 📛 Stack
+## 🛠️ Configuração
 
-- Next.js 15 (App Router)
-- React 18.3.x
-- TypeScript 5
-- Chakra UI 3 (+ @chakra-ui/next-js, Emotion)
-- Tailwind CSS 3.4
-- Supabase (Auth, DB, Storage)
-- Radix UI (componentes pontuais)
-- DnD Kit, Chart.js/Recharts, Day.js, React Hook Form + Zod
+### Pré-requisitos
 
----
+- Node.js 18+
+- npm ou yarn
+- Conta no Supabase
 
-## 🖥 Pré-requisitos
+### Instalação
 
-- Node.js >= 18
-- npm >= 9 (ou yarn >= 1.22)
-- Conta no Supabase e (opcional) no ASAAS
-
----
-
-## ⚙️ Instalação
-
-1. Clonar e instalar
+1. **Clone o repositório**
 
 ```bash
-git clone <repo>
+git clone <url-do-repositorio>
 cd trato
+```
+
+2. **Instale as dependências**
+
+```bash
 npm install
 ```
 
-2. Variáveis de ambiente (crie `.env.local` na raiz `trato/`)
+3. **Configure as variáveis de ambiente**
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-NEXTAUTH_SECRET=...
-NEXTAUTH_URL=http://localhost:3000
-# Chaves ASAAS conforme sua integração
-NEXT_PUBLIC_COMMISSION_PERCENT=0.4
-NEXT_PUBLIC_COMMISSION_PERCENT_TRATO=0.4
-NEXT_PUBLIC_COMMISSION_PERCENT_BBSC=0.4
-NEXT_PUBLIC_TRATO_UNIDADE_ID=244c0543-7108-4892-9eac-48186ad1d5e7
-NEXT_PUBLIC_BBSC_UNIDADE_ID=87884040-cafc-4625-857b-6e0402ede7d7
+```bash
+cp env.local.example .env.local
 ```
 
-3. Banco de dados (Supabase)
+Preencha as seguintes variáveis no arquivo `.env.local`:
 
-- Execute as migrações em `supabase/migrations/`
-- Para metas, use `trato/sql/metas_tables.sql`
-- Para fila de barbeiros, execute `scripts/add_passou_vez_field.sql`
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_supabase
+SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase
 
----
+# Sistema
+NEXT_PUBLIC_COMMISSION_PERCENT=0.4
+NEXT_PUBLIC_TRATO_UNIDADE_ID=seu_id_unidade_trato
+NEXT_PUBLIC_BBSC_UNIDADE_ID=seu_id_unidade_barberbeer
+```
 
-## ▶️ Executar
+4. **Configure o Supabase**
 
-Desenvolvimento
+- Crie um projeto no [Supabase](https://supabase.com)
+- Configure as variáveis de ambiente com suas credenciais
+- Execute as migrations do banco de dados
+
+5. **Execute o projeto**
 
 ```bash
 npm run dev
 ```
 
-Build/produção
+## 🗄️ Estrutura do Banco
+
+O sistema utiliza o Supabase como backend, com as seguintes tabelas principais:
+
+- **profiles**: Usuários do sistema
+- **profissionais**: Profissionais das barbearias
+- **clientes**: Cadastro de clientes
+- **agendamentos**: Agendamentos de horários
+- **servicos**: Serviços oferecidos
+- **metas**: Metas dos profissionais
+- **receitas/despesas**: Controle financeiro
+- **DRE**: Demonstração do Resultado do Exercício
+
+## 🔐 Autenticação
+
+O sistema utiliza Supabase Auth com os seguintes níveis de acesso:
+
+- **admin**: Acesso total ao sistema
+- **manager**: Gerente de unidade
+- **professional**: Profissional da barbearia
+- **receptionist**: Recepcionista
+
+## 📱 Funcionalidades Mobile
+
+- Interface responsiva para dispositivos móveis
+- PWA (Progressive Web App) para instalação
+- Notificações push
+
+## 🧪 Testes
 
 ```bash
-npm run build
-npm start
+# Executar testes
+npm test
+
+# Executar testes com coverage
+npm run test:coverage
+
+# Executar testes em modo watch
+npm run test:watch
 ```
 
-Aplicação em `http://localhost:3000`
+## 🚀 Deploy
 
----
+### Vercel (Recomendado)
 
-## 🧭 Estrutura (parcial)
+1. Conecte seu repositório ao Vercel
+2. Configure as variáveis de ambiente
+3. Deploy automático a cada push
 
-- `app/` — rotas (App Router)
-- `components/` — componentes compartilhados (Chakra)
-- `lib/` — serviços (`supabase`, `services/*`)
-- `hooks/` — hooks de domínio (ex.: `useBarberQueue`)
-- `scripts/` — utilitários e SQLs auxiliares
-- `docs/` — documentação de metas e troubleshooting
+### Outras plataformas
 
----
+O projeto pode ser deployado em qualquer plataforma que suporte Next.js.
 
-## 📚 Documentação Supabase (Relatórios e multi‑unidade)
+## 📚 Documentação
 
-- Guia completo: [`docs/supabase-relatorios.md`](docs/supabase-relatorios.md)
-  - Esquema (`receitas`, `despesas`, `agendamentos`), índices e views
-  - RLS por unidade com `current_unidade()`
-  - Padrões de integração em Server Actions (Next.js)
-  - Blocos SQL de backfill e testes rápidos
+- [Documentação do Backend](./docs/BACKEND_DOCUMENTATION.md)
+- [Guia de Migrations](./docs/MIGRATION_README.md)
+- [Sistema de Metas](./docs/SISTEMA_METAS.md)
+- [Implementação de Filas](./docs/SISTEMA_FILAS_IMPLEMENTADO.md)
 
----
+## 🤝 Contribuição
 
-## 💈 Distribuição de Comissão (Resumo)
-
-- Faturamento do mês = pagamentos ASAAS confirmados + assinaturas internas
-- Comissão total = 40% do faturamento
-- Rateio por barbeiro proporcional aos minutos trabalhados
-- Soma comissão avulsa (tabela `comissoes_avulsas`)
-- Exibe metas de produtos (faixas) e progresso por barbeiro
-
-Telas relacionadas
-
-- `dashboard/distribuicao/comissao` (Trato)
-- `dashboard/distribuicao-bbsc/comissao` (BarberBeer)
-- `dashboard/distribuicao/comissao-avulsa`
-- `dashboard/distribuicao/produtos`
-
----
-
-## 🔐 Autenticação e Roles
-
-- Perfis e permissões documentados em `CORREÇÕES_AUTENTICAÇÃO.md`
-- Role `recepcionista` incluído (ver script `scripts/add-recepcionista-role.*`)
-
----
-
-## 🧪 Testes e qualidade
-
-- ESLint configurado (`npm run lint`)
-- Recomenda-se Jest para unitários/integrados
-
----
-
-## 🐛 Troubleshooting (rápido)
-
-- Variáveis Supabase indefinidas: ver `RESOLVER_ERRO_ENV.md`
-- Metas: ver `docs/TROUBLESHOOTING_METAS.md`
-- Fila de barbeiros: ver `IMPLEMENTAÇÃO_FILA_BARBEIROS.md`
-
----
-
-## 📦 Dependências principais (trecho)
-
-- `@chakra-ui/react`, `@chakra-ui/next-js`, `@emotion/*`
-- `@supabase/supabase-js`, `@supabase/ssr`
-- `react`/`react-dom` 18.3.x, `next` 15
-- `tailwindcss`, `postcss`, `autoprefixer`
-- `dayjs`, `react-hook-form`, `zod`
-
----
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
 ## 📄 Licença
 
-MIT
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## 📞 Suporte
+
+Para suporte, entre em contato através dos canais oficiais da Trato de Barbados.
 
 ---
 
-## ✍️ Créditos
-
-Trato de Barbados — Time de desenvolvimento
+**Desenvolvido com ❤️ pela equipe Trato de Barbados**

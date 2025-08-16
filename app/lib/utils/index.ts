@@ -516,3 +516,6 @@ export function conditionalTimeEnd(label: string): void {
     console.timeEnd(label);
   }
 }
+
+// Exportar utilitários financeiros
+export * from './financial';

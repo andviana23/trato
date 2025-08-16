@@ -18,6 +18,15 @@ export {
   syncQueue,
 } from './queueService';
 
+// Fila financeira
+export {
+  financialRevenueQueue,
+  getFinancialQueueStats,
+  cleanFinancialQueue,
+  pauseFinancialQueue,
+  resumeFinancialQueue,
+} from './financialJobs';
+
 // Funções para adicionar tarefas
 export {
   addNotificationJob,

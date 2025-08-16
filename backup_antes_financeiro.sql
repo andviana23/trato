@@ -1,0 +1,22 @@
+-- ============================================================================
+-- BACKUP ANTES DA IMPLEMENTAÇÃO DO MÓDULO FINANCEIRO DRE
+-- ============================================================================
+-- Data: 2024-12-24
+-- Sistema: Trato de Barbados
+-- Motivo: Backup antes da implementação do módulo DRE
+-- ============================================================================
+-- Este arquivo contém a estrutura atual das tabelas financeiras
+-- antes da implementação do novo módulo DRE
+-- Tabelas financeiras existentes:
+-- - receitas
+-- - despesas  
+-- - monthly_revenue
+-- - faturamento_assinatura
+-- - metas
+-- - bonus
+-- IMPORTANTE: Execute este backup antes de aplicar as novas migrations
+-- para poder reverter se necessário
+-- Para restaurar:
+-- 1. Conecte ao banco Neon
+-- 2. Execute: \i backup_antes_financeiro.sql
+-- ============================================================================
