@@ -1,21 +1,13 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { useUnidadeStore } from '@/lib/stores';
 
-const UnidadeContext = createContext({ unidade: "Trato de Barbados", setUnidade: (u: string) => {} });
-
+// Componente de compatibilidade para migração gradual
 export function UnidadeProvider({ children }: { children: React.ReactNode }) {
-  const [unidade, setUnidade] = useState(() =>
-    typeof window !== "undefined" ? localStorage.getItem("unidade") || "Trato de Barbados" : "Trato de Barbados"
-  );
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("unidade", unidade);
-    }
-  }, [unidade]);
-  return (
-    <UnidadeContext.Provider value={{ unidade, setUnidade }}>
-      {children}
-    </UnidadeContext.Provider>
-  );
+  return <>{children}</>;
 }
-export const useUnidade = () => useContext(UnidadeContext);
+
+// Hook de compatibilidade que usa a store Zustand
+export const useUnidade = () => {
+  const { unidade, setUnidade } = useUnidadeStore();
+  return { unidade, setUnidade };
+};

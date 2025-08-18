@@ -174,7 +174,7 @@ financialRevenueWorker.on('stalled', (jobId: string) => {
 /**
  * Obtém estatísticas da fila financeira
  */
-export async function getFinancialQueueStats() {
+async function getFinancialQueueStats() {
   try {
     const waiting = await financialRevenueQueue.getWaiting();
     const active = await financialRevenueQueue.getActive();
@@ -201,7 +201,7 @@ export async function getFinancialQueueStats() {
 /**
  * Limpa jobs antigos da fila financeira
  */
-export async function cleanFinancialQueue() {
+async function cleanFinancialQueue() {
   try {
     const completed = await financialRevenueQueue.clean(0, 'completed');
     const failed = await financialRevenueQueue.clean(0, 'failed');
@@ -218,7 +218,7 @@ export async function cleanFinancialQueue() {
 /**
  * Pausa a fila financeira
  */
-export async function pauseFinancialQueue() {
+async function pauseFinancialQueue() {
   try {
     await financialRevenueQueue.pause();
     console.log('⏸️ Fila financeira pausada');
@@ -232,7 +232,7 @@ export async function pauseFinancialQueue() {
 /**
  * Resume a fila financeira
  */
-export async function resumeFinancialQueue() {
+async function resumeFinancialQueue() {
   try {
     await financialRevenueQueue.resume();
     console.log('▶️ Fila financeira resumida');

@@ -6,3 +6,4 @@
  */
 
 export * from './useMetas';
+export * from './useFinancial';

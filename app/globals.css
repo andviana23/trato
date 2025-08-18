@@ -16,6 +16,33 @@
   --agenda-grid-line: 214.3 31.8% 91.4%;
   --agenda-grid-line-strong: 214.3 31.8% 91.4%;
   --agenda-zebra: 210 40% 96.1%;
+
+  /* Breakpoints responsivos */
+  --mobile: 480px;
+  --tablet: 768px;
+  --desktop: 1024px;
+  --wide: 1280px;
+  
+  /* Espaçamentos responsivos */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* Tamanhos de fonte responsivos */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  
+  /* Z-index para mobile navigation */
+  --z-mobile-nav: 1000;
+  --z-modal: 1100;
+  --z-toast: 1200;
 }
 
 /* Tokens base (shadcn) */
@@ -88,6 +115,100 @@
 
 /* Ajustes globais */
 html, body { min-height: 100%; }
+
+/* Utilitários responsivos */
+@layer utilities {
+  .container-responsive {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+  }
+  
+  @media (min-width: 640px) {
+    .container-responsive {
+      max-width: 640px;
+      padding-left: var(--spacing-md);
+      padding-right: var(--spacing-md);
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .container-responsive {
+      max-width: 768px;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .container-responsive {
+      max-width: 1024px;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .container-responsive {
+      max-width: 1280px;
+    }
+  }
+  
+  /* Esconder elementos em mobile */
+  .mobile-hidden {
+    display: none;
+  }
+  
+  @media (min-width: 768px) {
+    .mobile-hidden {
+      display: block;
+    }
+  }
+  
+  /* Esconder elementos em desktop */
+  .desktop-hidden {
+    display: block;
+  }
+  
+  @media (min-width: 768px) {
+    .desktop-hidden {
+      display: none;
+    }
+  }
+  
+  /* Tabelas responsivas */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table-responsive table {
+    min-width: 600px;
+  }
+  
+  /* Cards responsivos */
+  .card-grid {
+    display: grid;
+    gap: var(--spacing-md);
+    grid-template-columns: 1fr;
+  }
+  
+  @media (min-width: 640px) {
+    .card-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .card-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .card-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+}
 
 .sidebar-item-active::before,
 .sidebar-item-active::after,

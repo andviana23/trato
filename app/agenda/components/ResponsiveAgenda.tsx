@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 import AgendaGrid, { GridEvent, GridResource } from "../ui/AgendaGrid";
 import AgendaGridMobile from "../ui/AgendaGridMobile";
 import AgendaToolbar from "../ui/AgendaToolbar";
+import { AgendaMobileView } from "./AgendaMobileView";
 import dayjs from "dayjs";
 
 // Mock data - replace with actual data fetching

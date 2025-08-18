@@ -1,4 +1,4 @@
-import { Queue, Worker, Job, QueueScheduler } from 'bullmq';
+import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -477,9 +477,9 @@ syncWorker.on('failed', (job, err) => {
 // AGENDADOR DE TAREFAS RECORRENTES
 // ============================================================================
 
-const scheduler = new QueueScheduler('scheduler', {
-  connection: new Redis(redisConfig),
-});
+// const scheduler = new QueueScheduler('scheduler', {
+//   connection: new Redis(redisConfig),
+// });
 
 // Agendar limpeza diária de logs antigos
 export async function scheduleDailyCleanup() {
@@ -555,7 +555,7 @@ export async function closeQueueSystem() {
       reportQueue.close(),
       cleanupQueue.close(),
       syncQueue.close(),
-      scheduler.close(),
+      // scheduler.close(),
     ]);
     
     console.log('[Queue] Sistema de filas finalizado com sucesso');

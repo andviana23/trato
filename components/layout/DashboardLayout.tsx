@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, ReactNode } from "react";
-import Sidebar from "./Sidebar";
+// import Sidebar from "./Sidebar";
 import Header from "./Header";
 import MainContainer from "./MainContainer";
 
@@ -10,22 +10,22 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isCollapsed] = useState(false);
+  // const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const sidebarWidthPx = useMemo(() => (isCollapsed ? 64 : 224), [isCollapsed]); // 16 -> 64px, 56 -> 224px
 
-  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
-  const handleMobileClose = () => setMobileSidebarOpen(false);
+  // const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+  // const handleMobileClose = () => setMobileSidebarOpen(false);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-white dark:bg-gray-900">
       {/* Sidebar fixa (desktop) + sidebar mobile controlada) */}
-      <Sidebar
+      {/* <Sidebar
         isCollapsed={isCollapsed}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={handleMobileClose}
-      />
+      /> */}
 
       {/* Header fixo alinhado ao lado da sidebar */}
       <div
@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <Header
           isCollapsed={isCollapsed}
-          onMobileMenu={() => setMobileSidebarOpen(true)}
+          onMobileMenu={() => {/* setMobileSidebarOpen(true) */}}
         />
       </div>
 

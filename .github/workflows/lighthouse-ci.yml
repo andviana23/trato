@@ -1,0 +1,78 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: npm start &
+        env:
+          CI: true
+
+      - name: Wait for application to start
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            http://localhost:3000
+            http://localhost:3000/agenda
+            http://localhost:3000/fila
+            http://localhost:3000/dashboard
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: "./lighthouserc.js"
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const results = JSON.parse(fs.readFileSync('.lighthouseci/lhr.json', 'utf8'));
+
+            let comment = '## 🚀 Lighthouse CI Results\n\n';
+            comment += '| Page | Performance | Accessibility | Best Practices | SEO |\n';
+            comment += '|------|-------------|---------------|----------------|-----|\n';
+
+            results.forEach(result => {
+              const scores = result.lhr.categories;
+              comment += `| ${result.lhr.finalUrl} | ${Math.round(scores.performance.score * 100)} | ${Math.round(scores.accessibility.score * 100)} | ${Math.round(scores['best-practices'].score * 100)} | ${Math.round(scores.seo.score * 100)} |\n`;
+            });
+
+            comment += '\n<details><summary>📊 Detailed Results</summary>\n\n';
+            comment += 'Check the [Lighthouse CI results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed information.\n';
+            comment += '</details>';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/client';
-import { financialRevenueQueue } from '@/lib/queue/financialJobs';
+// import { financialRevenueQueue } from '@/lib/queue/financialJobs';
 
 function add30Days(dateStr: string) {
   const date = new Date(dateStr);
@@ -40,18 +40,18 @@ export async function POST(req: Request) {
       };
 
       // Adicionar job à fila de processamento financeiro
-      await financialRevenueQueue.add('process-payment', jobPayload, {
-        priority: 1, // Prioridade alta para pagamentos confirmados
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
-        removeOnComplete: 100,
-        removeOnFail: 50,
-      });
+      // await financialRevenueQueue.add('process-payment', jobPayload, {
+      //   priority: 1, // Prioridade alta para pagamentos confirmados
+      //   attempts: 3,
+      //   backoff: {
+      //     type: 'exponential',
+      //     delay: 2000,
+      //   },
+      //   removeOnComplete: 100,
+      //   removeOnFail: 50,
+      // });
 
-      console.log(`✅ Job adicionado à fila para pagamento ${payment.id}`);
+      // console.log(`✅ Job adicionado à fila para pagamento ${payment.id}`);
     }
 
     // Retornar sucesso imediatamente após adicionar à fila

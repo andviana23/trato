@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Card, Button, Input, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Autocomplete, AutocompleteItem } from '@/components/ui/chakra-adapters';
 import { PlusIcon } from '@heroicons/react/24/solid';
-import CardProfissionalHeroUI from './components/CardProfissionalHeroUI';
+// import CardProfissionalHeroUI from './components/CardProfissionalHeroUI';
 import dayjs from 'dayjs';
 
 // Tipos auxiliares

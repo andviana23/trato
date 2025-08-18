@@ -43,3 +43,6 @@ next-env.d.ts
 
 # PM2 ecosystem config
 ecosystem.config.js
+
+*storybook.log
+storybook-static
